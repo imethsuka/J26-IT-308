@@ -49,8 +49,12 @@ class ImportanceModel(ImportanceScorer):
         params: Mapping[str, Any] | None = None,
         num_boost_round: int = DEFAULT_NUM_BOOST_ROUND,
         versions_dir: Path | str = DEFAULT_VERSIONS_DIR,
+        extra_feature_columns: Sequence[str] = (),
     ) -> None:
         self.params = {**DEFAULT_PARAMS, **(params or {})}
+        # Experimental features appended after FEATURE_COLUMNS (e.g. MobileCLIP category scores).
+        # The live worker does not compute them, so a model using them is for offline experiments.
+        self.extra_feature_columns: tuple[str, ...] = tuple(extra_feature_columns)
         self.num_boost_round = num_boost_round
         self.versions_dir = Path(versions_dir)
         self._booster = None
@@ -84,9 +88,10 @@ class ImportanceModel(ImportanceScorer):
 
         X = self._matrix_from_dataframe(labelled_dataframe, label_column)
 
-        train_set = lgb.Dataset(X, label=y, feature_name=list(FEATURE_COLUMNS), free_raw_data=False)
+        columns = FEATURE_COLUMNS + self.extra_feature_columns
+        train_set = lgb.Dataset(X, label=y, feature_name=list(columns), free_raw_data=False)
         self._booster = lgb.train(self.params, train_set, num_boost_round=self.num_boost_round)
-        self._feature_columns = FEATURE_COLUMNS
+        self._feature_columns = columns
         self.name = "lightgbm-trained"
 
         summary = {
@@ -103,12 +108,12 @@ class ImportanceModel(ImportanceScorer):
 
     def predict_proba(self, features: Features) -> float:
         self._require_trained()
-        row = vectorize(features).reshape(1, -1)
+        row = vectorize(features, self.extra_feature_columns).reshape(1, -1)
         return float(self._booster.predict(row)[0])
 
     def predict_proba_batch(self, feature_dicts: Sequence[Features]) -> np.ndarray:
         self._require_trained()
-        matrix = vectorize_many(feature_dicts)
+        matrix = vectorize_many(feature_dicts, self.extra_feature_columns)
         return self._booster.predict(matrix).astype(np.float64)
 
     # ------------------------------------------------------------------ importances
@@ -166,13 +171,14 @@ class ImportanceModel(ImportanceScorer):
 
         metadata = json.loads((source / "metadata.json").read_text(encoding="utf-8"))
         stored_columns = tuple(metadata.get("feature_columns", FEATURE_COLUMNS))
-        if stored_columns != FEATURE_COLUMNS:
+        extra = stored_columns[len(FEATURE_COLUMNS):]
+        if stored_columns[:len(FEATURE_COLUMNS)] != FEATURE_COLUMNS:
             raise ValueError(
                 f"version {version_id!r} was trained with a different feature layout; "
                 "the code's FEATURE_COLUMNS changed, so this version must be retrained"
             )
 
-        model = cls(params=metadata.get("params"), num_boost_round=metadata.get("num_boost_round", DEFAULT_NUM_BOOST_ROUND), versions_dir=versions_dir)
+        model = cls(params=metadata.get("params"), num_boost_round=metadata.get("num_boost_round", DEFAULT_NUM_BOOST_ROUND), versions_dir=versions_dir, extra_feature_columns=extra)
         model._booster = lgb.Booster(model_file=str(source / "model.txt"))
         model._feature_columns = stored_columns
         model._version_id = version_id
@@ -191,9 +197,9 @@ class ImportanceModel(ImportanceScorer):
 
     def _matrix_from_dataframe(self, df: pd.DataFrame, label_column: str) -> np.ndarray:
         if "features" in df.columns:
-            return vectorize_many(df["features"].tolist())
+            return vectorize_many(df["features"].tolist(), self.extra_feature_columns)
         records = df.drop(columns=[label_column]).to_dict(orient="records")
-        return vectorize_many(records)
+        return vectorize_many(records, self.extra_feature_columns)
 
     def _require_trained(self) -> None:
         if self._booster is None:

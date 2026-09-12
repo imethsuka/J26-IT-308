@@ -119,6 +119,36 @@ def embed_frame(image: ImageLike) -> np.ndarray:
     return default_encoder().embed_frame(image)
 
 
+def encode_texts(texts: list[str], checkpoint: str | os.PathLike | None = None, device: str = "cpu") -> np.ndarray:
+    """512-d unit text embeddings for ``texts``, in the same space as :func:`embed_frame`.
+
+    For zero-shot screen categories (``"a screenshot of source code in an editor"``, ...): a
+    screenshot's cosine similarity to each text says which kind of screen it looks like. The text
+    tower is loaded only for this call and released afterwards; prompts are encoded once per run, so
+    the live image encoder stays text-free.
+    """
+    resolved = _resolve_checkpoint(checkpoint)
+    import torch
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=FutureWarning)
+        import mobileclip
+
+        model, _, _ = mobileclip.create_model_and_transforms(MODEL_NAME, pretrained=str(resolved))
+        tokenizer = mobileclip.get_tokenizer(MODEL_NAME)
+
+    torch_device = torch.device(device)
+    model = model.to(torch_device).eval()
+    try:
+        with torch.inference_mode():
+            features = model.encode_text(tokenizer(list(texts)).to(torch_device))
+            features = features / features.norm(dim=-1, keepdim=True)
+        return np.ascontiguousarray(features.detach().to("cpu", dtype=torch.float32).numpy())
+    finally:
+        del model
+        gc.collect()
+
+
 def _resolve_checkpoint(checkpoint: str | os.PathLike | None) -> Path:
     candidate = checkpoint or os.environ.get(_ENV_CHECKPOINT)
     if not candidate:

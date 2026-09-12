@@ -29,7 +29,7 @@ import re
 from collections import deque
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from typing import Any, Iterable, Sequence
+from typing import Any, Callable, Iterable, Sequence
 
 import numpy as np
 
@@ -143,6 +143,7 @@ def assemble_features(
     prototypes: Sequence[Any] | None = None,
     saved_embeddings: SavedEmbeddingRing | None = None,
     now: datetime | None = None,
+    title_normalizer: Callable[[str | None], str | None] | None = None,
 ) -> dict[str, Any]:
     """
     Build the feature dict for ``sensing_event``.
@@ -150,7 +151,9 @@ def assemble_features(
     ``embedding`` is the frame's 512-d vector (summarized, not emitted); ``None`` disables the
     visual features. ``prototypes`` is a list of importance-prototype vectors or ``(label, vector)``
     pairs (empty/omitted at cold start). ``saved_embeddings`` is the novelty ring; ``now`` overrides
-    the reference time (defaults to the event timestamp).
+    the reference time (defaults to the event timestamp). ``title_normalizer`` (opt-in, e.g.
+    ``features.titles.normalize_title``) is applied to titles before revisit matching and title
+    tokenization, matching the v4 label rule; by default exact titles are used.
     """
     event = sensing_event if isinstance(sensing_event, SensingEvent) else SensingEvent.from_snapshot(sensing_event)
     reference_time = _as_utc(now) if now is not None else event.ts
@@ -159,7 +162,7 @@ def assemble_features(
     features: dict[str, Any] = {}
     features.update(_behavioural(event, history))
     features.update(_temporal(event, reference_time, saved_embeddings))
-    features.update(_contextual(event, history))
+    features.update(_contextual(event, history, title_normalizer))
     features.update(_visual(embedding, prototypes, saved_embeddings))
     return features
 
@@ -206,16 +209,17 @@ def _temporal(event: SensingEvent, now: datetime, ring: SavedEmbeddingRing | Non
     }
 
 
-def _contextual(event: SensingEvent, history: list[ContextHistoryEntry]) -> dict[str, Any]:
-    key = _context_key(event.app, event.domain, event.title)
-    visits = _visits(history)
+def _contextual(event: SensingEvent, history: list[ContextHistoryEntry], title_normalizer=None) -> dict[str, Any]:
+    normalize = title_normalizer or (lambda title: title)
+    key = _context_key(event.app, event.domain, normalize(event.title))
+    visits = _visits(history, normalize)
     # The visit the current event continues (same context, no gap) is in progress, not a revisit.
     if visits and visits[-1][0] == key and (event.ts - visits[-1][1]) <= VISIT_GAP:
         visits = visits[:-1]
     revisit_count = 0
     if not event.excluded:
         revisit_count = sum(1 for visit_key, _ in visits if visit_key == key)
-    title_tokens = _tokenize(event.title)
+    title_tokens = _tokenize(normalize(event.title))
     return {
         "ctx_app": event.app,
         "ctx_domain": event.domain,
@@ -229,11 +233,11 @@ def _contextual(event: SensingEvent, history: list[ContextHistoryEntry]) -> dict
     }
 
 
-def _visits(history: list[ContextHistoryEntry]) -> list[tuple[tuple[str, str, str], datetime]]:
+def _visits(history: list[ContextHistoryEntry], normalize=lambda title: title) -> list[tuple[tuple[str, str, str], datetime]]:
     """Collapse history into visits, oldest first, as ``(context_key, last_seen_ts)`` pairs."""
     visits: list[tuple[tuple[str, str, str], datetime]] = []
     for entry in sorted(history, key=lambda e: e.ts):
-        key = _context_key(entry.app, entry.domain, entry.title)
+        key = _context_key(entry.app, entry.domain, normalize(entry.title))
         if visits and visits[-1][0] == key and (entry.ts - visits[-1][1]) <= VISIT_GAP:
             visits[-1] = (key, entry.ts)
         else:
