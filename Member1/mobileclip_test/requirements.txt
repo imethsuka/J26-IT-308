@@ -1,0 +1,9 @@
+# Same environment as ../monitor.py (uses ../.venv). Install PyTorch first, e.g.:
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
+# then:
+#   pip install -r requirements.txt
+#   pip install --no-deps git+https://github.com/apple/ml-mobileclip.git
+mss
+pillow
+open-clip-torch
+timm

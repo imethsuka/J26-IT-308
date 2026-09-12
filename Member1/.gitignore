@@ -1,0 +1,4 @@
+.venv/
+checkpoints/
+__pycache__/
+mobileclip_test/last_*.png

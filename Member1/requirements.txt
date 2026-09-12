@@ -1,0 +1,11 @@
+# 1) PyTorch first (CUDA 12.8 build shown; drop --index-url for CPU-only):
+#      pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
+# 2) pip install -r requirements.txt
+# 3) Official MobileCLIP package, without its training/benchmark extras (datasets, clip-benchmark),
+#    which are not needed for inference and make pip backtrack for a long time on Python 3.13:
+#      pip install --no-deps git+https://github.com/apple/ml-mobileclip.git
+mss
+numpy
+pillow
+open-clip-torch
+timm
