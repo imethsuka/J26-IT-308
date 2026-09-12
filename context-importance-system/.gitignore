@@ -59,3 +59,10 @@ captures/
 Thumbs.db
 .idea/
 .vscode/
+
+# packaging (build outputs and the PyInstaller build venv)
+packaging/.venv-build/
+packaging/build/
+packaging/dist/
+packaging/stage/
+packaging/installer/
