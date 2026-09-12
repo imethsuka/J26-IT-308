@@ -1,0 +1,1636 @@
+{
+    "id": "synthetic_privacy_20261021-1",
+    "text": "call me 0 7 7 5 3 1 8 4 2 6",
+    "doc_type": "whatsapp chat",
+    "app": "WhatsApp",
+    "domain": null,
+    "title": "Quick message",
+    "source": "uia",
+    "context_kind": "work_chat",
+    "spans": [
+        {
+            "surface": "0 7 7 5 3 1 8 4 2 6",
+            "category": "PHONE",
+            "tier": "medium"
+        }
+    ]
+}{
+    "id": "synthetic_privacy_20261021-2",
+    "text":"Employee record: Nivethra Jayakody, DOB 1991-12-02, NIC 918360123V. Contact: +94 71 638 2045, nivethra.jayakody\@astervale.example. Employer: Aster Vale Technologies. Monthly salary: LKR 285,000.00. HR review pending.",
+    "doc_type": "HR record",
+    "app": "PeopleDesk",
+    "domain": "hr.example",
+    "title": "Employee profile",
+    "source": "uia",
+    "context_kind": "hr",
+    "spans": [
+        {
+            "surface": "Nivethra Jayakody",
+            "category": "PERSON",
+            "tier": "high"
+        },
+        {
+            "surface": "1991-12-02",
+            "category": "DATE",
+            "tier": "high"
+        },
+        {
+            "surface": "918360123V",
+            "category": "NATIONAL_ID",
+            "tier": "high"
+        },
+        {
+            "surface": "+94 71 638 2045",
+            "category": "PHONE",
+            "tier": "high"
+        },
+        {
+            "surface":"nivethra.jayakody\@astervale.example",
+            "category": "EMAIL",
+            "tier": "high"
+        },
+        {
+            "surface": "Aster Vale Technologies",
+            "category": "ORG",
+            "tier": "none"
+        },
+        {
+            "surface": "LKR 285,000.00",
+            "category": "FINANCIAL_FIGURE",
+            "tier": "high"
+        }
+    ]
+}{
+    "id": "synthetic_privacy_20261021-3",
+    "text": "Text me at +1 (415) 555-0132 after class.",
+    "doc_type": "sms chat",
+    "app": "Messages",
+    "domain": null,
+    "title": "SMS conversation",
+    "source": "uia",
+    "context_kind": "social",
+    "spans": [
+        {
+            "surface": "+1 (415) 555-0132",
+            "category": "PHONE",
+            "tier": "medium"
+        }
+    ]
+}{
+    "id": "synthetic_privacy_20261021-4",
+    "text": "Acc0unt activity for account 7401936285. Transaction date: 2026-10-16. Purchase: $284.63. Available balance: $8,412.60. Card used: 4000123412345672. Statement reference: STMT-US-908214. Issuer: North Ember Credit Union.",
+    "doc_type": "bank statement",
+    "app": "North Ember Online",
+    "domain": "bank.example",
+    "title": "Account activity",
+    "source": "ocr",
+    "context_kind": "banking",
+    "spans": [
+        {
+            "surface": "7401936285",
+            "category": "BANK_ACCOUNT",
+            "tier": "high"
+        },
+        {
+            "surface": "2026-10-16",
+            "category": "DATE",
+            "tier": "high"
+        },
+        {
+            "surface": "$284.63",
+            "category": "FINANCIAL_FIGURE",
+            "tier": "high"
+        },
+        {
+            "surface": "$8,412.60",
+            "category": "FINANCIAL_FIGURE",
+            "tier": "high"
+        },
+        {
+            "surface": "4000123412345672",
+            "category": "CARD_LIKE_NUMBER",
+            "tier": "high"
+        },
+        {
+            "surface": "STMT-US-908214",
+            "category": "URL_TOKEN",
+            "tier": "none"
+        },
+        {
+            "surface": "North Ember Credit Union",
+            "category": "ORG",
+            "tier": "none"
+        }
+    ]
+}{
+    "id": "synthetic_privacy_20261021-5",
+    "text":"From: Felicity Wren \<felicity.wren\@harborlight.example>\nTo: Milo Chen \<milo.chen\@harborlight.example>\nSubject: Revised delivery notes\nHi Milo, I have attached the revised notes following our call. Please use the updated draft for the client review scheduled on 23 October 2026. The earlier attachment can be archived. Thanks, Felicity.\nHarborlight Consulting",
+    "doc_type": "email thread",
+    "app": "Mail",
+    "domain": "mail.example",
+    "title": "Revised delivery notes",
+    "source": "uia",
+    "context_kind": "email",
+    "spans": [
+        {
+            "surface": "Felicity Wren",
+            "category": "PERSON",
+            "tier": "low"
+        },
+        {
+            "surface":"felicity.wren\@harborlight.example",
+            "category": "EMAIL",
+            "tier": "medium"
+        },
+        {
+            "surface": "Milo Chen",
+            "category": "PERSON",
+            "tier": "low"
+        },
+        {
+            "surface":"milo.chen\@harborlight.example",
+            "category": "EMAIL",
+            "tier": "medium"
+        },
+        {
+            "surface": "23 October 2026",
+            "category": "DATE",
+            "tier": "low"
+        },
+        {
+            "surface": "Harborlight Consulting",
+            "category": "ORG",
+            "tier": "none"
+        }
+    ]
+}{
+    "id": "synthetic_privacy_20261021-6",
+    "text":"CV: Dorian Vale | DOB 14.02.1998 | NI: QQ 12 34 56 C | Passport: 742816395 | Mobile: +44 7700 900123 | Email: dorian.vale\@career-mail.example | Address: Flat 6, 28 Larch Mews, Bristol BS4 8QJ. Seeking a junior design role with flexible working arrangements.",
+    "doc_type": "CV",
+    "app": "Recruitment Portal",
+    "domain": "jobs.example",
+    "title": "Candidate profile",
+    "source": "uia",
+    "context_kind": "hr",
+    "spans": [
+        {
+            "surface": "Dorian Vale",
+            "category": "PERSON",
+            "tier": "high"
+        },
+        {
+            "surface": "14.02.1998",
+            "category": "DATE",
+            "tier": "high"
+        },
+        {
+            "surface": "QQ 12 34 56 C",
+            "category": "NATIONAL_ID",
+            "tier": "high"
+        },
+        {
+            "surface": "742816395",
+            "category": "NATIONAL_ID",
+            "tier": "high"
+        },
+        {
+            "surface": "+44 7700 900123",
+            "category": "PHONE",
+            "tier": "high"
+        },
+        {
+            "surface":"dorian.vale\@career-mail.example",
+            "category": "EMAIL",
+            "tier": "high"
+        },
+        {
+            "surface": "Flat 6, 28 Larch Mews, Bristol BS4 8QJ",
+            "category": "LOCATION",
+            "tier": "high"
+        }
+    ]
+}{
+    "id": "synthetic_privacy_20261021-7",
+    "text": "रिपोर्ट: काव्या मेनन, जन्म 14/08/1998; आधार 4827 1963 5401; निदान: माइग्रेन; दवा: Nivora.",
+    "doc_type": "medical report",
+    "app": "Swasthya Desk",
+    "domain": "clinic.example",
+    "title": "Patient summary",
+    "source": "ocr",
+    "context_kind": "health",
+    "spans": [
+        {
+            "surface": "काव्या मेनन",
+            "category": "PERSON",
+            "tier": "high"
+        },
+        {
+            "surface": "14/08/1998",
+            "category": "DATE",
+            "tier": "high"
+        },
+        {
+            "surface": "4827 1963 5401",
+            "category": "NATIONAL_ID",
+            "tier": "high"
+        },
+        {
+            "surface": "माइग्रेन",
+            "category": "MEDICAL",
+            "tier": "high"
+        },
+        {
+            "surface": "Nivora",
+            "category": "MEDICAL",
+            "tier": "high"
+        }
+    ]
+}{
+    "id": "synthetic_privacy_20261021-8",
+    "text": "Order 200112345678 for Rishabh Lal ships to 18 Lotus Park Road, Pune 411028. Call +91 98172 64035; total ₹18,750.00. Tracking: TRK-IN-583104.",
+    "doc_type": "shopping confirmation",
+    "app": "CartSpring",
+    "domain": "shop.example",
+    "title": "Order confirmation",
+    "source": "uia",
+    "context_kind": "shopping",
+    "spans": [
+        {
+            "surface": "200112345678",
+            "category": "URL_TOKEN",
+            "tier": "none"
+        },
+        {
+            "surface": "Rishabh Lal",
+            "category": "PERSON",
+            "tier": "low"
+        },
+        {
+            "surface": "18 Lotus Park Road, Pune 411028",
+            "category": "LOCATION",
+            "tier": "medium"
+        },
+        {
+            "surface": "+91 98172 64035",
+            "category": "PHONE",
+            "tier": "medium"
+        },
+        {
+            "surface": "₹18,750.00",
+            "category": "FINANCIAL_FIGURE",
+            "tier": "medium"
+        },
+        {
+            "surface": "TRK-IN-583104",
+            "category": "URL_TOKEN",
+            "tier": "none"
+        }
+    ]
+}{
+    "id": "synthetic_privacy_20261021-9",
+    "text": "API_KEY=sk_demo_demo_7f3a9c2d6e8b; build=v4.8.2",
+    "doc_type": "config snippet",
+    "app": "Code Studio",
+    "domain": null,
+    "title": "Local environment configuration",
+    "source": "uia",
+    "context_kind": "code",
+    "spans": [
+        {
+            "surface": "sk_demo_demo_7f3a9c2d6e8b",
+            "category": "CREDENTIAL",
+            "tier": "high"
+        },
+        {
+            "surface": "v4.8.2",
+            "category": "URL_TOKEN",
+            "tier": "none"
+        }
+    ]
+}{
+    "id": "synthetic_privacy_20261021-10",
+    "text": "Rechnung an Greta Vogel, Musterstraße 18, 04109 Leipzig. Steuer-ID 10345678921. Zahlungsziel: 27.10.2026. Gesamtbetrag: 1.250,00 EUR. IBAN: DE65 8219 0473 1948 2637 10. Lieferant: Nordfunke Werkstatt. Bitte den Zahlungsbeleg im Kundenbereich ablegen.",
+    "doc_type": "invoice",
+    "app": "RechnungsWerk",
+    "domain": "billing.example",
+    "title": "Rechnung NW-58317",
+    "source": "ocr",
+    "context_kind": "shopping",
+    "spans": [
+        {
+            "surface": "Greta Vogel",
+            "category": "PERSON",
+            "tier": "low"
+        },
+        {
+            "surface": "Musterstraße 18, 04109 Leipzig",
+            "category": "LOCATION",
+            "tier": "medium"
+        },
+        {
+            "surface": "10345678921",
+            "category": "NATIONAL_ID",
+            "tier": "high"
+        },
+        {
+            "surface": "27.10.2026",
+            "category": "DATE",
+            "tier": "medium"
+        },
+        {
+            "surface": "1.250,00 EUR",
+            "category": "FINANCIAL_FIGURE",
+            "tier": "medium"
+        },
+        {
+            "surface": "DE65 8219 0473 1948 2637 10",
+            "category": "BANK_ACCOUNT",
+            "tier": "high"
+        },
+        {
+            "surface": "Nordfunke Werkstatt",
+            "category": "ORG",
+            "tier": "none"
+        },
+        {
+            "surface": "NW-58317",
+            "category": "URL_TOKEN",
+            "tier": "none"
+        }
+    ]
+}{
+    "id": "synthetic_privacy_20261021-11",
+    "text": "La Gazette d'Azur reports that muralist Émile Caron unveiled a public artwork in Lyon on 19.10.2026. The installation celebrates neighborhood craft traditions.",
+    "doc_type": "news article",
+    "app": "La Gazette d'Azur",
+    "domain": "news.example",
+    "title": "New public artwork unveiled",
+    "source": "uia",
+    "context_kind": "news",
+    "spans": [
+        {
+            "surface": "La Gazette d'Azur",
+            "category": "ORG",
+            "tier": "none"
+        },
+        {
+            "surface": "Émile Caron",
+            "category": "PERSON",
+            "tier": "none"
+        },
+        {
+            "surface": "Lyon",
+            "category": "LOCATION",
+            "tier": "none"
+        },
+        {
+            "surface": "19.10.2026",
+            "category": "DATE",
+            "tier": "none"
+        }
+    ]
+}{
+    "id": "synthetic_privacy_20261021-12",
+    "text": "Ce formulaire permet de décrire le sujet général de votre demande, d'expliquer le problème rencontré et de préciser le type d'assistance souhaité. Consultez les indications affichées avant de soumettre vos réponses. Les informations complémentaires sont facultatives et peuvent être ajoutées dans la zone de commentaire si elles sont utiles à la compréhension du problème.",
+    "doc_type": "web form",
+    "app": "Portail d'aide",
+    "domain": "support.example",
+    "title": "Formulaire de demande",
+    "source": "uia",
+    "context_kind": "notes",
+    "spans": []
+}{
+    "id": "synthetic_privacy_20261021-13",
+    "text": "PAYSLIP | Tahlia Moss | TFN 417 286 593 | Pay date 15/10/2026 | Gross pay AUD 6,850.40 | Employer: Southwind Paperworks. TotaI deductions have been applied. Retain this document for your personal records and contact payroll if any adjustment appears incorrect.",
+    "doc_type": "payslip",
+    "app": "PeopleLedger",
+    "domain": "payroll.example",
+    "title": "Employee pay advice",
+    "source": "ocr",
+    "context_kind": "hr",
+    "spans": [
+        {
+            "surface": "Tahlia Moss",
+            "category": "PERSON",
+            "tier": "high"
+        },
+        {
+            "surface": "417 286 593",
+            "category": "NATIONAL_ID",
+            "tier": "high"
+        },
+        {
+            "surface": "15/10/2026",
+            "category": "DATE",
+            "tier": "high"
+        },
+        {
+            "surface": "AUD 6,850.40",
+            "category": "FINANCIAL_FIGURE",
+            "tier": "high"
+        },
+        {
+            "surface": "Southwind Paperworks",
+            "category": "ORG",
+            "tier": "none"
+        }
+    ]
+}{
+    "id": "synthetic_privacy_20261021-14",
+    "text": "Calendar entry draft: planning session. Use this entry to reserve time for a future discussion after the participants confirm their availability. The subject is intended to remain broad while the agenda is being prepared. Add the relevant background materials when they are ready, and include any decisions that need advance review. The final invitation should describe the meeting purpose clearly without placing confidential project details in the title. Keep the notes concise enough for the calendar preview, but preserve the action items in the separate working document. If scheduling changes, revise the invitation after the group agrees on an alternative. The entry may remain as a draft until the organizer confirms the wording and the expected attendees. No meeting link is required at this stage, and there is no need to distribute the draft before the agenda is complete.",
+    "doc_type": "calendar entry",
+    "app": "Calendar",
+    "domain": null,
+    "title": "Planning session draft",
+    "source": "uia",
+    "context_kind": "notes",
+    "spans": []
+}{
+    "id": "synthetic_privacy_20261021-15",
+    "text": "Wei Jian, can you send the revised diagram? Ping me on +65 9831 6247 when ready.",
+    "doc_type": "telegram chat",
+    "app": "Telegram",
+    "domain": null,
+    "title": "Team messages",
+    "source": "uia",
+    "context_kind": "work_chat",
+    "spans": [
+        {
+            "surface": "Wei Jian",
+            "category": "PERSON",
+            "tier": "low"
+        },
+        {
+            "surface": "+65 9831 6247",
+            "category": "PHONE",
+            "tier": "medium"
+        }
+    ]
+}{
+    "id": "synthetic_privacy_20261021-16",
+    "text": "A cc0unt holder: Tan Li Xuan. NRIC: S7234567D. Savings account: 731904628154. Ledger balance on 18/10/2026: SGD 8,420.65. Institution: Meridian Pearl Bank. Reference MPB-771209. Retain the statement securely and contact the bank using a verified channel if any transaction appears unfamiliar.",
+    "doc_type": "bank statement",
+    "app": "Meridian Pearl Online",
+    "domain": "bank.example",
+    "title": "Savings account summary",
+    "source": "ocr",
+    "context_kind": "banking",
+    "spans": [
+        {
+            "surface": "Tan Li Xuan",
+            "category": "PERSON",
+            "tier": "high"
+        },
+        {
+            "surface": "S7234567D",
+            "category": "NATIONAL_ID",
+            "tier": "high"
+        },
+        {
+            "surface": "731904628154",
+            "category": "BANK_ACCOUNT",
+            "tier": "high"
+        },
+        {
+            "surface": "18/10/2026",
+            "category": "DATE",
+            "tier": "high"
+        },
+        {
+            "surface": "SGD 8,420.65",
+            "category": "FINANCIAL_FIGURE",
+            "tier": "high"
+        },
+        {
+            "surface": "Meridian Pearl Bank",
+            "category": "ORG",
+            "tier": "none"
+        },
+        {
+            "surface": "MPB-771209",
+            "category": "URL_TOKEN",
+            "tier": "none"
+        }
+    ]
+}{
+    "id": "synthetic_privacy_20261021-17",
+    "text": "Order 200904771836: Samiya Al Nuaimi, +971 50 672 1843. Delivery requested for the home address on file.",
+    "doc_type": "delivery confirmation",
+    "app": "DuneCart",
+    "domain": "shop.example",
+    "title": "Dispatch details",
+    "source": "uia",
+    "context_kind": "shopping",
+    "spans": [
+        {
+            "surface": "200904771836",
+            "category": "URL_TOKEN",
+            "tier": "none"
+        },
+        {
+            "surface": "Samiya Al Nuaimi",
+            "category": "PERSON",
+            "tier": "low"
+        },
+        {
+            "surface": "+971 50 672 1843",
+            "category": "PHONE",
+            "tier": "medium"
+        }
+    ]
+}{
+    "id": "synthetic_privacy_20261021-18",
+    "text": "تقرير المريضة: مريم السويدي. تاريخ المراجعة: 21/10/2026. التشخيص: ارتفاع ضغط الدم. العلاج الموصوف: نوفيرا. تُحفظ هذه المعلومات ضمن السجل الطبي ولا تُرسل خارج فريق الرعاية المعتمد. يُرجى مراجعة الطبيب إذا ظهرت آثار غير معتادة.",
+    "doc_type": "medical report",
+    "app": "Nour Clinic Records",
+    "domain": "clinic.example",
+    "title": "Patient visit summary",
+    "source": "ocr",
+    "context_kind": "health",
+    "spans": [
+        {
+            "surface": "مريم السويدي",
+            "category": "PERSON",
+            "tier": "high"
+        },
+        {
+            "surface": "21/10/2026",
+            "category": "DATE",
+            "tier": "high"
+        },
+        {
+            "surface": "ارتفاع ضغط الدم",
+            "category": "MEDICAL",
+            "tier": "high"
+        },
+        {
+            "surface": "نوفيرا",
+            "category": "MEDICAL",
+            "tier": "high"
+        }
+    ]
+}{
+    "id": "synthetic_privacy_20261021-19",
+    "text": "近藤凛 (Rin Kondo) posted from 横浜: the sea breeze made today's walk peaceful. Photo uploaded 20/10/2026.",
+    "doc_type": "social media post",
+    "app": "Mosaic Social",
+    "domain": "social.example",
+    "title": "A quiet walk",
+    "source": "uia",
+    "context_kind": "social",
+    "spans": [
+        {
+            "surface": "近藤凛",
+            "category": "PERSON",
+            "tier": "medium"
+        },
+        {
+            "surface": "Rin Kondo",
+            "category": "PERSON",
+            "tier": "medium"
+        },
+        {
+            "surface": "横浜",
+            "category": "LOCATION",
+            "tier": "medium"
+        },
+        {
+            "surface": "20/10/2026",
+            "category": "DATE",
+            "tier": "low"
+        }
+    ]
+}{
+    "id": "synthetic_privacy_20261021-20",
+    "text": "本人確認フォーム: 水野蓮 (Ren Mizuno). My Number: 631804729156. Passport: TR4816307. DOB: 1994-07-18. Registered address: 東京都世田谷区青葉七丁目 18-26. Complete the onboarding verification before employee records are activated.",
+    "doc_type": "government form",
+    "app": "Koseki Intake",
+    "domain": "forms.example",
+    "title": "Identity verification",
+    "source": "uia",
+    "context_kind": "hr",
+    "spans": [
+        {
+            "surface": "水野蓮",
+            "category": "PERSON",
+            "tier": "high"
+        },
+        {
+            "surface": "Ren Mizuno",
+            "category": "PERSON",
+            "tier": "high"
+        },
+        {
+            "surface": "631804729156",
+            "category": "NATIONAL_ID",
+            "tier": "high"
+        },
+        {
+            "surface": "TR4816307",
+            "category": "NATIONAL_ID",
+            "tier": "high"
+        },
+        {
+            "surface": "1994-07-18",
+            "category": "DATE",
+            "tier": "high"
+        },
+        {
+            "surface": "東京都世田谷区青葉七丁目 18-26",
+            "category": "LOCATION",
+            "tier": "high"
+        }
+    ]
+}{
+    "id": "synthetic_privacy_20261021-21",
+    "text": "Candidatura: João Vítor Nascimento, CPF 583.104.729-06. Busco una oportunidad inicial en análisis de sistemas.",
+    "doc_type": "job application",
+    "app": "Talento Nuvem",
+    "domain": "jobs.example",
+    "title": "Candidate submission",
+    "source": "uia",
+    "context_kind": "hr",
+    "spans": [
+        {
+            "surface": "João Vítor Nascimento",
+            "category": "PERSON",
+            "tier": "high"
+        },
+        {
+            "surface": "583.104.729-06",
+            "category": "NATIONAL_ID",
+            "tier": "high"
+        }
+    ]
+}{
+    "id": "synthetic_privacy_20261021-22",
+    "text":"De: Camila Duarte \<camila.duarte\@marazul.example>\nPara: Leandro Faria\nAssunto: Confirmação da visita\nOlá, Leandro. Confirmo a visita técnica em 24/10/2026. Ligue para +55 11 96482-3175 caso precise ajustar o horário. O endereço de atendimento é Rua das Acácias, 184, Recife - PE. Atenciosamente, Camila.\nMar Azul Serviços",
+    "doc_type": "email thread",
+    "app": "Correio Claro",
+    "domain": "mail.example",
+    "title": "Confirmação da visita técnica",
+    "source": "uia",
+    "context_kind": "email",
+    "spans": [
+        {
+            "surface": "Camila Duarte",
+            "category": "PERSON",
+            "tier": "low"
+        },
+        {
+            "surface":"camila.duarte\@marazul.example",
+            "category": "EMAIL",
+            "tier": "medium"
+        },
+        {
+            "surface": "Leandro Faria",
+            "category": "PERSON",
+            "tier": "low"
+        },
+        {
+            "surface": "24/10/2026",
+            "category": "DATE",
+            "tier": "low"
+        },
+        {
+            "surface": "+55 11 96482-3175",
+            "category": "PHONE",
+            "tier": "medium"
+        },
+        {
+            "surface": "Rua das Acácias, 184, Recife - PE",
+            "category": "LOCATION",
+            "tier": "low"
+        },
+        {
+            "surface": "Mar Azul Serviços",
+            "category": "ORG",
+            "tier": "none"
+        }
+    ]
+}{
+    "id": "synthetic_privacy_20261021-23",
+    "text": "The help page keeps refreshing after I choose a category. I cannot finish the request.",
+    "doc_type": "support ticket",
+    "app": "HelpNest",
+    "domain": "support.example",
+    "title": "Page refresh issue",
+    "source": "uia",
+    "context_kind": "notes",
+    "spans": []
+}{
+    "id": "synthetic_privacy_20261021-24",
+    "text": "B a lance statement for Thabo Mokoena. National ID: 9203145082086. Account: 527194063812. Statement date: 18/10/2026. Closing balance: R 74,820.35. Branch code: 0823. Transfer reference: ZA-TR-591837. Issuer: Copperleaf Mutual. Review the transactions and contact the institution if any item is unfamiliar.",
+    "doc_type": "bank statement",
+    "app": "Copperleaf Mutual Online",
+    "domain": "bank.example",
+    "title": "Monthly account statement",
+    "source": "ocr",
+    "context_kind": "banking",
+    "spans": [
+        {
+            "surface": "Thabo Mokoena",
+            "category": "PERSON",
+            "tier": "high"
+        },
+        {
+            "surface": "9203145082086",
+            "category": "NATIONAL_ID",
+            "tier": "high"
+        },
+        {
+            "surface": "527194063812",
+            "category": "BANK_ACCOUNT",
+            "tier": "high"
+        },
+        {
+            "surface": "18/10/2026",
+            "category": "DATE",
+            "tier": "high"
+        },
+        {
+            "surface": "R 74,820.35",
+            "category": "FINANCIAL_FIGURE",
+            "tier": "high"
+        },
+        {
+            "surface": "0823",
+            "category": "BANK_ACCOUNT",
+            "tier": "high"
+        },
+        {
+            "surface": "ZA-TR-591837",
+            "category": "URL_TOKEN",
+            "tier": "none"
+        },
+        {
+            "surface": "Copperleaf Mutual",
+            "category": "ORG",
+            "tier": "none"
+        }
+    ]
+}{
+    "id": "synthetic_privacy_20261021-25",
+    "text": "Kemi, call +234 802 456 7193 when the parcel arrives.",
+    "doc_type": "whatsapp chat",
+    "app": "WhatsApp",
+    "domain": null,
+    "title": "Delivery chat",
+    "source": "uia",
+    "context_kind": "work_chat",
+    "spans": [
+        {
+            "surface": "Kemi",
+            "category": "PERSON",
+            "tier": "low"
+        },
+        {
+            "surface": "+234 802 456 7193",
+            "category": "PHONE",
+            "tier": "medium"
+        }
+    ]
+}{
+    "id": "synthetic_privacy_20261021-26",
+    "text":"From: Bode Akinwale \<bode.akinwale\@korufield.example>\nDate: 19/10/2026\nSubject: Revised service proposal\nHello, please review the updated proposal before the internal discussion. You can reach me at +234 802 731 6495 if anything needs clarification. The delivery schedule is still tentative and should not be forwarded outside the review group.\nKoru Field Logistics",
+    "doc_type": "email",
+    "app": "CloudLetter",
+    "domain": "mail.example",
+    "title": "Revised service proposal",
+    "source": "uia",
+    "context_kind": "email",
+    "spans": [
+        {
+            "surface": "Bode Akinwale",
+            "category": "PERSON",
+            "tier": "low"
+        },
+        {
+            "surface":"bode.akinwale\@korufield.example",
+            "category": "EMAIL",
+            "tier": "medium"
+        },
+        {
+            "surface": "19/10/2026",
+            "category": "DATE",
+            "tier": "low"
+        },
+        {
+            "surface": "+234 802 731 6495",
+            "category": "PHONE",
+            "tier": "medium"
+        },
+        {
+            "surface": "Koru Field Logistics",
+            "category": "ORG",
+            "tier": "none"
+        }
+    ]
+}{
+    "id": "synthetic_privacy_20261021-27",
+    "text": "Onboarding: Sophie Tremblay; SIN 472-918-365; DOB 1993-06-21; passport LA372814.",
+    "doc_type": "government form",
+    "app": "Maple HR",
+    "domain": "forms.example",
+    "title": "Employee identity form",
+    "source": "uia",
+    "context_kind": "hr",
+    "spans": [
+        {
+            "surface": "Sophie Tremblay",
+            "category": "PERSON",
+            "tier": "high"
+        },
+        {
+            "surface": "472-918-365",
+            "category": "NATIONAL_ID",
+            "tier": "high"
+        },
+        {
+            "surface": "1993-06-21",
+            "category": "DATE",
+            "tier": "high"
+        },
+        {
+            "surface": "LA372814",
+            "category": "NATIONAL_ID",
+            "tier": "high"
+        }
+    ]
+}{
+    "id": "synthetic_privacy_20261021-28",
+    "text": "Receipt for Amélie Gagnon. Card charged: 5424189076123452. Order ID 7771046295830261. Item: home air monitor. Total paid: $184.72. Delivery: 84 Cedar Court, Halifax NS B3H 2Y7. Please retain the receipt for reference and verify any unexpected card activity with your card issuer.",
+    "doc_type": "shopping receipt",
+    "app": "NorthCart",
+    "domain": "shop.example",
+    "title": "Purchase receipt",
+    "source": "uia",
+    "context_kind": "shopping",
+    "spans": [
+        {
+            "surface": "Amélie Gagnon",
+            "category": "PERSON",
+            "tier": "low"
+        },
+        {
+            "surface": "5424189076123452",
+            "category": "CARD_LIKE_NUMBER",
+            "tier": "high"
+        },
+        {
+            "surface": "7771046295830261",
+            "category": "CARD_LIKE_NUMBER",
+            "tier": "none"
+        },
+        {
+            "surface": "$184.72",
+            "category": "FINANCIAL_FIGURE",
+            "tier": "medium"
+        },
+        {
+            "surface": "84 Cedar Court, Halifax NS B3H 2Y7",
+            "category": "LOCATION",
+            "tier": "medium"
+        }
+    ]
+}{
+    "id": "synthetic_privacy_20261021-29",
+    "text": "مریضہ: حرا قریشی؛ شناختی کارڈ: 35202-7816345-8؛ تشخیص: مائیگرین؛ دوا: Nurofen۔",
+    "doc_type": "medical report",
+    "app": "Sehat Archive",
+    "domain": "clinic.example",
+    "title": "Consultation note",
+    "source": "ocr",
+    "context_kind": "health",
+    "spans": [
+        {
+            "surface": "حرا قریشی",
+            "category": "PERSON",
+            "tier": "high"
+        },
+        {
+            "surface": "35202-7816345-8",
+            "category": "NATIONAL_ID",
+            "tier": "high"
+        },
+        {
+            "surface": "مائیگرین",
+            "category": "MEDICAL",
+            "tier": "high"
+        },
+        {
+            "surface": "Nurofen",
+            "category": "MEDICAL",
+            "tier": "high"
+        }
+    ]
+}{
+    "id": "synthetic_privacy_20261021-30",
+    "text": "Faraz Nadeem, yaar, please call me on 0 3 0 0 5 7 1 9 2 8 4. My CNIC is 37405-6291847-3, in case the account verification team asks. I will send the revised document after the evening meeting on 21/10/2026. Don't share the ID image in the group chat; send it through the secure channel instead.",
+    "doc_type": "telegram chat",
+    "app": "Telegram",
+    "domain": null,
+    "title": "Verification follow-up",
+    "source": "uia",
+    "context_kind": "work_chat",
+    "spans": [
+        {
+            "surface": "Faraz Nadeem",
+            "category": "PERSON",
+            "tier": "low"
+        },
+        {
+            "surface": "0 3 0 0 5 7 1 9 2 8 4",
+            "category": "PHONE",
+            "tier": "medium"
+        },
+        {
+            "surface": "37405-6291847-3",
+            "category": "NATIONAL_ID",
+            "tier": "high"
+        },
+        {
+            "surface": "21/10/2026",
+            "category": "DATE",
+            "tier": "low"
+        }
+    ]
+}{
+    "id": "synthetic_privacy_20261021-31",
+    "text": "চালান: সাদিয়া রহমান; NID 19871234005678912; মোট ৳38,750.00; ref BD-74193062815501427.",
+    "doc_type": "invoice",
+    "app": "Padma Billing",
+    "domain": "billing.example",
+    "title": "Customer invoice",
+    "source": "ocr",
+    "context_kind": "shopping",
+    "spans": [
+        {
+            "surface": "সাদিয়া রহমান",
+            "category": "PERSON",
+            "tier": "low"
+        },
+        {
+            "surface": "19871234005678912",
+            "category": "NATIONAL_ID",
+            "tier": "high"
+        },
+        {
+            "surface": "৳38,750.00",
+            "category": "FINANCIAL_FIGURE",
+            "tier": "medium"
+        },
+        {
+            "surface": "BD-74193062815501427",
+            "category": "URL_TOKEN",
+            "tier": "none"
+        }
+    ]
+}{
+    "id": "synthetic_privacy_20261021-32",
+    "text": "আলোকধারা সংবাদ জানিয়েছে, আরাফাত হোসেন ঢাকায় একটি কমিউনিটি পাঠাগার উদ্বোধনের অনুষ্ঠানে বক্তব্য দিয়েছেন। প্রতিবেদনে স্থানীয় স্বেচ্ছাসেবকদের ভূমিকা, পাঠাভ্যাস গড়ে তোলার উদ্যোগ এবং শিশুদের জন্য নতুন বই সংগ্রহের পরিকল্পনা তুলে ধরা হয়েছে। ২১ অক্টোবর ২০২৬ তারিখে প্রকাশিত প্রতিবেদনে অনুষ্ঠানের পরিবেশকে উৎসবমুখর বলে বর্ণনা করা হয়েছে।",
+    "doc_type": "news article",
+    "app": "আলোকধারা সংবাদ",
+    "domain": "news.example",
+    "title": "কমিউনিটি পাঠাগারের উদ্বোধন",
+    "source": "ocr",
+    "context_kind": "news",
+    "spans": [
+        {
+            "surface": "আলোকধারা সংবাদ",
+            "category": "ORG",
+            "tier": "none"
+        },
+        {
+            "surface": "আরাফাত হোসেন",
+            "category": "PERSON",
+            "tier": "none"
+        },
+        {
+            "surface": "ঢাকা",
+            "category": "LOCATION",
+            "tier": "none"
+        },
+        {
+            "surface": "২১ অক্টোবর ২০২৬",
+            "category": "DATE",
+            "tier": "none"
+        }
+    ]
+}{
+    "id": "synthetic_privacy_20261021-33",
+    "text": "TOKEN=prj_9Lq2vN7c4F; release=v3.6.1",
+    "doc_type": "config file",
+    "app": "Código Lab",
+    "domain": null,
+    "title": "Build configuration",
+    "source": "uia",
+    "context_kind": "code",
+    "spans": [
+        {
+            "surface": "prj_9Lq2vN7c4F",
+            "category": "CREDENTIAL",
+            "tier": "high"
+        },
+        {
+            "surface": "v3.6.1",
+            "category": "URL_TOKEN",
+            "tier": "none"
+        }
+    ]
+}{
+    "id": "synthetic_privacy_20261021-34",
+    "text":"Lucía Fernández Ruiz posted from Sevilla on 18/10/2026: a small sketchbook, a quiet café, and a sunny afternoon. Contact me at lucia.ruiz\@socialmail.example if you want to exchange drawing ideas.",
+    "doc_type": "social media post",
+    "app": "Plaza Social",
+    "domain": "social.example",
+    "title": "Sketchbook afternoon",
+    "source": "uia",
+    "context_kind": "social",
+    "spans": [
+        {
+            "surface": "Lucía Fernández Ruiz",
+            "category": "PERSON",
+            "tier": "medium"
+        },
+        {
+            "surface": "Sevilla",
+            "category": "LOCATION",
+            "tier": "medium"
+        },
+        {
+            "surface": "18/10/2026",
+            "category": "DATE",
+            "tier": "low"
+        },
+        {
+            "surface":"lucia.ruiz\@socialmail.example",
+            "category": "EMAIL",
+            "tier": "medium"
+        }
+    ]
+}{
+    "id": "synthetic_privacy_20261021-35",
+    "text": "Planning huddle: Giulia Conti and Marco Bellandi agreed on a draft budget of € 4.850,00 for the Torino showcase on 22/10/2026. Notes stored in archive AR-IT-638204. Confirm the revised agenda before circulating the meeting summary.",
+    "doc_type": "meeting notes",
+    "app": "NotaLinea",
+    "domain": "notes.example",
+    "title": "Torino showcase planning",
+    "source": "uia",
+    "context_kind": "notes",
+    "spans": [
+        {
+            "surface": "Giulia Conti",
+            "category": "PERSON",
+            "tier": "low"
+        },
+        {
+            "surface": "Marco Bellandi",
+            "category": "PERSON",
+            "tier": "low"
+        },
+        {
+            "surface": "€ 4.850,00",
+            "category": "FINANCIAL_FIGURE",
+            "tier": "medium"
+        },
+        {
+            "surface": "Torino",
+            "category": "LOCATION",
+            "tier": "low"
+        },
+        {
+            "surface": "22/10/2026",
+            "category": "DATE",
+            "tier": "low"
+        },
+        {
+            "surface": "AR-IT-638204",
+            "category": "URL_TOKEN",
+            "tier": "none"
+        }
+    ]
+}{
+    "id": "synthetic_privacy_20261021-36",
+    "text": "Estratto conto riservato intestato a Lorenzo Belluzzi, conservato nell'archivio personale della filiale digitale di Banca Lume. IBAN: IT45 X054 2811 0983 7462 0193 845. Data operazione: 19/10/2026. Addebito registrato: € 16.245,80. Riferimento transazione: IT-TRX-80419721. Località associata al profilo: Torino, Italy. Questo documento riepiloga i movimenti contabilizzati nel periodo, distingue gli importi in entrata da quelli in uscita e riporta lo stato degli addebiti ancora in verifica. I dati relativi al conto sono destinati esclusivamente al titolare e al personale autorizzato. Non inoltrare il documento attraverso canali non verificati. Prima di contestare un movimento, confrontare la descrizione, la valuta e la data riportate nell'estratto con la ricevuta originale. Eventuali rettifiche devono essere comunicate attraverso il servizio clienti ufficiale, senza inserire credenziali o codici di accesso in una risposta email. Conservare una copia sicura per la riconciliazione contabile e usare il riferimento della transazione per identificare la voce corretta durante l'assistenza.",
+    "doc_type": "bank statement",
+    "app": "Banca Lume",
+    "domain": "bank.example",
+    "title": "Estratto conto riservato",
+    "source": "uia",
+    "context_kind": "banking",
+    "spans": [
+        {
+            "surface": "Lorenzo Belluzzi",
+            "category": "PERSON",
+            "tier": "high"
+        },
+        {
+            "surface": "Banca Lume",
+            "category": "ORG",
+            "tier": "none"
+        },
+        {
+            "surface": "IT45 X054 2811 0983 7462 0193 845",
+            "category": "BANK_ACCOUNT",
+            "tier": "high"
+        },
+        {
+            "surface": "19/10/2026",
+            "category": "DATE",
+            "tier": "high"
+        },
+        {
+            "surface": "€ 16.245,80",
+            "category": "FINANCIAL_FIGURE",
+            "tier": "high"
+        },
+        {
+            "surface": "IT-TRX-80419721",
+            "category": "URL_TOKEN",
+            "tier": "none"
+        },
+        {
+            "surface": "Torino, Italy",
+            "category": "LOCATION",
+            "tier": "high"
+        }
+    ]
+}{
+    "id": "synthetic_privacy_20261021-37",
+    "text":"From: Noor van Dijk \<noor.vandijk\@tuliparchive.example>\nTo: Records Desk\nDate: 20-10-2026\nSubject: Access to the catalog\nHello, I will be available for the review call. My direct number is +31 6 2837 4165. The team at Tulip Archive Cooperative has already received the latest summary, so there is no need to resend the attachment. Regards, Noor.",
+    "doc_type": "email",
+    "app": "Postvak",
+    "domain": "mail.example",
+    "title": "Access to the catalog",
+    "source": "uia",
+    "context_kind": "email",
+    "spans": [
+        {
+            "surface": "Noor van Dijk",
+            "category": "PERSON",
+            "tier": "low"
+        },
+        {
+            "surface":"noor.vandijk\@tuliparchive.example",
+            "category": "EMAIL",
+            "tier": "medium"
+        },
+        {
+            "surface": "20-10-2026",
+            "category": "DATE",
+            "tier": "low"
+        },
+        {
+            "surface": "+31 6 2837 4165",
+            "category": "PHONE",
+            "tier": "medium"
+        },
+        {
+            "surface": "Tulip Archive Cooperative",
+            "category": "ORG",
+            "tier": "none"
+        }
+    ]
+}{
+    "id": "synthetic_privacy_20261021-38",
+    "text": "Delivery confirmation for Sanne de Wit. Destination: Kruisstraat 47, 5612 CD Eindhoven. Mobile contact: +31 6 4928 1736. Tracking number: NL583104729618. The parcel contains a ceramic desk lamp and a linen storage pouch. The recipient requested that the parcel be left with the building concierge only if the front desk confirms receipt. Do not leave it outside the entrance or disclose the contents to anyone who is not responsible for delivery. If nobody is available, return the parcel to the local depot and issue a notification through the customer account. The tracking reference is intended for following the shipment status and does not confirm the identity of the recipient. Please check the delivery label against the destination before dispatch and avoid including the recipient's contact details in a public delivery update. If the route changes, update the private delivery record rather than sending the full address through an open chat. Customer support can use the tracking reference to investigate delays, damaged packaging, or a failed handover. The driver should record the final delivery outcome in the internal application and keep any proof of handover within the authorized order record.",
+    "doc_type": "delivery receipt",
+    "app": "Polder Parcel",
+    "domain": "shop.example",
+    "title": "Delivery instructions",
+    "source": "ocr",
+    "context_kind": "shopping",
+    "spans": [
+        {
+            "surface": "Sanne de Wit",
+            "category": "PERSON",
+            "tier": "low"
+        },
+        {
+            "surface": "Kruisstraat 47, 5612 CD Eindhoven",
+            "category": "LOCATION",
+            "tier": "medium"
+        },
+        {
+            "surface": "+31 6 4928 1736",
+            "category": "PHONE",
+            "tier": "medium"
+        },
+        {
+            "surface": "NL583104729618",
+            "category": "URL_TOKEN",
+            "tier": "none"
+        }
+    ]
+}{
+    "id": "synthetic_privacy_20261021-39",
+    "text":"Curriculum vitae for Māia Ropata. Contact details: +64 21 456 789, maia.ropata\@cv-mail.example. Home address: 17 Rimu Lane, Hamilton 3204. Driver licence: RPT483916. Salary expectation: NZD 92,500 per year. Preferred role: application support analyst. Māia has worked on internal helpdesk queues, documented recurring technical incidents and prepared short guides for non-technical users. She can explain troubleshooting procedures calmly, record reproducible steps and escalate issues that need specialist attention. Her technical experience includes service desk triage, workstation setup, basic SQL queries, account permissions and software installation. Previous project work involved consolidating duplicate knowledge articles and helping staff move to a revised ticketing workflow. She prefers a role with clear documentation standards and opportunities to develop cloud administration skills. References can be provided following an interview. Please use the contact details above only for recruitment coordination and retain this application within the authorized hiring process. The candidate has not requested that the document be published externally or forwarded to unrelated departments.",
+    "doc_type": "CV",
+    "app": "Koru Talent Desk",
+    "domain": "jobs.example",
+    "title": "Application support candidate",
+    "source": "uia",
+    "context_kind": "hr",
+    "spans": [
+        {
+            "surface": "Māia Ropata",
+            "category": "PERSON",
+            "tier": "high"
+        },
+        {
+            "surface": "+64 21 456 789",
+            "category": "PHONE",
+            "tier": "high"
+        },
+        {
+            "surface":"maia.ropata\@cv-mail.example",
+            "category": "EMAIL",
+            "tier": "high"
+        },
+        {
+            "surface": "17 Rimu Lane, Hamilton 3204",
+            "category": "LOCATION",
+            "tier": "high"
+        },
+        {
+            "surface": "RPT483916",
+            "category": "NATIONAL_ID",
+            "tier": "high"
+        },
+        {
+            "surface": "NZD 92,500",
+            "category": "FINANCIAL_FIGURE",
+            "tier": "high"
+        }
+    ]
+}{
+    "id": "synthetic_privacy_20261021-40",
+    "text": "Wiremu Tai: Morning, the updated workstation guide is ready for a careful review. Please check the wording before the helpdesk uses it for new requests. I can be reached on +64 22 739 1854 if the access steps are unclear. The draft still needs a short section explaining what to do when an account appears locked, how to confirm the user's identity through approved checks, and when to send the case to the platform team. Keep the instructions suitable for people who do not work in IT every day. Avoid placing any password or one-time code in the examples. The review notes can stay in the team workspace until the wording is agreed. I will incorporate the comments after the discussion planned for 21/10/2026, then prepare a clean copy for wider use. If a screenshot includes private account information, replace those values with synthetic examples before adding it to the guide. The goal is to make the process easier to follow without exposing employee records or operational secrets. Please reply in this chat with suggested edits, but do not attach any real service credentials or personal identity documents.",
+    "doc_type": "work chat",
+    "app": "Relay Chat",
+    "domain": null,
+    "title": "Workstation guide review",
+    "source": "uia",
+    "context_kind": "work_chat",
+    "spans": [
+        {
+            "surface": "Wiremu Tai",
+            "category": "PERSON",
+            "tier": "low"
+        },
+        {
+            "surface": "+64 22 739 1854",
+            "category": "PHONE",
+            "tier": "medium"
+        },
+        {
+            "surface": "21/10/2026",
+            "category": "DATE",
+            "tier": "low"
+        }
+    ]
+}{
+    "id": "synthetic_privacy_20261021-41",
+    "text": "Expediente clínico de Sofía Aguilar Ximénez. CURP: AUXI920314MDFLGM07. Fecha de nacimiento: 1992-03-14. Teléfono de contacto: +52 55 4682 7193. Domicilio: Calle Nardo 48, Colonia Del Parque, Ciudad de México. Diagnóstico: hipotiroidismo. Tratamiento registrado: Norevia. La evaluación más reciente describe síntomas persistentes y recomienda seguimiento con el equipo clínico. La información se incluye para que el profesional autorizado pueda revisar los antecedentes, confirmar la pauta indicada y documentar cualquier cambio relevante. No debe copiarse el expediente en canales de mensajería generales ni enviarse como archivo adjunto a destinatarios cuya identidad no se haya verificado. Antes de actualizar una receta, el personal debe confirmar el registro correcto y consultar al profesional responsable si existen dudas sobre la dosis o posibles interacciones. La información de contacto se utiliza para coordinar la atención y no debe reutilizarse para fines promocionales. El paciente puede solicitar una copia del resumen mediante el proceso formal del centro. Las anotaciones administrativas deben mantenerse separadas de los detalles clínicos y cualquier corrección debe quedar registrada en el expediente autorizado.",
+    "doc_type": "medical report",
+    "app": "Centro Brisa Clinical",
+    "domain": "clinic.example",
+    "title": "Expediente clínico",
+    "source": "uia",
+    "context_kind": "health",
+    "spans": [
+        {
+            "surface": "Sofía Aguilar Ximénez",
+            "category": "PERSON",
+            "tier": "high"
+        },
+        {
+            "surface": "AUXI920314MDFLGM07",
+            "category": "NATIONAL_ID",
+            "tier": "high"
+        },
+        {
+            "surface": "1992-03-14",
+            "category": "DATE",
+            "tier": "high"
+        },
+        {
+            "surface": "+52 55 4682 7193",
+            "category": "PHONE",
+            "tier": "high"
+        },
+        {
+            "surface": "Calle Nardo 48, Colonia Del Parque, Ciudad de México",
+            "category": "LOCATION",
+            "tier": "high"
+        },
+        {
+            "surface": "hipotiroidismo",
+            "category": "MEDICAL",
+            "tier": "high"
+        },
+        {
+            "surface": "Norevia",
+            "category": "MEDICAL",
+            "tier": "high"
+        }
+    ]
+}{
+    "id": "synthetic_privacy_20261021-42",
+    "text":"Factura comercial para Rafael Ortega Neri. RFC: OENR860927QH2. Correo del cliente: rafael.ortega\@factura-mail.example. Teléfono: +52 55 6138 2047. Dirección de entrega: Avenida del Olmo 73, Colonia Jardines, Guadalajara. Importe final: MXN 18,640.50. Tarjeta registrada: \*\*\*\* \*\*\*\* \*\*\*\* 4821. Número de factura: MX-INV-638194. Este documento confirma el importe cobrado por el suministro de equipos de oficina y accesorios incluidos en la solicitud. La dirección se utiliza únicamente para la entrega y para emitir los documentos comerciales necesarios. El registro debe conservarse en el área privada de facturación, con acceso restringido a las personas que gestionan pagos, envíos y conciliaciones. No se debe incluir el correo del cliente, el teléfono ni la dirección completa en una publicación pública o en una respuesta abierta de soporte. Para cualquier aclaración sobre el importe, se puede usar el número de factura sin transmitir los datos completos de la tarjeta. Si se solicita una devolución, el equipo debe comprobar la operación en el sistema interno y comunicar el resultado por el canal autorizado. Las copias destinadas a informes agregados deben omitir los identificadores personales y cualquier dato que permita vincular la compra a un domicilio concreto.",
+    "doc_type": "invoice",
+    "app": "Cuenta Clara",
+    "domain": "billing.example",
+    "title": "Factura comercial",
+    "source": "uia",
+    "context_kind": "shopping",
+    "spans": [
+        {
+            "surface": "Rafael Ortega Neri",
+            "category": "PERSON",
+            "tier": "low"
+        },
+        {
+            "surface": "OENR860927QH2",
+            "category": "NATIONAL_ID",
+            "tier": "high"
+        },
+        {
+            "surface":"rafael.ortega\@factura-mail.example",
+            "category": "EMAIL",
+            "tier": "medium"
+        },
+        {
+            "surface": "+52 55 6138 2047",
+            "category": "PHONE",
+            "tier": "medium"
+        },
+        {
+            "surface": "Avenida del Olmo 73, Colonia Jardines, Guadalajara",
+            "category": "LOCATION",
+            "tier": "medium"
+        },
+        {
+            "surface": "MXN 18,640.50",
+            "category": "FINANCIAL_FIGURE",
+            "tier": "medium"
+        },
+        {
+            "surface":"\*\*\*\* \*\*\*\* \*\*\*\* 4821",
+            "category": "CARD_LIKE_NUMBER",
+            "tier": "medium"
+        },
+        {
+            "surface": "MX-INV-638194",
+            "category": "URL_TOKEN",
+            "tier": "none"
+        }
+    ]
+}{
+    "id": "synthetic_privacy_20261021-43",
+    "text": "김서윤 (Kim Seo-yun): 오늘은 서울특별시 마포구에서 작은 전시를 보고 왔어요. 사진을 정리하다 보니 조용한 골목과 오래된 건물의 색감이 특히 마음에 들었습니다. 다음에는 친구들과 함께 방문해서 드로잉을 해 보고 싶어요. 연락이 필요한 분은 +82 10-2674-9138로 메시지를 남겨 주세요. 이 게시물은 개인 기록을 공유하기 위한 것이며, 다른 사람의 연락처나 사진을 허락 없이 다시 올리지 말아 주세요. 방문한 장소에 대한 의견은 환영하지만, 사적인 대화 내용이나 계정 정보는 댓글에 적지 않는 것이 좋습니다. 사진 속 다른 방문객의 얼굴이나 이름이 보이면 게시하기 전에 확인하고, 원하지 않는 정보는 가린 뒤 업로드해 주세요. 이번 기록은 20.10.2026에 작성했으며, 나중에 다시 볼 수 있도록 개인 앨범에도 보관했습니다.",
+    "doc_type": "social media post",
+    "app": "Seoul Mosaic",
+    "domain": "social.example",
+    "title": "전시 관람 기록",
+    "source": "uia",
+    "context_kind": "social",
+    "spans": [
+        {
+            "surface": "김서윤",
+            "category": "PERSON",
+            "tier": "medium"
+        },
+        {
+            "surface": "Kim Seo-yun",
+            "category": "PERSON",
+            "tier": "medium"
+        },
+        {
+            "surface": "서울특별시 마포구",
+            "category": "LOCATION",
+            "tier": "medium"
+        },
+        {
+            "surface": "+82 10-2674-9138",
+            "category": "PHONE",
+            "tier": "medium"
+        },
+        {
+            "surface": "20.10.2026",
+            "category": "DATE",
+            "tier": "low"
+        }
+    ]
+}{
+    "id": "synthetic_privacy_20261021-44",
+    "text": "거래 명세서: 박도윤. 계좌번호: 110-284-719630. 잔액: ₩ 4,720,800. 거래일: 2026.10.17. 카드 결제: 6210987654321091. 금융기관: Haneul Cooperative Bank. 등록 지역: 부산광역시. 거래 내역은 계좌 소유자와 승인된 지원 담당자만 확인해야 합니다. 분쟁이 발생한 경우에는 거래 참조 정보를 사용해 정확한 항목을 찾고, 전체 카드 번호나 계정 인증 정보를 일반 메신저로 보내지 마십시오. 낯선 거래가 보이면 공식 지원 채널로 문의하고, 요청을 받더라도 비밀번호나 일회용 인증 코드를 전달하지 마십시오. 계좌 내역을 내려받은 사본은 개인 저장 공간에 보관하고, 다른 사람에게 전달해야 할 경우 불필요한 세부 정보를 먼저 가려야 합니다. 이 안내는 기록을 안전하게 관리하고 인증되지 않은 접근을 방지하기 위한 것입니다. 은행 직원은 고객 정보를 다룰 때 내부 검증 절차를 따라야 하며, 이 문서 자체를 공개 게시물이나 공유 가능한 링크에 포함해서는 안 됩니다.",
+    "doc_type": "bank transaction list",
+    "app": "Haneul Banking",
+    "domain": "bank.example",
+    "title": "거래 명세서",
+    "source": "uia",
+    "context_kind": "banking",
+    "spans": [
+        {
+            "surface": "박도윤",
+            "category": "PERSON",
+            "tier": "high"
+        },
+        {
+            "surface": "110-284-719630",
+            "category": "BANK_ACCOUNT",
+            "tier": "high"
+        },
+        {
+            "surface": "₩ 4,720,800",
+            "category": "FINANCIAL_FIGURE",
+            "tier": "high"
+        },
+        {
+            "surface": "2026.10.17",
+            "category": "DATE",
+            "tier": "high"
+        },
+        {
+            "surface": "6210987654321091",
+            "category": "CARD_LIKE_NUMBER",
+            "tier": "high"
+        },
+        {
+            "surface": "Haneul Cooperative Bank",
+            "category": "ORG",
+            "tier": "none"
+        },
+        {
+            "surface": "부산광역시",
+            "category": "LOCATION",
+            "tier": "high"
+        }
+    ]
+}{
+    "id": "synthetic_privacy_20261021-45",
+    "text": "海岚城市观察报道，林若岚 (Lin Ruolan) 在成都参加了一场关于公共空间与社区阅读的讨论。与会者围绕如何改善社区服务、增加居民参与机会，以及让文化活动覆盖更多街区交换了意见。文章介绍了当地组织在共享阅读空间方面的尝试，并整理了与会者对公共项目长期维护的看法。报道发表于 2026年10月20日。主办方表示，后续将继续收集社区反馈，并根据公开讨论中的建议调整活动安排。报道也指出，长期项目需要透明的管理方式、稳定的志愿者协作和易于理解的参与流程。读者可以通过公开渠道了解活动进展，但不应在评论区发布参与者的私人联系方式或未经同意的个人资料。文章以公共议题为重点，并未发布任何私人账户、身份凭证或医疗信息。",
+    "doc_type": "news article",
+    "app": "海岚城市观察",
+    "domain": "news.example",
+    "title": "社区阅读与公共空间",
+    "source": "ocr",
+    "context_kind": "news",
+    "spans": [
+        {
+            "surface": "海岚城市观察",
+            "category": "ORG",
+            "tier": "none"
+        },
+        {
+            "surface": "林若岚",
+            "category": "PERSON",
+            "tier": "none"
+        },
+        {
+            "surface": "Lin Ruolan",
+            "category": "PERSON",
+            "tier": "none"
+        },
+        {
+            "surface": "成都",
+            "category": "LOCATION",
+            "tier": "none"
+        },
+        {
+            "surface": "2026年10月20日",
+            "category": "DATE",
+            "tier": "none"
+        }
+    ]
+}{
+    "id": "synthetic_privacy_20261021-46",
+    "text":"# environment settings for the staging service\nAPI_ACCESS_KEY=ak_f6d2c91b5e740a38\nSERVICE_HOST=203.0.113.47\nAUTH_CALLBACK=https\://console.example.cn/auth?session=sk_8d4e62bc91af\nRELEASE=v5.4.0\nThe deployment notes describe a synthetic test configuration that is kept separate from production resources. The access key shown here is a fabricated example for classifier testing and must never be replaced with a live credential in a training file. The network address belongs to a documentation-only range, and the callback hostname is reserved for examples rather than a real application. The session value illustrates how a token can appear inside a URL and should be detected even when it is surrounded by other query parameters. During log review, preserve the exact spelling of identifiers but remove any genuine secrets before sharing diagnostic output. Version labels, sample addresses and invented build references are included to test whether a classifier can distinguish harmless metadata from information that grants access. Configuration reviewers should confirm that temporary examples cannot be copied into an active environment and that error messages do not reveal actual credentials. Keep the test artifact inside the project sandbox and use separate synthetic values for any downstream demonstration or evaluation.",
+    "doc_type": "config file",
+    "app": "DevForge",
+    "domain": "console.example.cn",
+    "title": "Staging environment settings",
+    "source": "uia",
+    "context_kind": "code",
+    "spans": [
+        {
+            "surface": "ak_f6d2c91b5e740a38",
+            "category": "CREDENTIAL",
+            "tier": "high"
+        },
+        {
+            "surface": "203.0.113.47",
+            "category": "IP_ADDRESS",
+            "tier": "none"
+        },
+        {
+            "surface": "sk_8d4e62bc91af",
+            "category": "URL_TOKEN",
+            "tier": "high"
+        },
+        {
+            "surface": "v5.4.0",
+            "category": "URL_TOKEN",
+            "tier": "none"
+        }
+    ]
+}{
+    "id": "synthetic_privacy_20261021-47",
+    "text":"Employment application: Wanjiku Njeri. National identity number: 28461739. Date of birth: 1997-04-11. Mobile: +254 712 483 690. Email: wanjiku.njeri\@workmail.example. Residence: Mombasa, Kenya. Expected salary: KES 185,000 per month. The applicant is seeking a systems support role involving user account maintenance, incident documentation, workstation setup and routine application troubleshooting. Her previous assignments included recording support requests, following escalation procedures and helping staff adopt revised internal tools. She is comfortable explaining technical steps to non-specialist users and maintaining clear notes for recurring incidents. The hiring panel should evaluate the application against the published requirements and keep interview feedback within the authorized recruitment group. Personal identifiers, contact information and salary expectations must remain in the restricted candidate record. Do not paste the full application into a public discussion or forward it to teams that are not involved in recruitment. If an interview is arranged, use the contact information only for that purpose and verify the intended recipient before sharing further materials. Retain the record according to the organization's approved handling procedure.",
+    "doc_type": "job application",
+    "app": "Kazi Candidate Desk",
+    "domain": "jobs.example",
+    "title": "Employment application",
+    "source": "uia",
+    "context_kind": "hr",
+    "spans": [
+        {
+            "surface": "Wanjiku Njeri",
+            "category": "PERSON",
+            "tier": "high"
+        },
+        {
+            "surface": "28461739",
+            "category": "NATIONAL_ID",
+            "tier": "high"
+        },
+        {
+            "surface": "1997-04-11",
+            "category": "DATE",
+            "tier": "high"
+        },
+        {
+            "surface": "+254 712 483 690",
+            "category": "PHONE",
+            "tier": "high"
+        },
+        {
+            "surface":"wanjiku.njeri\@workmail.example",
+            "category": "EMAIL",
+            "tier": "high"
+        },
+        {
+            "surface": "Mombasa, Kenya",
+            "category": "LOCATION",
+            "tier": "high"
+        },
+        {
+            "surface": "KES 185,000",
+            "category": "FINANCIAL_FIGURE",
+            "tier": "high"
+        }
+    ]
+}{
+    "id": "synthetic_privacy_20261021-48",
+    "text": "Personal note: Amina Baraka asked me to follow up after the discussion in Kisumu. Her address was written as Amina dot Baraka at mailbox dot example, and her mobile number was noted as 0714 628 395. Keep this reminder in the private notebook rather than copying it into the shared event description. The discussion covered a possible community workshop, the materials needed for participants, and the best way to contact people who requested more information. Before sending anything, confirm that the person has agreed to receive a message and that the details are still correct. Do not add private contact information to a public attendance sheet or attach the handwritten note to an open group post. A summary for the wider team can describe the workshop topic and general follow-up plan without including personal identifiers. If the reminder is no longer needed, handle it according to the normal notebook retention practice. When passing the task to another authorized colleague, share only the information needed to complete the follow-up and avoid forwarding the original note unnecessarily.",
+    "doc_type": "notes",
+    "app": "Jalada Notes",
+    "domain": null,
+    "title": "Workshop follow-up reminder",
+    "source": "uia",
+    "context_kind": "notes",
+    "spans": [
+        {
+            "surface": "Amina Baraka",
+            "category": "PERSON",
+            "tier": "medium"
+        },
+        {
+            "surface": "Kisumu",
+            "category": "LOCATION",
+            "tier": "low"
+        },
+        {
+            "surface": "Amina dot Baraka at mailbox dot example",
+            "category": "EMAIL",
+            "tier": "medium"
+        },
+        {
+            "surface": "0714 628 395",
+            "category": "PHONE",
+            "tier": "medium"
+        }
+    ]
+}{
+    "id": "synthetic_privacy_20261021-49",
+    "text": "This help page explains how to use the search panel, refine results, and compare information from several sections of the application. Begin with a broad topic, then narrow the results by choosing the most relevant category. Read the short descriptions before opening individual items, and return to the main panel when you need to change the search terms. The interface is designed to make routine tasks easier without requiring users to learn a complicated sequence of commands. If a result is unclear, consult the explanatory text associated with that section and review the available guidance before proceeding. The page also describes how to adjust the visible layout, keep useful material accessible, and distinguish temporary filters from saved preferences. These changes affect the way information is displayed and do not require editing the original source material. Use the feedback area to suggest improvements to the wording or navigation, but do not include private account details in a general product comment. The instructions are intended for ordinary users and can be revisited whenever the interface changes. Clear labels, readable descriptions and predictable navigation help make the application more accessible to a wider range of people.",
+    "doc_type": "help article",
+    "app": "Nordic Help Center",
+    "domain": "help.example",
+    "title": "Using search filters",
+    "source": "uia",
+    "context_kind": "notes",
+    "spans": []
+}{
+    "id": "synthetic_privacy_20261021-50",
+    "text": "The editor usability update improves the way the workspace presents document previews and revision notes. The interface now keeps related actions close to the material being reviewed, making it easier to compare wording and understand the purpose of each control. The update also clarifies how to recover an unsaved draft, where to find contextual help, and how to move between editing and reading views. No changes are required to existing documents, and users can continue their work without revising previously saved content. The release notes focus on navigation, readability and more consistent feedback when an operation is complete. The design team recommends reviewing the help text before introducing additional workflow changes, especially when those changes affect people who rely on assistive technologies or simplified layouts. Suggestions about labels and navigation can be submitted through the ordinary feedback process. Examples in the documentation are illustrative and should remain separate from live customer information. The goal is to improve the editing experience while preserving clear expectations about how content is displayed, updated and retained. Further interface refinements will be described in the relevant documentation when they are ready for general use.",
+    "doc_type": "release notes",
+    "app": "Editor Workspace",
+    "domain": "docs.example",
+    "title": "Editor usability improvements",
+    "source": "uia",
+    "context_kind": "code",
+    "spans": []
+}
