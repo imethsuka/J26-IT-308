@@ -1,0 +1,42 @@
+{
+  // Checked before any other sensing. A matching window's title and URL are never read or
+  // emitted, and input in it is not counted.
+  // App names are process names, case-insensitive, with or without ".exe".
+  "excludedApps": [ "KeePass", "KeePassXC", "1Password", "Bitwarden" ],
+
+  // A domain also matches its subdomains ("bank.com" matches "www.bank.com").
+  "excludedDomains": [ "accounts.google.com", "login.microsoftonline.com", "login.live.com" ],
+
+  // Processes whose address bar is read through UI Automation.
+  "browserProcesses": [ "chrome", "msedge" ],
+
+  "idleThresholdSeconds": 60,
+
+  // Activity counts cover the last activityWindowSeconds and are emitted every
+  // activityEmitIntervalSeconds. Set the emit interval lower than the window to get overlapping windows.
+  "activityWindowSeconds": 10,
+  "activityEmitIntervalSeconds": 10,
+
+  "screenCapture": {
+    "enabled": true,
+    // How often the primary screen is sampled as a 64x36 greyscale thumbnail.
+    "probeIntervalMs": 500,
+    // Mean absolute grey difference (0-255) from the last captured frame that triggers a new
+    // full-resolution capture. 0 captures on every probe.
+    "diffThreshold": 3.0,
+    // Frames kept in memory, oldest evicted first. 1 = only the latest frame. Never written to disk.
+    "bufferCapacity": 1
+  },
+
+  "ipc": {
+    "enabled": true,
+    // "namedpipe" (preferred, current-user only) or "tcp" (loopback fallback).
+    "transport": "namedpipe",
+    // Named-pipe name: the worker listens on \\.\pipe\<pipeName>.
+    "pipeName": "context-importance",
+    // Loopback port used only when transport is "tcp".
+    "tcpPort": 51789,
+    // Send the raw frame pixels after the JSON header. false sends metadata only (useful for debugging).
+    "sendFrameBytes": true
+  }
+}

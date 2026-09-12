@@ -1,0 +1,61 @@
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+.coverage
+htmlcov/
+.env
+
+# ---------- .NET ----------
+bin/
+obj/
+*.user
+*.suo
+*.userprefs
+.vs/
+[Dd]ebug/
+[Rr]elease/
+*.nupkg
+TestResults/
+
+# ---------- Model artifacts ----------
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.onnx
+*.bin
+*.pkl
+*.joblib
+*.lgb
+*.h5
+checkpoints/
+weights/
+artifacts/
+mlruns/
+# Saved LightGBM model versions (append-only local history; not source).
+python-worker/models/versions/
+
+# ---------- Local data / captures ----------
+data/
+captures/
+*.db
+*.db-shm
+*.db-wal
+*.db-journal
+*.sqlite
+*.sqlite3
+*.log
+
+# ---------- OS / editors ----------
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
