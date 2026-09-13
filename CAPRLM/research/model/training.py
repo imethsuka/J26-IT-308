@@ -5,6 +5,7 @@ points use the PLACEHOLDER set, and say so in the saved model's `trained_on`."""
 from __future__ import annotations
 
 import logging
+import os
 from pathlib import Path
 
 from research.data.placeholder_labels import PLACEHOLDER_DATASET_NAME
@@ -15,7 +16,9 @@ from .risk_model import Pair, RiskModel, select_model
 
 log = logging.getLogger(__name__)
 
-ARTIFACT_PATH = Path(__file__).resolve().parent.parent / "artifacts" / "caprlm_model.joblib"
+# CAPRLM_MODEL_PATH lets the installed app keep the model in the user's data folder instead of next to the program.
+ARTIFACT_PATH = Path(os.environ.get("CAPRLM_MODEL_PATH")
+                     or Path(__file__).resolve().parent.parent / "artifacts" / "caprlm_model.joblib")
 
 DEFAULT_N_TRAIN = 600
 DEFAULT_SEED = 7
