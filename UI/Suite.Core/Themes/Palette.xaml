@@ -1,0 +1,148 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- Warm paper palette shared by the sidebar, the new review/policy pages and (via PageBg) the older pages. -->
+  <SolidColorBrush x:Key="PageBg" Color="#F4F2EC" />
+  <SolidColorBrush x:Key="CardBg" Color="#FCFBF8" />
+  <SolidColorBrush x:Key="CardBorder" Color="#E6E2D8" />
+  <SolidColorBrush x:Key="InsetBg" Color="#F1EFE8" />
+  <SolidColorBrush x:Key="Ink" Color="#1F2421" />
+  <SolidColorBrush x:Key="Muted" Color="#7A7F78" />
+  <SolidColorBrush x:Key="Green" Color="#3F7D5E" />
+  <SolidColorBrush x:Key="GreenSoft" Color="#E1EFE7" />
+  <SolidColorBrush x:Key="Purple" Color="#7C6BB5" />
+  <SolidColorBrush x:Key="PurpleSoft" Color="#EAE6F6" />
+  <SolidColorBrush x:Key="Red" Color="#B85C5C" />
+  <SolidColorBrush x:Key="RedSoft" Color="#F6E3E1" />
+  <SolidColorBrush x:Key="Amber" Color="#C48A3A" />
+  <SolidColorBrush x:Key="Track" Color="#E8E5DB" />
+
+  <Style x:Key="Card" TargetType="Border">
+    <Setter Property="Background" Value="{StaticResource CardBg}" />
+    <Setter Property="BorderBrush" Value="{StaticResource CardBorder}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="14" />
+    <Setter Property="Padding" Value="20" />
+    <Setter Property="Margin" Value="0,0,0,16" />
+  </Style>
+
+  <Style x:Key="CardTitle" TargetType="TextBlock">
+    <Setter Property="FontSize" Value="15" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{StaticResource Ink}" />
+  </Style>
+
+  <Style x:Key="MutedText" TargetType="TextBlock">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Foreground" Value="{StaticResource Muted}" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+  </Style>
+
+  <Style x:Key="MonoText" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="Consolas" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="Foreground" Value="{StaticResource Ink}" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+    <Setter Property="LineHeight" Value="20" />
+  </Style>
+
+  <Style x:Key="Chip" TargetType="Border">
+    <Setter Property="CornerRadius" Value="11" />
+    <Setter Property="Padding" Value="10,2" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+
+  <Style x:Key="Inset" TargetType="Border">
+    <Setter Property="Background" Value="{StaticResource InsetBg}" />
+    <Setter Property="BorderBrush" Value="{StaticResource CardBorder}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="Padding" Value="16,14" />
+  </Style>
+
+  <!-- Sidebar entry: soft green pill when selected, no default blue selection chrome. -->
+  <Style x:Key="NavItem" TargetType="ListBoxItem">
+    <Setter Property="Margin" Value="10,2" />
+    <Setter Property="Padding" Value="14,10" />
+    <Setter Property="Foreground" Value="{StaticResource Muted}" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ListBoxItem">
+          <Border x:Name="Pill" CornerRadius="10" Padding="{TemplateBinding Padding}" Background="Transparent">
+            <ContentPresenter TextElement.Foreground="{TemplateBinding Foreground}" />
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Pill" Property="Background" Value="#0F000000" />
+            </Trigger>
+            <Trigger Property="IsSelected" Value="True">
+              <Setter TargetName="Pill" Property="Background" Value="{StaticResource GreenSoft}" />
+              <Setter Property="Foreground" Value="{StaticResource Green}" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- Protection-level choice: a titled card that fills purple when checked. -->
+  <Style x:Key="LevelCard" TargetType="RadioButton">
+    <Setter Property="Margin" Value="0,0,8,0" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="RadioButton">
+          <Border x:Name="Box" CornerRadius="10" BorderThickness="1" BorderBrush="{StaticResource CardBorder}"
+                  Background="White" Padding="10,9">
+            <ContentPresenter />
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsChecked" Value="True">
+              <Setter TargetName="Box" Property="Background" Value="{StaticResource PurpleSoft}" />
+              <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource Purple}" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter TargetName="Box" Property="Opacity" Value="0.55" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+  <!-- Small stat tile (label over big value) -->
+  <Style x:Key="StatCard" TargetType="Border" BasedOn="{StaticResource Card}">
+    <Setter Property="Padding" Value="18,14" />
+    <Setter Property="Margin" Value="0,0,12,12" />
+    <Setter Property="MinWidth" Value="150" />
+  </Style>
+  <Style x:Key="CardLabel" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="Consolas" />
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="Foreground" Value="{StaticResource Muted}" />
+  </Style>
+  <Style x:Key="CardValue" TargetType="TextBlock">
+    <Setter Property="FontSize" Value="26" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{StaticResource Ink}" />
+    <Setter Property="Margin" Value="0,4,0,0" />
+  </Style>
+  <Style x:Key="PageTitle" TargetType="TextBlock">
+    <Setter Property="FontSize" Value="24" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{StaticResource Ink}" />
+  </Style>
+
+  <!-- Warm table -->
+  <Style x:Key="WarmGrid" TargetType="DataGrid">
+    <Setter Property="AutoGenerateColumns" Value="False" />
+    <Setter Property="IsReadOnly" Value="True" />
+    <Setter Property="HeadersVisibility" Value="Column" />
+    <Setter Property="GridLinesVisibility" Value="Horizontal" />
+    <Setter Property="HorizontalGridLinesBrush" Value="{StaticResource CardBorder}" />
+    <Setter Property="BorderBrush" Value="{StaticResource CardBorder}" />
+    <Setter Property="Background" Value="{StaticResource CardBg}" />
+    <Setter Property="RowBackground" Value="{StaticResource CardBg}" />
+    <Setter Property="CanUserAddRows" Value="False" />
+    <Setter Property="SelectionMode" Value="Single" />
+  </Style>
+</ResourceDictionary>
