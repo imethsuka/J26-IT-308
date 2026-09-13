@@ -26,7 +26,9 @@ import pandas as pd
 from .base import Features, ImportanceScorer
 from .vectorizer import FEATURE_COLUMNS, vectorize, vectorize_many
 
-DEFAULT_VERSIONS_DIR = Path(__file__).resolve().parent / "versions"
+from app_paths import versions_dir as _versions_dir
+
+DEFAULT_VERSIONS_DIR = _versions_dir()
 
 DEFAULT_PARAMS: dict[str, Any] = {
     "objective": "binary",
