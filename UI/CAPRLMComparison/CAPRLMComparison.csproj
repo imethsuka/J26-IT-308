@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Member 2's module: the privacy pages and their client for the local CAPRLM service.
+       It knows nothing about the other modules; the shell loads it through Suite.Core's IModule. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>CAPRLMComparison</RootNamespace>
+    <AssemblyName>CAPRLMComparison</AssemblyName>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="WPF-UI" Version="3.0.5" />
+    <PackageReference Include="ScottPlot.WPF" Version="5.0.55" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Suite.Core\Suite.Core.csproj" />
+  </ItemGroup>
+
+</Project>
