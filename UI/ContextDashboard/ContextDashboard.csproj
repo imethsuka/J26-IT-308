@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>ContextDashboard</RootNamespace>
+    <AssemblyName>ContextDashboard</AssemblyName>
+    <!-- WPF is the dashboard window. WinForms is only for the tray icon (WPF has none built in). -->
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <!-- Both frameworks define Application, MessageBox, ...: those names are written fully qualified. -->
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- Only English UI strings: skips ~13 language folders of framework resources in the install. -->
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <StartupObject>ContextDashboard.Program</StartupObject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The WinForms implicit-using set leaves System.IO out. -->
+    <Using Include="System.IO" />
+    <!-- WinForms (tray) and WPF-UI both define these names too; the pages mean the plain WPF ones. -->
+    <Using Include="System.Windows.Controls.UserControl" Alias="UserControl" />
+    <Using Include="System.Windows.Controls.ListBox" Alias="ListBox" />
+    <Using Include="System.Windows.Controls.TextBlock" Alias="TextBlock" />
+    <Using Include="System.Windows.Controls.RadioButton" Alias="RadioButton" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.8" />
+    <!-- Windows 11 Fluent look (Mica backdrop, modern title bar, Fluent control styling). -->
+    <PackageReference Include="WPF-UI" Version="3.0.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The shell loads every module through Suite.Core's IModule. Memory (Member 1) lives in this project under Views/Memory;
+         Privacy (Member 2) is its own project, named only in Program.cs. -->
+    <ProjectReference Include="..\Suite.Core\Suite.Core.csproj" />
+    <ProjectReference Include="..\CAPRLMComparison\CAPRLMComparison.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="ContextDashboard.Tests" />
+  </ItemGroup>
+
+</Project>
