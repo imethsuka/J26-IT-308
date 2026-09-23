@@ -1,0 +1,51 @@
+<ui:FluentWindow x:Class="ContextDashboard.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        Title="Cognita" Width="1360" Height="880" MinWidth="1060" MinHeight="620"
+        WindowStartupLocation="CenterScreen"
+        ExtendsContentIntoTitleBar="True"
+        WindowBackdropType="Mica">
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+
+    <ui:TitleBar Grid.Row="0" Title="Cognita — desktop context &amp; privacy" />
+
+    <Grid Grid.Row="1">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="244" />
+        <ColumnDefinition Width="*" />
+      </Grid.ColumnDefinitions>
+
+      <!-- Sidebar. Sections and entries come from the modules (Suite.Core.IModule); the shell knows nothing else about them. -->
+      <Border Grid.Column="0" Background="#FAF8F3" BorderBrush="{StaticResource CardBorder}" BorderThickness="0,0,1,0">
+        <DockPanel Margin="0,18,0,16" LastChildFill="True">
+          <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="22,0,0,18">
+            <Border Width="30" Height="30" CornerRadius="9" Background="{StaticResource Green}">
+              <ui:SymbolIcon Symbol="ShieldLock24" Foreground="White" FontSize="18" />
+            </Border>
+            <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
+              <TextBlock Text="Cognita" FontWeight="Bold" FontSize="15" Foreground="{StaticResource Ink}" />
+              <TextBlock Text="context · privacy" FontSize="11" Foreground="{StaticResource Muted}" />
+            </StackPanel>
+          </StackPanel>
+
+          <!-- Which backends are up. One row per module backend. -->
+          <Border DockPanel.Dock="Bottom" Margin="16,8,16,0" CornerRadius="10" Padding="12,9" Background="{StaticResource InsetBg}">
+            <StackPanel x:Name="BackendStatus" />
+          </Border>
+
+          <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel x:Name="NavPanel" />
+          </ScrollViewer>
+        </DockPanel>
+      </Border>
+
+      <ContentControl Grid.Column="1" x:Name="PageHost" Background="{StaticResource PageBg}"
+                      HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
+    </Grid>
+  </Grid>
+</ui:FluentWindow>
