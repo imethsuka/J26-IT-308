@@ -28,7 +28,9 @@ from shared.types import FilterResult, PrivacyContext, Source
 from research.detection import Detector, OcrUnavailableError
 from research.eval.run_comparison import RESULTS_PATH
 from research.filters import build_filters
+from research.eval.curve import build_curve
 from research.model import RiskModel
+from research.model.explain import global_effects
 from research.model.training import load_or_train_default
 from research.profile_store import EVIDENCE_NEEDED, GROUPS, LEARNABLE_CATEGORIES, ProfileStore
 from research.review import level_taus, review
@@ -89,6 +91,18 @@ class ReviewRequest(BaseModel):
     record_activity: bool = False     # True once per captured text, so re-renders don't inflate stats
 
 
+class FilterRequest(BaseModel):
+    text: str
+    context: ContextIn
+
+
+class FilterOut(BaseModel):
+    text: str
+    blocked: bool
+    redactions: int
+    filter_version: str
+
+
 class CorrectionIn(BaseModel):
     category: str
     decision: Literal["masked", "visible"]
@@ -115,6 +129,7 @@ class _State:
     detector: Detector
     filters: dict[str, PrivacyFilter]
     model: RiskModel
+    curve: dict | None = None
     store: ProfileStore
     trained_on: str | None
 
@@ -127,6 +142,7 @@ async def lifespan(app: FastAPI):
     state.detector = Detector.default()
     model = load_or_train_default(state.detector)
     state.model = model
+    state.curve = None
     state.store = ProfileStore()
     state.filters = build_filters(model, state.detector)
     state.trained_on = model.trained_on
@@ -198,6 +214,20 @@ def review_text(req: ReviewRequest) -> dict:
     return result
 
 
+@app.post("/filter", response_model=FilterOut)
+def filter_text(req: FilterRequest) -> FilterOut:
+    """The PrivacyFilter contract over HTTP, for the worker's memory stage: redacted text, whether the page must be dropped,
+    and how many spans were acted on. No entity values and no audit trail leave this call. A filter failure comes back as
+    blocked=True with empty text (the filter itself fails closed); a missing model is a 503, never unfiltered text."""
+    try:
+        result = state.filters["caprlm"].filter(req.text, req.context.to_ctx())
+    except Exception as exc:
+        log.error("filter failed (%s); blocking", type(exc).__name__)
+        raise HTTPException(status_code=503, detail=f"Filter failed, content blocked. {type(exc).__name__}")
+    return FilterOut(text=result.text, blocked=result.blocked, redactions=result.redactions,
+                     filter_version=result.filter_version)
+
+
 @app.post("/corrections")
 def add_correction(body: CorrectionIn) -> dict:
     if body.category not in LEARNABLE_CATEGORIES:
@@ -264,6 +294,40 @@ def stats() -> dict:
         "learned_rules": len(rules), "learnable_categories": len(LEARNABLE_CATEGORIES),
         "weekly": [{k: d[k] for k in ("date", "weekday", "flagged", "redacted")} for d in week],
     }
+
+
+@app.get("/model-info")
+def model_info() -> dict:
+    """What the risk model is and what it has learned: its version, what it was trained on, and for each risk level the features that
+    most raise the model's belief in it. Read from the learned weights (logistic regression); empty for other model kinds."""
+    m = state.model
+    effects = global_effects(m, top=8)
+    classes = [str(c) for c in m.pipeline.classes_] if m.fitted else []
+    return {"version": m.version, "kind": m.kind, "trained_on": m.trained_on, "classes": classes,
+            "n_features": int(len(m.pipeline.steps[0][1].get_feature_names_out())) if m.fitted else 0,
+            "taus": level_taus(m), "explainable": effects is not None, "effects": effects or {}}
+
+
+def _curve_scenarios():
+    """The held-out test scenarios the Metrics page's numbers come from (same split rule and seed as research.eval.run_comparison)."""
+    from research.data.llm_dataset import DATA_DIR, load_dir, split
+
+    if not DATA_DIR.exists():
+        raise HTTPException(status_code=404, detail="The labelled scenarios are not available on this install, so no curve can be drawn.")
+    scenarios, _ = load_dir(DATA_DIR)
+    seed = 7
+    if RESULTS_PATH.exists():
+        seed = int(json.loads(RESULTS_PATH.read_text(encoding="utf-8")).get("dataset_detail", {}).get("seed", 7))
+    _, test = split(scenarios, 0.2, seed)
+    return test
+
+
+@app.get("/model-curve")
+def model_curve() -> dict:
+    """Precision and recall at each protection level and per category, from the model's scores on the test scenarios. Computed once."""
+    if getattr(state, "curve", None) is None:
+        state.curve = build_curve(state.model, state.detector, _curve_scenarios(), level_taus(state.model))
+    return state.curve
 
 
 @app.get("/eval-results")
