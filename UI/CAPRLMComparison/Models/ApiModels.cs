@@ -27,44 +27,6 @@ public sealed record CompareResponse(
     [property: JsonPropertyName("results")] Dictionary<string, FilterResultDto> Results,
     [property: JsonPropertyName("ocr_text")] string? OcrText);
 
-public sealed record MetricSet(
-    [property: JsonPropertyName("precision")] double Precision,
-    [property: JsonPropertyName("recall")] double Recall,
-    [property: JsonPropertyName("f1")] double F1,
-    [property: JsonPropertyName("leakage_rate")] double LeakageRate,
-    [property: JsonPropertyName("reidentification_rate")] double ReidentificationRate,
-    [property: JsonPropertyName("semantic_similarity")] double SemanticSimilarity,
-    [property: JsonPropertyName("blocked_rate")] double BlockedRate,
-    [property: JsonPropertyName("errors")] int Errors);
-
-public sealed record DatasetDetail(
-    [property: JsonPropertyName("label_protocol")] string? LabelProtocol,
-    [property: JsonPropertyName("n_train_scenarios")] int NTrain,
-    [property: JsonPropertyName("n_test_scenarios")] int NTest,
-    [property: JsonPropertyName("n_test_sensitive_spans")] int NTestSensitiveSpans);
-
-public sealed record ModelSelection(
-    [property: JsonPropertyName("scores")] Dictionary<string, double> Scores,
-    [property: JsonPropertyName("rule")] string? Rule,
-    [property: JsonPropertyName("chosen")] string? Chosen);
-
-public sealed record ModelInfo(
-    [property: JsonPropertyName("version")] string Version,
-    [property: JsonPropertyName("selection")] ModelSelection? Selection);
-
-public sealed record DetectionInfo(
-    [property: JsonPropertyName("ner_model")] string? NerModel);
-
-public sealed record EvalResults(
-    [property: JsonPropertyName("dataset")] string Dataset,
-    [property: JsonPropertyName("dataset_detail")] DatasetDetail? DatasetDetail,
-    [property: JsonPropertyName("generated_at")] string? GeneratedAt,
-    [property: JsonPropertyName("detection")] DetectionInfo? Detection,
-    [property: JsonPropertyName("model")] ModelInfo? Model,
-    [property: JsonPropertyName("similarity_method")] string? SimilarityMethod,
-    [property: JsonPropertyName("metrics")] Dictionary<string, MetricSet> Metrics,
-    [property: JsonPropertyName("notes")] List<string>? Notes);
-
 // ---- Privacy review / policy (research/review.py, profile_store.py) ----
 
 public sealed record EntityDto(
@@ -78,7 +40,46 @@ public sealed record EntityDto(
     [property: JsonPropertyName("decided_by")] string DecidedBy,
     [property: JsonPropertyName("reason")] string Reason,
     [property: JsonPropertyName("token")] string? Token,
-    [property: JsonPropertyName("value")] string? Value);
+    [property: JsonPropertyName("value")] string? Value,
+    [property: JsonPropertyName("why")] List<WhyDto>? Why = null);
+
+/// <summary>One kind of evidence behind a risk score (family, the strongest feature in it as a phrase, its net effect).</summary>
+public sealed record WhyDto(
+    [property: JsonPropertyName("family")] string Family,
+    [property: JsonPropertyName("label")] string Label,
+    [property: JsonPropertyName("effect")] double Effect);
+
+public sealed record FeatureEffectDto(
+    [property: JsonPropertyName("label")] string Label,
+    [property: JsonPropertyName("weight")] double Weight);
+
+public sealed record ModelInfoDto(
+    [property: JsonPropertyName("version")] string Version,
+    [property: JsonPropertyName("kind")] string Kind,
+    [property: JsonPropertyName("trained_on")] string? TrainedOn,
+    [property: JsonPropertyName("n_features")] int NFeatures,
+    [property: JsonPropertyName("explainable")] bool Explainable,
+    [property: JsonPropertyName("effects")] Dictionary<string, List<FeatureEffectDto>> Effects);
+
+public sealed record CurvePoint(
+    [property: JsonPropertyName("tau")] double Tau,
+    [property: JsonPropertyName("precision")] double Precision,
+    [property: JsonPropertyName("recall")] double Recall,
+    [property: JsonPropertyName("protected_share")] double ProtectedShare);
+
+public sealed record CategoryResult(
+    [property: JsonPropertyName("category")] string Category,
+    [property: JsonPropertyName("sensitive")] int Sensitive,
+    [property: JsonPropertyName("recall")] double Recall,
+    [property: JsonPropertyName("precision")] double Precision);
+
+public sealed record CurveDto(
+    [property: JsonPropertyName("n_spans")] int NSpans,
+    [property: JsonPropertyName("n_sensitive")] int NSensitive,
+    [property: JsonPropertyName("presets")] Dictionary<string, double> Presets,
+    [property: JsonPropertyName("points")] List<CurvePoint> Points,
+    [property: JsonPropertyName("categories")] List<CategoryResult> Categories,
+    [property: JsonPropertyName("basis")] string Basis);
 
 public sealed record SegmentDto(
     [property: JsonPropertyName("text")] string Text,

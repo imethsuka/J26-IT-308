@@ -78,7 +78,7 @@ public partial class ComparePage : UserControl
                 response = await _api.CompareImageAsync(bytes, context);
             }
 
-            Cards.ItemsSource = MetricCharts.FilterOrder
+            Cards.ItemsSource = FilterNames.Order
                 .Where(response.Results.ContainsKey)
                 .Select(n => new FilterCard(n, response.Results[n]))
                 .ToList();

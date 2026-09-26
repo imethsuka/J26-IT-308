@@ -246,6 +246,13 @@ public sealed class EntityRow(EntityDto e)
     public string StateText => e.Masked ? "masked" : "visible";
     public string Reason => e.Reason;
 
+    /// <summary>The model's own reasons, strongest first: "+1.9 Where it appears: the site looks like an email site".</summary>
+    public string WhyText => e.Why is { Count: > 0 } why
+        ? "Why the model scores it this way:\n" + string.Join("\n", why.Select(w =>
+            $"{(w.Effect >= 0 ? "+" : "\u2212")}{Math.Abs(w.Effect):0.0}  {w.Family}: {w.Label}"))
+        : "";
+    public bool HasWhy => WhyText.Length > 0;
+
     /// <summary>Masked entities show their token only; the value is shown only for entities left visible.</summary>
     public string Display => e.Masked
         ? (e.Action == "drop" ? "⟨removed⟩" : e.Token ?? "")
