@@ -13,6 +13,10 @@ public partial class SettingsPage : UserControl
         Loaded += (_, _) =>
         {
             AutostartBox.IsChecked = Autostart.IsEnabled();
+            var model = ((MainViewModel)DataContext).Settings.ResolveLlmModel();
+            ModelNote.Text = model is null
+                ? $"No language model file found. Put a .gguf chat model in {AppSettings.LlmDir} and summaries start on the next learning run."
+                : $"Model: {Path.GetFileName(model)} (runs on this PC, nothing is sent anywhere)";
             if (((MainViewModel)DataContext).Settings.WorkerExe.Length > 0)
             {
                 // Installed app: the worker is a frozen exe with an ONNX encoder, so these repo/torch paths do not apply.

@@ -44,11 +44,54 @@ public sealed class LearningRunner
 
     /// <param name="backupDir">Where database copies go (default: the data folder). Tests pass a temp folder.</param>
     /// <param name="runLog">The job's JSONL run log (default: the data folder). Tests pass a temp file.</param>
-    public LearningRunner(AppSettings settings, string? backupDir = null, string? runLog = null)
+    public LearningRunner(AppSettings settings, string? backupDir = null, string? runLog = null, Func<string, string, string>? help = null)
     {
         _settings = settings;
         _backupDir = backupDir ?? BackupDir;
         _runLog = runLog ?? RunLog;
+        _help = help ?? RunHelp;
+    }
+
+    // ---- what the installed job understands --------------------------------------------------------------------------
+    // An older adapt.exe rejects flags it does not know and the whole run fails, so new options are only passed when the
+    // job's own --help lists them. The answer is cached per job file (and its timestamp), so --help runs once.
+    private readonly Func<string, string, string> _help;
+    private static readonly Dictionary<string, string> HelpCache = [];
+
+    /// <summary>Set by <see cref="Command"/>: what was left out because the job is too old, or null.</summary>
+    public string? CapabilityNote { get; private set; }
+
+    private bool Supports(string file, string prefix, string flag)
+    {
+        var key = file + "|" + (File.Exists(file) ? File.GetLastWriteTimeUtc(file).Ticks : 0);
+        string text;
+        lock (HelpCache)
+        {
+            if (!HelpCache.TryGetValue(key, out text!))
+                HelpCache[key] = text = _help(file, prefix);
+        }
+        return text.Contains(flag, StringComparison.Ordinal);
+    }
+
+    private static string RunHelp(string file, string prefix)
+    {
+        try
+        {
+            var info = new ProcessStartInfo(file, (prefix + " --help").Trim())
+            {
+                UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true,
+            };
+            using var process = Process.Start(info);
+            if (process is null) return "";
+            var output = process.StandardOutput.ReadToEndAsync();
+            var errors = process.StandardError.ReadToEndAsync();
+            if (!process.WaitForExit(30_000)) { try { process.Kill(true); } catch (InvalidOperationException) { } return ""; }
+            return output.Result + errors.Result;
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or IOException)
+        {
+            return "";
+        }
     }
 
     public static string RunLog => Path.Combine(AppSettings.DataDir, "adaptation_runs.jsonl");
@@ -62,14 +105,27 @@ public sealed class LearningRunner
         else tail += " --force --no-require-ac";
         if (quick) tail += " --label-delay-hours 1 --label-horizon-hours 1";
         if (labelRule == "kw") tail += " --label-rule kw";
+        var frozen = _settings.WorkerExe.Length > 0;
+        var file = frozen ? Path.Combine(Path.GetDirectoryName(_settings.WorkerExe)!, "adapt.exe") : _settings.PythonExe;
+        var prefix = frozen ? "" : "-m adaptation.scheduled_job";
+
+        CapabilityNote = null;
         if (_settings.ScreenTextActive)
         {
             tail += " --screen-memory";
-            if (_settings.ScreenTextKeepUnredacted) tail += " --dev-passthrough-filter";
+            var useFilter = _settings.UseCaprlmFilter && Supports(file, prefix, "--privacy-url");
+            if (useFilter) tail += $" --privacy-url {AppSettings.PrivacyUrl}";
+            else if (_settings.ScreenTextKeepUnredacted) tail += " --dev-passthrough-filter";
+
+            var model = _settings.SummariesEnabled ? _settings.ResolveLlmModel() : null;
+            var summaries = model is not null && Supports(file, prefix, "--summarize");
+            if (summaries) tail += $" --summarize --llm-model \"{model}\"";
+
+            if ((_settings.UseCaprlmFilter && !useFilter) || (model is not null && !summaries))
+                CapabilityNote = "The learning job is an older build and does not know the CAPRLM filter or summaries yet: "
+                                 + "rebuild the worker bundle (packaging\\build_bundle.ps1) to use them.";
         }
-        return _settings.WorkerExe.Length > 0
-            ? (Path.Combine(Path.GetDirectoryName(_settings.WorkerExe)!, "adapt.exe"), tail)
-            : (_settings.PythonExe, "-m adaptation.scheduled_job " + tail);
+        return (file, (prefix + " " + tail).Trim());
     }
 
     public string? Problem()

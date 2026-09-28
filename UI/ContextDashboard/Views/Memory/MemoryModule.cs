@@ -22,6 +22,7 @@ public sealed class MemoryModule : IModule
         Pages =
         [
             Page("engine", "Importance engine", SymbolRegular.BrainCircuit24, () => new EnginePage()),
+            Page("memories", "Memories", SymbolRegular.Book24, () => new MemoriesPage()),
             Page("overview", "Overview", SymbolRegular.Home24, () => new OverviewPage()),
             Page("feed", "Live feed", SymbolRegular.DocumentBulletList24, () => new LiveFeedPage()),
             Page("models", "Models", SymbolRegular.Cube24, () => new ModelsPage()),

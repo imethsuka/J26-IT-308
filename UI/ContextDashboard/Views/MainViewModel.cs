@@ -28,6 +28,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         _services = new ServiceControl(settings);
         _learning = new LearningRunner(settings);
         _screen = new ScreenTextDb(settings.RawBufferPath, settings.MemoryPath);
+        Writer = new MemoryWriter(settings);
     }
 
     // ---- Screen text (opt-in) ----------------------------------------------------------------
@@ -136,7 +137,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         {
             var result = await _learning.RunOnceAsync(QuickTest, UseKw ? "kw" : "v3");
             LearningText = result.Summary;
-            LearningStatus = result.Error is null ? "" : $"The run failed: {result.Error} (see the logs folder).";
+            LearningStatus = result.Error is null ? _learning.CapabilityNote ?? "" : $"The run failed: {result.Error} (see the logs folder).";
         }
         catch (Exception ex) when (ex is InvalidOperationException or IOException or TimeoutException or System.ComponentModel.Win32Exception)
         {
@@ -212,6 +213,56 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private static string Span(DateTimeOffset? from, DateTimeOffset? to) =>
         from is { } a && to is { } b ? $"{a.ToLocalTime():dd MMM} to {b.ToLocalTime():dd MMM HH:mm}" : "";
 
+    /// <summary>What the learning job wrote about sessions and days, read with each refresh.</summary>
+    public IReadOnlyDictionary<string, SessionNote> SessionNotes { get; private set; } = new Dictionary<string, SessionNote>();
+    public IReadOnlyDictionary<string, DayNote> DayNotes { get; private set; } = new Dictionary<string, DayNote>();
+
+    // ---- "Write summaries now" ---------------------------------------------------------------------------------
+    private string _waitingText = "", _writerStatus = "";
+    private bool _writerRunning;
+    private double _writerValue;
+    private bool _writerIndeterminate = true;
+
+    public MemoryWriter Writer { get; }
+    public string WaitingText { get => _waitingText; private set => Set(ref _waitingText, value); }
+    public string WriterStatus { get => _writerStatus; set => Set(ref _writerStatus, value); }
+    public bool WriterRunning { get => _writerRunning; private set { Set(ref _writerRunning, value); Notify(nameof(WriterIdle)); } }
+    public bool WriterIdle => !_writerRunning;
+    public double WriterValue { get => _writerValue; private set => Set(ref _writerValue, value); }
+    public bool WriterIndeterminate { get => _writerIndeterminate; private set => Set(ref _writerIndeterminate, value); }
+
+    /// <summary>Writes sentences for the next waiting memories, then refreshes session notes and day recaps. Runs in the background.</summary>
+    public async Task WriteSummariesAsync()
+    {
+        if (WriterRunning) return;
+        if (Writer.Problem() is { } problem)
+        {
+            WriterStatus = problem;
+            return;
+        }
+        WriterRunning = true;
+        WriterIndeterminate = true;
+        WriterStatus = "Loading the language model\u2026";
+        try
+        {
+            WriterStatus = await Writer.RunAsync(MemoryWriter.DefaultEntries, p =>
+            {
+                WriterIndeterminate = p.Total == 0;
+                WriterValue = p.Total == 0 ? 0 : 100.0 * p.Done / p.Total;
+                WriterStatus = p.Stage == "summaries"
+                    ? $"Writing sentences: {p.Done} of {p.Total}"
+                    : "Writing session notes and day recaps\u2026";
+            });
+        }
+        finally
+        {
+            WriterRunning = false;
+        }
+        await RefreshAsync();
+    }
+
+    public void CancelWriter() => Writer.Cancel();
+
     private DataSources _sources = DataSources.None;
     public DataSources Sources
     {
@@ -281,14 +332,15 @@ public sealed class MainViewModel : INotifyPropertyChanged
         ServiceControl.WorkerScoring(),
         _screen.Raw(),
         _screen.Memory(),
-        _screen.Entries(200),
-        _db.Sources());
+        _screen.Entries(1500),
+        _db.Sources(), _screen.SessionNotes(), _screen.DayNotes(), _screen.Waiting());
 
     private sealed record Snapshot(
         bool Collector, bool Worker, bool DbExists, StorageSummary Summary, IReadOnlyList<RecordRow> Recent,
         IReadOnlyList<AppStat> Apps, IReadOnlyList<HourBucket> Hours, IReadOnlyList<ModelRow> Models, DrcComparison Drc,
         LearningResult LastLearning, bool LearnerRunning, string? WorkerScoring, RawBufferStats Raw, MemoryStats Memory,
-        IReadOnlyList<MemoryRow> MemoryEntries, DataSources Sources);
+        IReadOnlyList<MemoryRow> MemoryEntries, DataSources Sources,
+        IReadOnlyDictionary<string, SessionNote> SessionNotes, IReadOnlyDictionary<string, DayNote> DayNotes, long Waiting);
 
     private void Apply(Snapshot s)
     {
@@ -304,6 +356,10 @@ public sealed class MainViewModel : INotifyPropertyChanged
         DiskText = FormatBytes(sum.BytesOnDisk);
         Hours = s.Hours;
         Sources = s.Sources;
+        SessionNotes = s.SessionNotes;
+        DayNotes = s.DayNotes;
+        WaitingText = s.Waiting == 0 ? "No memories are waiting for a sentence."
+            : $"{s.Waiting:N0} memor{(s.Waiting == 1 ? "y is" : "ies are")} waiting for a sentence from the local model.";
 
         var active = s.Models.FirstOrDefault(m => m.IsActive);
         ActiveModelText = active is null ? "Rule-based baseline" : $"{active.Algorithm} {active.Version}";
