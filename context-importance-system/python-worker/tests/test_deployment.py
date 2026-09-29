@@ -10,9 +10,13 @@ from __future__ import annotations
 import pytest
 
 from adaptation.deployment import (
+    DEFAULT_PRIMARY_METRIC,
+    RANKING_METRICS,
     ClassificationMetrics,
+    budget_threshold,
     decide_deployment,
     evaluate_model,
+    ranking_scores,
     rollback_to,
     validate_and_maybe_deploy,
 )
@@ -45,10 +49,14 @@ class ConstantModel(ImportanceScorer):
 
 
 def metrics(f1: float, *, precision: float = 0.5, recall: float = 0.5, accuracy: float = 0.5) -> ClassificationMetrics:
-    """Hand-built metrics for mocking (confusion counts are irrelevant to the decision)."""
+    """Hand-built metrics for mocking (confusion counts are irrelevant to the decision).
+
+    The ranking metrics follow ``f1`` so the default (threshold-free) gate sees the same ordering.
+    """
     return ClassificationMetrics(
         precision=precision, recall=recall, f1=f1, accuracy=accuracy,
         support=100, tp=0, fp=0, fn=0, tn=0, threshold=0.5,
+        avg_precision=f1, roc_auc=f1, recall_at_keep_30=f1,
     )
 
 
@@ -97,6 +105,41 @@ class TestDecideDeployment:
     def test_unknown_metric_rejected(self) -> None:
         with pytest.raises(ValueError):
             decide_deployment(metrics(0.9), metrics(0.5), primary_metric="auc")
+
+    def test_default_gate_is_threshold_free(self) -> None:
+        assert DEFAULT_PRIMARY_METRIC in RANKING_METRICS
+
+    def test_ranking_better_deploys_even_when_f1_is_worse(self) -> None:
+        # The case that kept every LightGBM candidate out: rules win F1 at 0.5 by keeping nearly everything,
+        # the candidate orders contexts better.
+        cand = ClassificationMetrics(0.86, 0.78, 0.8188, 0.74, 100, 0, 0, 0, 0, 0.5, avg_precision=0.85, roc_auc=0.8, recall_at_keep_30=0.46)
+        rules = ClassificationMetrics(0.84, 0.80, 0.8192, 0.73, 100, 0, 0, 0, 0, 0.5, avg_precision=0.75, roc_auc=0.7, recall_at_keep_30=0.40)
+        assert decide_deployment(cand, rules, primary_metric="f1")[0] is False
+        deployed, reason = decide_deployment(cand, rules)
+        assert deployed is True and "avg_precision" in reason
+
+    def test_undefined_ranking_metric_keeps_current(self) -> None:
+        one_class = ClassificationMetrics(1.0, 1.0, 1.0, 1.0, 10, 10, 0, 0, 0, 0.5)  # no ranking metrics
+        deployed, reason = decide_deployment(one_class, metrics(0.5))
+        assert deployed is False and "undefined" in reason
+
+
+class TestRankingScores:
+    def test_perfect_order_scores_one(self) -> None:
+        out = ranking_scores([1, 1, 0, 0], [0.9, 0.8, 0.2, 0.1])
+        assert out["avg_precision"] == 1.0 and out["roc_auc"] == 1.0 and out["recall_at_keep_30"] == 0.5
+
+    def test_scale_does_not_matter(self) -> None:
+        labels = [1, 0, 1, 0, 1, 0]
+        scores = [0.9, 0.5, 0.7, 0.4, 0.6, 0.1]
+        assert ranking_scores(labels, scores) == ranking_scores(labels, [x / 10 + 0.85 for x in scores])
+
+    def test_single_class_is_undefined(self) -> None:
+        assert ranking_scores([1, 1, 1], [0.1, 0.2, 0.3])["avg_precision"] is None
+
+    def test_evaluate_model_includes_ranking(self) -> None:
+        m = evaluate_model(ConstantModel(0.7), [({}, 1), ({}, 0)], threshold=0.5)
+        assert m.avg_precision is not None and m.roc_auc == 0.5
 
 
 # --------------------------------------------------------------------------- deploy / keep branches (mocked metrics)
@@ -237,3 +280,32 @@ def _tagged_models(fn):
     current = _M()
     fn.candidate = candidate  # the mock returns candidate_f1 for this exact object
     return candidate, current
+
+
+class TestBudgetThreshold:
+    def test_keeps_about_the_budgeted_share(self) -> None:
+        scores = [i / 100 for i in range(100)]
+        t = budget_threshold(scores, 0.30)
+        assert 0.28 <= sum(s >= t for s in scores) / 100 <= 0.32
+
+    def test_empty_or_bad_budget_is_none(self) -> None:
+        assert budget_threshold([], 0.3) is None
+        assert budget_threshold([0.5], 0.0) is None
+
+    def test_deployment_records_the_threshold_and_it_is_read_back(self, conn) -> None:
+        from pipeline import active_decision_threshold
+
+        class Ramp(ImportanceScorer):
+            def predict_proba(self, features):
+                return features["x"]
+
+        held_out = [({"x": i / 10}, int(i >= 5)) for i in range(10)]
+        validate_and_maybe_deploy(Ramp(), None, held_out, conn=conn, candidate_version="v1", keep_rate=0.3)
+        t = active_decision_threshold(conn)
+        assert sum(x / 10 >= t for x in range(10)) == 3  # the top 30% of the held-out scores
+
+    def test_no_budget_means_no_stored_threshold(self, conn) -> None:
+        from pipeline import active_decision_threshold
+
+        validate_and_maybe_deploy(ConstantModel(0.9), None, [({}, 1), ({}, 0)], conn=conn, candidate_version="v1", keep_rate=None)
+        assert active_decision_threshold(conn) is None
