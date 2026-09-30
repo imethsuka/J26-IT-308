@@ -61,6 +61,8 @@ logger = logging.getLogger("worker.pipeline")
 NON_CONTEXT_APPS = frozenset({
     "dwm", "lockapp", "logonui", "searchhost", "searchapp", "shellhost", "startmenuexperiencehost",
     "shellexperiencehost", "textinputhost",
+    # This app's own window: watching the dashboard is not the user's work, and it re-saved itself constantly.
+    "contextdashboard",
 })
 
 DEFAULT_HISTORY_SIZE = 200
@@ -68,6 +70,12 @@ DEFAULT_SAVE_RING_CAPACITY = 32
 # predict() decision threshold for the stored 'save'/'discard' label -- distinct from the ground
 # -truth label that label_construction fills in ~48h later.
 DEFAULT_DECISION_THRESHOLD = 0.5
+# Redundancy gate: after the model says "save", a snapshot is turned into "discard" when the last save was
+# less than this many seconds ago AND it is the same app+title or looks (cosine) almost the same. The model
+# scores each screen alone and its labels reward staying on a page, so without this it re-saves one screen
+# many times a minute. 0 turns the gate off. The record is still stored (as "discard"), as labelling needs it.
+DEFAULT_REDUNDANCY_WINDOW_S = 60.0
+DEFAULT_REDUNDANCY_SIMILARITY = 0.95
 
 
 def _app_key(app: str | None) -> str:
@@ -107,6 +115,33 @@ def load_active_scorer(conn: Connection, *, versions_dir: Path | str | None = No
     return model, prototypes
 
 
+def active_decision_threshold(conn: Connection) -> float | None:
+    """The save/discard threshold chosen when the active model was deployed (from its keep-rate budget),
+    or None when there is no active model or it predates the budget (the caller then uses its default)."""
+    active = get_active_model_version(conn)
+    value = (active.metrics or {}).get("decision_threshold") if active is not None else None
+    return float(value) if isinstance(value, (int, float)) else None
+
+
+def derive_budget_threshold(conn: Connection, scorer: ImportanceScorer, *, keep_rate: float = 0.30, max_rows: int = 3000) -> float | None:
+    """Fallback for a model deployed before thresholds were stored: the score that lets ``keep_rate`` of the
+    stored records through, from this model's own scores on those records (evenly sampled to ``max_rows``).
+    None when there are too few records to say."""
+    from adaptation.deployment import budget_threshold
+    from storage.context_store import list_context_records
+
+    records = list_context_records(conn)
+    if len(records) < 200:
+        return None
+    step = max(1, len(records) // max_rows)
+    return budget_threshold((scorer.predict_proba(r.features) for r in records[::step]), keep_rate)
+
+
+def _cosine(a: np.ndarray, b: np.ndarray) -> float:
+    na, nb = float(np.linalg.norm(a)), float(np.linalg.norm(b))
+    return float(np.dot(a, b) / (na * nb)) if na and nb else 0.0
+
+
 class SnapshotPipeline:
     """Stateful per-run handler: turns snapshots into stored, scored context records."""
 
@@ -122,6 +157,8 @@ class SnapshotPipeline:
         save_ring_capacity: int = DEFAULT_SAVE_RING_CAPACITY,
         drc_observer: LiveDrcObserver | None = None,
         raw_buffer: RawBuffer | None = None,
+        redundancy_window_s: float = DEFAULT_REDUNDANCY_WINDOW_S,
+        redundancy_similarity: float = DEFAULT_REDUNDANCY_SIMILARITY,
     ) -> None:
         self._conn = conn
         self._scorer = scorer
@@ -132,6 +169,10 @@ class SnapshotPipeline:
         self._ring = SavedEmbeddingRing(capacity=save_ring_capacity)
         self._drc = drc_observer if drc_observer is not None else LiveDrcObserver()
         self._raw_buffer = raw_buffer
+        self._redundancy_window_s = redundancy_window_s
+        self._redundancy_similarity = redundancy_similarity
+        self._last_saved: tuple[Any, str, str, np.ndarray | None] | None = None  # (ts, app, title, embedding)
+        self._n_redundant = 0
         self._encoder: Any = None
         self._lock = threading.Lock()
         self._closed = False
@@ -194,6 +235,9 @@ class SnapshotPipeline:
             logger.exception("seq=%d scoring failed; treating as discard", snapshot.seq)
             proba = 0.0
         decision = "save" if proba >= self._threshold else "discard"
+        if decision == "save" and self._is_redundant(event.ts, event.app, event.title, embedding):
+            decision = "discard"
+            self._n_redundant += 1
 
         drc = self._drc.observe(event.ts, app=event.app, title=event.title, domain=event.domain, is_idle=event.is_idle)
 
@@ -217,6 +261,7 @@ class SnapshotPipeline:
 
         if decision == "save":
             self._n_saved += 1
+            self._last_saved = (event.ts, _app_key(event.app), (event.title or "").strip().casefold(), embedding)
             if embedding is not None:
                 self._ring.add(embedding, event.ts)
             else:
@@ -227,9 +272,23 @@ class SnapshotPipeline:
         )
 
         logger.info(
-            "seq=%d id=%d %r decision=%s p=%.3f (seen=%d stored=%d saved=%d)",
+            "seq=%d id=%d %r decision=%s p=%.3f (seen=%d stored=%d saved=%d redundant=%d)",
             snapshot.seq, record_id, event.app, decision, proba,
-            self._n_seen, self._n_stored, self._n_saved,
+            self._n_seen, self._n_stored, self._n_saved, self._n_redundant,
+        )
+
+    def _is_redundant(self, ts: Any, app: str | None, title: str | None, embedding: np.ndarray | None) -> bool:
+        """True when the last save was recent and this is the same screen again (same app+title, or a near-identical frame)."""
+        if self._redundancy_window_s <= 0 or self._last_saved is None:
+            return False
+        last_ts, last_app, last_title, last_embedding = self._last_saved
+        if not 0 <= (ts - last_ts).total_seconds() < self._redundancy_window_s:
+            return False
+        if _app_key(app) == last_app and (title or "").strip().casefold() == last_title:
+            return True
+        return (
+            embedding is not None and last_embedding is not None
+            and _cosine(embedding, last_embedding) >= self._redundancy_similarity
         )
 
     def _buffer_text(self, snapshot: Snapshot, ts: Any, decision: str, proba: float, record_id: int) -> None:
