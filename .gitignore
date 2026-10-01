@@ -10,3 +10,6 @@ obj/
 __pycache__/
 .venv/
 .vs/
+
+# the one place the app build goes (packaging/build_bundle.ps1)
+Builds/

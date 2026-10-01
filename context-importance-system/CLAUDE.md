@@ -211,7 +211,7 @@ in the snapshot header (protocol v2, `text` object); the worker puts them in a *
   developer option; *Delete all captured text* empties `raw_buffer.db` and `memory.db` (VACUUM). That delete is the one place the
   dashboard writes to those files. The tab shows counts and sizes of the buffer and the memory entries, never raw text.
   The *Developer* checkbox (`ScreenTextKeepUnredacted` -> `--dev-passthrough-filter`) keeps text with no redaction; warn before using it.
-- Verified 2026-10-20 on a freshly built bundle (`build_bundle.ps1 -StageName ContextImportance-screentext`):
+- Verified 2026-10-20 on a freshly built bundle (`build_bundle.ps1`):
   `packaging/smoke_test_worker.py --screen-text` PASS (frozen worker buffers text encrypted in `raw_buffer.db`, `--no-screen-text`
   keeps nothing, frozen `adapt.exe --screen-memory` writes `memory.db` entries with no text, raw rows consumed); the packaged
   dashboard window starts. The click path (consent dialog, restart, delete button) is covered by unit tests of the settings and
@@ -308,7 +308,7 @@ is **not installed here, so the installer .exe has not been built or tested**). 
   3/3 stored with 512-d embeddings, DRC verdicts recorded, schema v3, **113 MB working set**. `adapt.exe` ran a full
   learning cycle (370 labels, LightGBM trained, deploy gate kept the incumbent) and saved its version under the data folder.
 - Staged dashboard: 126 MB while open, exits on close, tray 5 MB, nothing written into the install folder.
-- `build_bundle.ps1 -StageName <name>` builds beside a running install (the default folder is locked while the app runs).
+- `build_bundle.ps1` always writes to `<repo>\Builds\ContextImportance\` (wiped each build, gitignored; `BUILD_INFO.txt` has time and commit). Stop the app first: a running exe locks that folder. `-OutDir` overrides it.
 - NOT done: first-run consent screen, code signing, MobileCLIP licence check, Start/Stop capture tested from the installed
   app (it would record the desktop), and the collector still reads `collector.config.json` from its install folder (read-only
   there: an exclusions editor must write to the data folder instead).
