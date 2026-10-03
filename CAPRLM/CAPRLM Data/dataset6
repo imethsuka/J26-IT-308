@@ -1,50 +1,1322 @@
-{"id": "B001-1", "text": "Hi Nimal, can you send the site photos? I'll call you on 077-1234567 after lunch.", "doc_type": "whatsapp", "app": "WhatsApp", "domain": null, "title": "WhatsApp - Nimal Perera", "source": "uia", "context_kind": "work_chat", "spans": [{"surface": "Nimal", "category": "PERSON", "tier": "low"}, {"surface": "077-1234567", "category": "PHONE", "tier": "medium"}]}
-{"id": "B001-2", "text": "Your OTP for login is 483920. Do not share it with anyone. - Commercial Bank", "doc_type": "sms", "app": "Messages", "domain": null, "title": "SMS - Commercial Bank", "source": "uia", "context_kind": "banking", "spans": [{"surface": "483920", "category": "CREDENTIAL", "tier": "high"}, {"surface": "Commercial Bank", "category": "ORG", "tier": "none"}]}
-{"id": "B001-3", "text": "Patient: Fathima Rizwan, ID MRN-88213. Diagnosis: Type 2 diabetes mellitus. Prescribed Metformin 500mg twice daily. Follow-up on 14/03/2025 at Colombo North Hospital.", "doc_type": "medical report", "app": "Clinic Records", "domain": "clinic.lk", "title": "Patient Summary - Fathima Rizwan", "source": "uia", "context_kind": "health", "spans": [{"surface": "Fathima Rizwan", "category": "PERSON", "tier": "high"}, {"surface": "MRN-88213", "category": "MEDICAL", "tier": "high"}, {"surface": "Type 2 diabetes mellitus", "category": "MEDICAL", "tier": "high"}, {"surface": "Metformin 500mg", "category": "MEDICAL", "tier": "high"}, {"surface": "14/03/2025", "category": "DATE", "tier": "medium"}, {"surface": "Colombo North Hospital", "category": "ORG", "tier": "low"}]}
-{"id": "B001-4", "text": "Monthly salary credited: LKR 285,000.00 on 25.02.2025. Balance: LKR 1,250,400.75. Ref: SAL/FEB/2025. Account 0012345678. Thank you for banking with us.", "doc_type": "bank statement", "app": "Sampath Bank", "domain": "sampath.lk", "title": "Transaction Alert", "source": "uia", "context_kind": "banking", "spans": [{"surface": "LKR 285,000.00", "category": "FINANCIAL_FIGURE", "tier": "high"}, {"surface": "25.02.2025", "category": "DATE", "tier": "medium"}, {"surface": "LKR 1,250,400.75", "category": "FINANCIAL_FIGURE", "tier": "high"}, {"surface": "SAL/FEB/2025", "category": "FINANCIAL_FIGURE", "tier": "none"}, {"surface": "0012345678", "category": "BANK_ACCOUNT", "tier": "high"}]}
-{"id": "B001-5", "text": "Order #A7X-99231 shipped. Tracking: 1Z999AA10123456784. Delivery to 45 Galle Road, Colombo 03. Call 071 234 5678 on arrival.", "doc_type": "delivery confirmation", "app": "Daraz", "domain": "daraz.lk", "title": "Order Shipped", "source": "uia", "context_kind": "shopping", "spans": [{"surface": "A7X-99231", "category": "FINANCIAL_FIGURE", "tier": "none"}, {"surface": "1Z999AA10123456784", "category": "CARD_LIKE_NUMBER", "tier": "none"}, {"surface": "45 Galle Road, Colombo 03", "category": "LOCATION", "tier": "medium"}, {"surface": "071 234 5678", "category": "PHONE", "tier": "medium"}]}
-{"id": "B001-6", "text": "Meeting notes 12/02/2025: Present - Kasun Silva, Priya Fernando, Ahmed Nazeer. Discussed Q1 targets. Action: Priya to share report by Friday. kasun.silva@lankatech.lk", "doc_type": "meeting notes", "app": "Notion", "domain": "notion.so", "title": "Q1 Planning", "source": "uia", "context_kind": "work_chat", "spans": [{"surface": "12/02/2025", "category": "DATE", "tier": "low"}, {"surface": "Kasun Silva", "category": "PERSON", "tier": "low"}, {"surface": "Priya Fernando", "category": "PERSON", "tier": "low"}, {"surface": "Ahmed Nazeer", "category": "PERSON", "tier": "low"}, {"surface": "Priya", "category": "PERSON", "tier": "low"}, {"surface": "kasun.silva@lankatech.lk", "category": "EMAIL", "tier": "medium"}]}
-{"id": "B001-7", "text": "Dear Sir, I am applying for the Software Engineer position. My CV is attached. Regards, Dilshan Jayasuriya, +94 76 555 1234, dilshan.j@gmail.com", "doc_type": "job application", "app": "Gmail", "domain": "mail.google.com", "title": "Application - Software Engineer", "source": "uia", "context_kind": "email", "spans": [{"surface": "Dilshan Jayasuriya", "category": "PERSON", "tier": "medium"}, {"surface": "+94 76 555 1234", "category": "PHONE", "tier": "medium"}, {"surface": "dilshan.j@gmail.com", "category": "EMAIL", "tier": "medium"}]}
-{"id": "B001-8", "text": "const config = { apiKey: 'sk_demo_4eC39HqLyjWDarjtT1zdp7dc', dbUrl: 'postgres://admin:P@ssw0rd2024@db.internal:5432/prod' };", "doc_type": "code snippet", "app": "VS Code", "domain": null, "title": "config.js", "source": "uia", "context_kind": "code", "spans": [{"surface": "sk_demo_4eC39HqLyjWDarjtT1zdp7dc", "category": "CREDENTIAL", "tier": "high"}, {"surface": "postgres://admin:P@ssw0rd2024@db.internal:5432/prod", "category": "CREDENTIAL", "tier": "high"}]}
-{"id": "B001-9", "text": "BREAKING: Minister Ranil Wickramasinghe announced new infrastructure plans for Kandy district yesterday. The project is expected to cost LKR 4.5 billion.", "doc_type": "news article", "app": "Daily News", "domain": "dailynews.lk", "title": "Infrastructure Plans Announced", "source": "uia", "context_kind": "news", "spans": [{"surface": "Ranil Wickramasinghe", "category": "PERSON", "tier": "none"}, {"surface": "Kandy", "category": "LOCATION", "tier": "none"}, {"surface": "LKR 4.5 billion", "category": "FINANCIAL_FIGURE", "tier": "none"}]}
-{"id": "B001-10", "text": "Great workout today! 5km run in 28 mins. Anyone want to join tomorrow at Viharamahadevi Park? 😊", "doc_type": "social media post", "app": "Instagram", "domain": "instagram.com", "title": "Post", "source": "uia", "context_kind": "social", "spans": [{"surface": "Viharamahadevi Park", "category": "LOCATION", "tier": "low"}]}
-{"id": "B001-11", "text": "NIC: 912345678V, DOB: 15/08/1991. Passport: N1234567. Address: 123 Temple Road, Negombo.", "doc_type": "government form", "app": "Department of Immigration", "domain": "immigration.gov.lk", "title": "Passport Application", "source": "uia", "context_kind": "notes", "spans": [{"surface": "912345678V", "category": "NATIONAL_ID", "tier": "high"}, {"surface": "15/08/1991", "category": "DATE", "tier": "high"}, {"surface": "N1234567", "category": "NATIONAL_ID", "tier": "high"}, {"surface": "123 Temple Road, Negombo", "category": "LOCATION", "tier": "high"}]}
-{"id": "B001-12", "text": "Hey machan, send me the notes for CS201. I'll pick them up at 6pm. Thanks da!", "doc_type": "whatsapp", "app": "WhatsApp", "domain": null, "title": "Chat - Rukshan", "source": "uia", "context_kind": "social", "spans": []}
-{"id": "B001-13", "text": "Your card ending 4821 was charged $45.99 at AMAZON.COM on 03/15/2025. If unauthorized call +1 (415) 555-0132.", "doc_type": "sms", "app": "Messages", "domain": null, "title": "SMS - Bank Alert", "source": "uia", "context_kind": "banking", "spans": [{"surface": "4821", "category": "CARD_LIKE_NUMBER", "tier": "medium"}, {"surface": "$45.99", "category": "FINANCIAL_FIGURE", "tier": "medium"}, {"surface": "03/15/2025", "category": "DATE", "tier": "medium"}, {"surface": "+1 (415) 555-0132", "category": "PHONE", "tier": "none"}]}
-{"id": "B001-14", "text": "Employee: Sarah Mitchell. Employee ID: EMP-4471. Department: Marketing. Salary: GBP 4,250/month. NI: QQ 12 34 56 C. Start date: 01/09/2023.", "doc_type": "HR record", "app": "BambooHR", "domain": "bamboohr.com", "title": "Employee Profile", "source": "uia", "context_kind": "hr", "spans": [{"surface": "Sarah Mitchell", "category": "PERSON", "tier": "high"}, {"surface": "EMP-4471", "category": "MEDICAL", "tier": "medium"}, {"surface": "GBP 4,250", "category": "FINANCIAL_FIGURE", "tier": "high"}, {"surface": "QQ 12 34 56 C", "category": "NATIONAL_ID", "tier": "high"}, {"surface": "01/09/2023", "category": "DATE", "tier": "medium"}]}
-{"id": "B001-15", "text": "def connect():\n    # TODO: remove hardcoded password\n    password = 'admin123'\n    host = '192.168.1.45'\n    return connect(host, password)", "doc_type": "code snippet", "app": "PyCharm", "domain": null, "title": "db.py", "source": "uia", "context_kind": "code", "spans": [{"surface": "admin123", "category": "CREDENTIAL", "tier": "high"}, {"surface": "192.168.1.45", "category": "IP_ADDRESS", "tier": "low"}]}
-{"id": "B001-16", "text": "Invoice INV-2025-0334. Bill to: Tech Solutions Ltd, 88 Park Street, London EC2A 4NE. Amount: £1,250.00. Due: 30/04/2025.", "doc_type": "invoice", "app": "QuickBooks", "domain": "quickbooks.intuit.com", "title": "Invoice", "source": "uia", "context_kind": "shopping", "spans": [{"surface": "INV-2025-0334", "category": "FINANCIAL_FIGURE", "tier": "none"}, {"surface": "Tech Solutions Ltd", "category": "ORG", "tier": "low"}, {"surface": "88 Park Street, London EC2A 4NE", "category": "LOCATION", "tier": "medium"}, {"surface": "£1,250.00", "category": "FINANCIAL_FIGURE", "tier": "medium"}, {"surface": "30/04/2025", "category": "DATE", "tier": "low"}]}
-{"id": "B001-17", "text": "Hi, I'm Dr. Anjali Sharma. Please book my appointment for 22 March. My number is +91 98765 43210.", "doc_type": "sms", "app": "Messages", "domain": null, "title": "SMS - Dr. Sharma", "source": "uia", "context_kind": "health", "spans": [{"surface": "Anjali Sharma", "category": "PERSON", "tier": "medium"}, {"surface": "22 March", "category": "DATE", "tier": "low"}, {"surface": "+91 98765 43210", "category": "PHONE", "tier": "medium"}]}
-{"id": "B001-18", "text": "2025-01-15 08:23:11 INFO User jdoe logged in from 203.0.113.42\n2025-01-15 08:23:45 ERROR Failed login for admin@example.com", "doc_type": "log file", "app": "Terminal", "domain": null, "title": "auth.log", "source": "uia", "context_kind": "code", "spans": [{"surface": "2025-01-15 08:23:11", "category": "DATE", "tier": "none"}, {"surface": "jdoe", "category": "PERSON", "tier": "low"}, {"surface": "203.0.113.42", "category": "IP_ADDRESS", "tier": "low"}, {"surface": "admin@example.com", "category": "EMAIL", "tier": "none"}]}
-{"id": "B001-19", "text": "My NIC is 9 1 2 3 4 5 6 7 V and my mobile is 0 7 7 1 2 3 4 5 6 7. Please update my records.", "doc_type": "web form", "app": "Bank Portal", "domain": "seylan.lk", "title": "Update Contact Details", "source": "uia", "context_kind": "banking", "spans": [{"surface": "9 1 2 3 4 5 6 7 V", "category": "NATIONAL_ID", "tier": "high"}, {"surface": "0 7 7 1 2 3 4 5 6 7", "category": "PHONE", "tier": "high"}]}
-{"id": "B001-20", "text": "Dear Mr. Fernando, Thank you for your email. We have processed your request. Best regards, Customer Service Team", "doc_type": "email", "app": "Outlook", "domain": "outlook.com", "title": "Re: Your Request", "source": "uia", "context_kind": "email", "spans": [{"surface": "Fernando", "category": "PERSON", "tier": "low"}]}
-{"id": "B001-21", "text": "Transfer complete: EUR 1.250,00 from DE89 3704 0044 0532 0130 00 to GB29 NWBK 6016 1331 9268 19. Reference: RENT-MAR.", "doc_type": "bank statement", "app": "N26", "domain": "n26.com", "title": "Transfer Confirmation", "source": "uia", "context_kind": "banking", "spans": [{"surface": "EUR 1.250,00", "category": "FINANCIAL_FIGURE", "tier": "high"}, {"surface": "DE89 3704 0044 0532 0130 00", "category": "BANK_ACCOUNT", "tier": "high"}, {"surface": "GB29 NWBK 6016 1331 9268 19", "category": "BANK_ACCOUNT", "tier": "high"}, {"surface": "RENT-MAR", "category": "FINANCIAL_FIGURE", "tier": "none"}]}
-{"id": "B001-22", "text": "こんにちは田中さん、明日の会議は10時からです。資料を送ります。", "doc_type": "email", "app": "Gmail", "domain": "mail.google.com", "title": "明日の会議", "source": "uia", "context_kind": "work_chat", "spans": [{"surface": "田中", "category": "PERSON", "tier": "low"}]}
-{"id": "B001-23", "text": "Re: order. My email is john dot doe at gmail dot com. Please send the invoice there.", "doc_type": "email", "app": "Mail", "domain": null, "title": "Order", "source": "uia", "context_kind": "shopping", "spans": [{"surface": "john dot doe at gmail dot com", "category": "EMAIL", "tier": "medium"}]}
-{"id": "B001-24", "text": "Blood test results: Patient ID PT-5521. HbA1c 7.2%. Cholesterol 210 mg/dL. Suggest lifestyle changes and review in 3 months.", "doc_type": "medical report", "app": "Health Records", "domain": null, "title": "Lab Results", "source": "uia", "context_kind": "health", "spans": [{"surface": "PT-5521", "category": "MEDICAL", "tier": "high"}, {"surface": "HbA1c 7.2%", "category": "MEDICAL", "tier": "high"}, {"surface": "Cholesterol 210 mg/dL", "category": "MEDICAL", "tier": "high"}]}
-{"id": "B001-25", "text": "Invoice #INV-8821-3321. Total: ₹12,50,000. GST: 18%. Pay to: HDFC Bank, IFSC HDFC0001234, A/C 50100234567890.", "doc_type": "invoice", "app": "Zoho", "domain": "zoho.in", "title": "Tax Invoice", "source": "uia", "context_kind": "shopping", "spans": [{"surface": "INV-8821-3321", "category": "FINANCIAL_FIGURE", "tier": "none"}, {"surface": "₹12,50,000", "category": "FINANCIAL_FIGURE", "tier": "medium"}, {"surface": "HDFC0001234", "category": "BANK_ACCOUNT", "tier": "high"}, {"surface": "50100234567890", "category": "BANK_ACCOUNT", "tier": "high"}]}
-{"id": "B001-26", "text": "Meeting with Ahmed Al-Farsi on 15/06/2025 at Dubai office. Contact: +971 50 123 4567. Discussed expansion plans.", "doc_type": "calendar entry", "app": "Google Calendar", "domain": "calendar.google.com", "title": "Meeting - Dubai", "source": "uia", "context_kind": "work_chat", "spans": [{"surface": "Ahmed Al-Farsi", "category": "PERSON", "tier": "low"}, {"surface": "15/06/2025", "category": "DATE", "tier": "low"}, {"surface": "Dubai", "category": "LOCATION", "tier": "none"}, {"surface": "+971 50 123 4567", "category": "PHONE", "tier": "medium"}]}
-{"id": "B001-27", "text": "Payment received: $4,500.00. Card: 4111 1111 1111 1111. Name on card: Test User. Expiry: 12/26.", "doc_type": "receipt", "app": "Stripe", "domain": "stripe.com", "title": "Payment Receipt", "source": "uia", "context_kind": "shopping", "spans": [{"surface": "$4,500.00", "category": "FINANCIAL_FIGURE", "tier": "medium"}, {"surface": "4111 1111 1111 1111", "category": "CARD_LIKE_NUMBER", "tier": "high"}, {"surface": "12/26", "category": "DATE", "tier": "low"}]}
-{"id": "B001-28", "text": "Reference: REF-20250315-001. Serial: SN-98765432. Version: 3.14.159. No personal data in this document.", "doc_type": "support ticket", "app": "Jira", "domain": "atlassian.net", "title": "Ticket #4521", "source": "uia", "context_kind": "code", "spans": [{"surface": "REF-20250315-001", "category": "FINANCIAL_FIGURE", "tier": "none"}, {"surface": "SN-98765432", "category": "FINANCIAL_FIGURE", "tier": "none"}, {"surface": "3.14.159", "category": "FINANCIAL_FIGURE", "tier": "none"}]}
-{"id": "B001-29", "text": "Hola, soy María García. Mi teléfono es +34 612 345 678. Mi dirección: Calle Mayor 15, Madrid.", "doc_type": "sms", "app": "Messages", "domain": null, "title": "SMS - María", "source": "uia", "context_kind": "social", "spans": [{"surface": "María García", "category": "PERSON", "tier": "low"}, {"surface": "+34 612 345 678", "category": "PHONE", "tier": "medium"}, {"surface": "Calle Mayor 15, Madrid", "category": "LOCATION", "tier": "medium"}]}
-{"id": "B001-30", "text": "Hi team, please note the deployment is scheduled for 20/03/2025 at 02:00 UTC. Rollback plan is in the wiki.", "doc_type": "work chat", "app": "Slack", "domain": "slack.com", "title": "#deployments", "source": "uia", "context_kind": "work_chat", "spans": [{"surface": "20/03/2025", "category": "DATE", "tier": "low"}]}
-{"id": "B001-31", "text": "My SSN is 123-45-6789 and my DOB is 04/12/1985. Please verify my identity.", "doc_type": "web form", "app": "IRS Portal", "domain": "irs.gov", "title": "Identity Verification", "source": "uia", "context_kind": "banking", "spans": [{"surface": "123-45-6789", "category": "NATIONAL_ID", "tier": "high"}, {"surface": "04/12/1985", "category": "DATE", "tier": "high"}]}
-{"id": "B001-32", "text": "Support ticket #TKT-9921: User reports error code E-5021. Browser: Chrome 120. No PII attached.", "doc_type": "support ticket", "app": "Zendesk", "domain": "zendesk.com", "title": "Ticket #TKT-9921", "source": "uia", "context_kind": "code", "spans": [{"surface": "TKT-9921", "category": "FINANCIAL_FIGURE", "tier": "none"}, {"surface": "E-5021", "category": "FINANCIAL_FIGURE", "tier": "none"}, {"surface": "Chrome 120", "category": "FINANCIAL_FIGURE", "tier": "none"}]}
-{"id": "B001-33", "text": "Payslip for January 2025. Employee: Rajesh Kumar. Basic: ₹45,000. HRA: ₹18,000. Net Pay: ₹58,500. PAN: ABCDE1234F.", "doc_type": "payslip", "app": "Payroll", "domain": null, "title": "Payslip Jan 2025", "source": "uia", "context_kind": "hr", "spans": [{"surface": "January 2025", "category": "DATE", "tier": "low"}, {"surface": "Rajesh Kumar", "category": "PERSON", "tier": "high"}, {"surface": "₹45,000", "category": "FINANCIAL_FIGURE", "tier": "high"}, {"surface": "₹18,000", "category": "FINANCIAL_FIGURE", "tier": "high"}, {"surface": "₹58,500", "category": "FINANCIAL_FIGURE", "tier": "high"}, {"surface": "ABCDE1234F", "category": "NATIONAL_ID", "tier": "high"}]}
-{"id": "B001-34", "text": "New message from unknown: Click this link to claim your prize http://bit.ly/3xYzAbC?session=eyJhbGciOiJIUzI1NiJ9", "doc_type": "sms", "app": "Messages", "domain": null, "title": "SMS - Unknown", "source": "uia", "context_kind": "email", "spans": [{"surface": "http://bit.ly/3xYzAbC?session=eyJhbGciOiJIUzI1NiJ9", "category": "URL_TOKEN", "tier": "medium"}]}
-{"id": "B001-35", "text": "Properties: id=88213, name='Test Product', sku='SKU-11223344', price=19.99, isbn='978-3-16-148410-0'", "doc_type": "JSON snippet", "app": "Text Editor", "domain": null, "title": "data.json", "source": "uia", "context_kind": "code", "spans": [{"surface": "SKU-11223344", "category": "FINANCIAL_FIGURE", "tier": "none"}, {"surface": "978-3-16-148410-0", "category": "FINANCIAL_FIGURE", "tier": "none"}]}
-{"id": "B001-36", "text": "Hi, this is Sunil. My new number is +94 71 888 9999. Save it. Old one disconnected.", "doc_type": "whatsapp", "app": "WhatsApp", "domain": null, "title": "Chat - Sunil", "source": "uia", "context_kind": "social", "spans": [{"surface": "Sunil", "category": "PERSON", "tier": "low"}, {"surface": "+94 71 888 9999", "category": "PHONE", "tier": "medium"}]}
-{"id": "B001-37", "text": "Passport No: C01X00T47. Issued: 12.05.2022. Expiry: 11.05.2032. Holder: Hans Müller, Berlin.", "doc_type": "government form", "app": "Bundesdruckerei", "domain": null, "title": "Passport Data", "source": "uia", "context_kind": "notes", "spans": [{"surface": "C01X00T47", "category": "NATIONAL_ID", "tier": "high"}, {"surface": "12.05.2022", "category": "DATE", "tier": "medium"}, {"surface": "11.05.2032", "category": "DATE", "tier": "medium"}, {"surface": "Hans Müller", "category": "PERSON", "tier": "high"}, {"surface": "Berlin", "category": "LOCATION", "tier": "low"}]}
-{"id": "B001-38", "text": "From: accounts@acme-corp.com\nTo: j.smith@example.org\nSubject: Q1 Report\n\nPlease find attached the Q1 report. Let me know if you need anything else.", "doc_type": "email", "app": "Outlook", "domain": "outlook.com", "title": "Q1 Report", "source": "uia", "context_kind": "email", "spans": [{"surface": "accounts@acme-corp.com", "category": "EMAIL", "tier": "none"}, {"surface": "j.smith@example.org", "category": "EMAIL", "tier": "medium"}]}
-{"id": "B001-39", "text": "Account balance: AUD 12,345.67. BSB: 062-000. Account: 12345678. Transaction on 15/03/2025 at Woolworths Sydney.", "doc_type": "bank statement", "app": "CommBank", "domain": "commbank.com.au", "title": "Account Summary", "source": "uia", "context_kind": "banking", "spans": [{"surface": "AUD 12,345.67", "category": "FINANCIAL_FIGURE", "tier": "high"}, {"surface": "062-000", "category": "BANK_ACCOUNT", "tier": "high"}, {"surface": "12345678", "category": "BANK_ACCOUNT", "tier": "high"}, {"surface": "15/03/2025", "category": "DATE", "tier": "medium"}, {"surface": "Woolworths Sydney", "category": "ORG", "tier": "low"}]}
-{"id": "B001-40", "text": "Customer: 陈伟. Phone: +86 138 0013 8000. Address: 北京市朝阳区建国路88号.", "doc_type": "shopping confirmation", "app": "Taobao", "domain": "taobao.com", "title": "Order Confirmation", "source": "uia", "context_kind": "shopping", "spans": [{"surface": "陈伟", "category": "PERSON", "tier": "medium"}, {"surface": "+86 138 0013 8000", "category": "PHONE", "tier": "medium"}, {"surface": "北京市朝阳区建国路88号", "category": "LOCATION", "tier": "medium"}]}
-{"id": "B001-41", "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam.", "doc_type": "notes", "app": "Notes", "domain": null, "title": "Draft", "source": "uia", "context_kind": "notes", "spans": []}
-{"id": "B001-42", "text": "Hi, I need to reschedule my appointment. My patient ID is 4471-88213. Please call 011 234 5678.", "doc_type": "email", "app": "Gmail", "domain": "mail.google.com", "title": "Appointment Reschedule", "source": "uia", "context_kind": "health", "spans": [{"surface": "4471-88213", "category": "MEDICAL", "tier": "high"}, {"surface": "011 234 5678", "category": "PHONE", "tier": "high"}]}
-{"id": "B001-43", "text": "Tracking number: LK123456789CN. Status: In transit. Estimated delivery: 18/03/2025.", "doc_type": "delivery confirmation", "app": "AliExpress", "domain": "aliexpress.com", "title": "Order Tracking", "source": "uia", "context_kind": "shopping", "spans": [{"surface": "LK123456789CN", "category": "FINANCIAL_FIGURE", "tier": "none"}, {"surface": "18/03/2025", "category": "DATE", "tier": "low"}]}
-{"id": "B001-44", "text": "Server at 10.0.0.55 returned 500. Traceback: File '/app/main.py', line 42, in handler. User: anonymous.", "doc_type": "log file", "app": "Terminal", "domain": null, "title": "error.log", "source": "uia", "context_kind": "code", "spans": [{"surface": "10.0.0.55", "category": "IP_ADDRESS", "tier": "low"}]}
-{"id": "B001-45", "text": "Dear Ms. Perera, Your loan application LA-2025-8891 has been approved. Amount: LKR 2,500,000. Repayment: 60 months. Contact 011-2345678.", "doc_type": "email", "app": "Outlook", "domain": "outlook.com", "title": "Loan Approval", "source": "uia", "context_kind": "banking", "spans": [{"surface": "Perera", "category": "PERSON", "tier": "medium"}, {"surface": "LA-2025-8891", "category": "FINANCIAL_FIGURE", "tier": "medium"}, {"surface": "LKR 2,500,000", "category": "FINANCIAL_FIGURE", "tier": "high"}, {"surface": "60 months", "category": "FINANCIAL_FIGURE", "tier": "medium"}, {"surface": "011-2345678", "category": "PHONE", "tier": "medium"}]}
-{"id": "B001-46", "text": "Meeting minutes: Attendees - S. Fernando, K. Silva. Date: 10/03/2025. Topics: budget review, Q2 planning. Next meeting: 17/03/2025.", "doc_type": "meeting notes", "app": "Google Docs", "domain": "docs.google.com", "title": "Minutes 10-03", "source": "uia", "context_kind": "work_chat", "spans": [{"surface": "S. Fernando", "category": "PERSON", "tier": "low"}, {"surface": "K. Silva", "category": "PERSON", "tier": "low"}, {"surface": "10/03/2025", "category": "DATE", "tier": "low"}, {"surface": "17/03/2025", "category": "DATE", "tier": "low"}]}
-{"id": "B001-47", "text": "Voicemail transcript: Ayubowan, this is Chaminda. Call me back at 077 123 4567. It's about the project.", "doc_type": "voice-note transcript", "app": "WhatsApp", "domain": null, "title": "Voice Note", "source": "uia", "context_kind": "work_chat", "spans": [{"surface": "Chaminda", "category": "PERSON", "tier": "low"}, {"surface": "077 123 4567", "category": "PHONE", "tier": "medium"}]}
-{"id": "B001-48", "text": "TAX INVOICE. Seller: ABC Traders, 12 Main Street, Kandy. Buyer: XYZ Corp. Invoice: 2025-001. Total: LKR 45,000.00.", "doc_type": "invoice", "app": "QuickBooks", "domain": "quickbooks.intuit.com", "title": "Tax Invoice", "source": "uia", "context_kind": "shopping", "spans": [{"surface": "ABC Traders", "category": "ORG", "tier": "low"}, {"surface": "12 Main Street, Kandy", "category": "LOCATION", "tier": "low"}, {"surface": "XYZ Corp", "category": "ORG", "tier": "low"}, {"surface": "2025-001", "category": "FINANCIAL_FIGURE", "tier": "none"}, {"surface": "LKR 45,000.00", "category": "FINANCIAL_FIGURE", "tier": "medium"}]}
-{"id": "B001-49", "text": "Oi, tudo bem? Meu CPF é 123.456.789-09. Me liga no +55 11 91234-5678.", "doc_type": "whatsapp", "app": "WhatsApp", "domain": null, "title": "Chat - João", "source": "uia", "context_kind": "social", "spans": [{"surface": "123.456.789-09", "category": "NATIONAL_ID", "tier": "high"}, {"surface": "+55 11 91234-5678", "category": "PHONE", "tier": "medium"}]}
-{"id": "B001-50", "text": "Deployment checklist:\n1. Run tests\n2. Build image\n3. Push to registry\n4. Update k8s manifest\n5. Verify health endpoint", "doc_type": "notes", "app": "Notion", "domain": "notion.so", "title": "Deploy Checklist", "source": "uia", "context_kind": "code", "spans": []}
+{
+    "id": "B001-1",
+    "text": "Hi Nimal, can you send the site photos? I'll call you on 077-1234567 after lunch.",
+    "doc_type": "whatsapp",
+    "app": "WhatsApp",
+    "domain": null,
+    "title": "WhatsApp - Nimal Perera",
+    "source": "uia",
+    "context_kind": "work_chat",
+    "spans": [
+        {
+            "surface": "Nimal",
+            "category": "PERSON",
+            "tier": "low"
+        },
+        {
+            "surface": "077-1234567",
+            "category": "PHONE",
+            "tier": "medium"
+        }
+    ]
+}
+{
+    "id": "B001-2",
+    "text": "Your OTP for login is 483920. Do not share it with anyone. - Commercial Bank",
+    "doc_type": "sms",
+    "app": "Messages",
+    "domain": null,
+    "title": "SMS - Commercial Bank",
+    "source": "uia",
+    "context_kind": "banking",
+    "spans": [
+        {
+            "surface": "483920",
+            "category": "CREDENTIAL",
+            "tier": "high"
+        },
+        {
+            "surface": "Commercial Bank",
+            "category": "ORG",
+            "tier": "none"
+        }
+    ]
+}
+{
+    "id": "B001-3",
+    "text": "Patient: Fathima Rizwan, ID MRN-88213. Diagnosis: Type 2 diabetes mellitus. Prescribed Metformin 500mg twice daily. Follow-up on 14/03/2025 at Colombo North Hospital.",
+    "doc_type": "medical report",
+    "app": "Clinic Records",
+    "domain": "clinic.lk",
+    "title": "Patient Summary - Fathima Rizwan",
+    "source": "uia",
+    "context_kind": "health",
+    "spans": [
+        {
+            "surface": "Fathima Rizwan",
+            "category": "PERSON",
+            "tier": "high"
+        },
+        {
+            "surface": "MRN-88213",
+            "category": "MEDICAL",
+            "tier": "high"
+        },
+        {
+            "surface": "Type 2 diabetes mellitus",
+            "category": "MEDICAL",
+            "tier": "high"
+        },
+        {
+            "surface": "Metformin 500mg",
+            "category": "MEDICAL",
+            "tier": "high"
+        },
+        {
+            "surface": "14/03/2025",
+            "category": "DATE",
+            "tier": "medium"
+        },
+        {
+            "surface": "Colombo North Hospital",
+            "category": "ORG",
+            "tier": "low"
+        }
+    ]
+}
+{
+    "id": "B001-4",
+    "text": "Monthly salary credited: LKR 285,000.00 on 25.02.2025. Balance: LKR 1,250,400.75. Ref: SAL/FEB/2025. Account 0012345678. Thank you for banking with us.",
+    "doc_type": "bank statement",
+    "app": "Sampath Bank",
+    "domain": "sampath.lk",
+    "title": "Transaction Alert",
+    "source": "uia",
+    "context_kind": "banking",
+    "spans": [
+        {
+            "surface": "LKR 285,000.00",
+            "category": "FINANCIAL_FIGURE",
+            "tier": "high"
+        },
+        {
+            "surface": "25.02.2025",
+            "category": "DATE",
+            "tier": "medium"
+        },
+        {
+            "surface": "LKR 1,250,400.75",
+            "category": "FINANCIAL_FIGURE",
+            "tier": "high"
+        },
+        {
+            "surface": "SAL/FEB/2025",
+            "category": "FINANCIAL_FIGURE",
+            "tier": "none"
+        },
+        {
+            "surface": "0012345678",
+            "category": "BANK_ACCOUNT",
+            "tier": "high"
+        }
+    ]
+}
+{
+    "id": "B001-5",
+    "text": "Order #A7X-99231 shipped. Tracking: 1Z999AA10123456784. Delivery to 45 Galle Road, Colombo 03. Call 071 234 5678 on arrival.",
+    "doc_type": "delivery confirmation",
+    "app": "Daraz",
+    "domain": "daraz.lk",
+    "title": "Order Shipped",
+    "source": "uia",
+    "context_kind": "shopping",
+    "spans": [
+        {
+            "surface": "A7X-99231",
+            "category": "FINANCIAL_FIGURE",
+            "tier": "none"
+        },
+        {
+            "surface": "1Z999AA10123456784",
+            "category": "CARD_LIKE_NUMBER",
+            "tier": "none"
+        },
+        {
+            "surface": "45 Galle Road, Colombo 03",
+            "category": "LOCATION",
+            "tier": "medium"
+        },
+        {
+            "surface": "071 234 5678",
+            "category": "PHONE",
+            "tier": "medium"
+        }
+    ]
+}
+{
+    "id": "B001-6",
+    "text": "Meeting notes 12/02/2025: Present - Kasun Silva, Priya Fernando, Ahmed Nazeer. Discussed Q1 targets. Action: Priya to share report by Friday. kasun.silva@lankatech.lk",
+    "doc_type": "meeting notes",
+    "app": "Notion",
+    "domain": "notion.so",
+    "title": "Q1 Planning",
+    "source": "uia",
+    "context_kind": "work_chat",
+    "spans": [
+        {
+            "surface": "12/02/2025",
+            "category": "DATE",
+            "tier": "low"
+        },
+        {
+            "surface": "Kasun Silva",
+            "category": "PERSON",
+            "tier": "low"
+        },
+        {
+            "surface": "Priya Fernando",
+            "category": "PERSON",
+            "tier": "low"
+        },
+        {
+            "surface": "Ahmed Nazeer",
+            "category": "PERSON",
+            "tier": "low"
+        },
+        {
+            "surface": "Priya",
+            "category": "PERSON",
+            "tier": "low"
+        },
+        {
+            "surface": "kasun.silva@lankatech.lk",
+            "category": "EMAIL",
+            "tier": "medium"
+        }
+    ]
+}
+{
+    "id": "B001-7",
+    "text": "Dear Sir, I am applying for the Software Engineer position. My CV is attached. Regards, Dilshan Jayasuriya, +94 76 555 1234, dilshan.j@gmail.com",
+    "doc_type": "job application",
+    "app": "Gmail",
+    "domain": "mail.google.com",
+    "title": "Application - Software Engineer",
+    "source": "uia",
+    "context_kind": "email",
+    "spans": [
+        {
+            "surface": "Dilshan Jayasuriya",
+            "category": "PERSON",
+            "tier": "medium"
+        },
+        {
+            "surface": "+94 76 555 1234",
+            "category": "PHONE",
+            "tier": "medium"
+        },
+        {
+            "surface": "dilshan.j@gmail.com",
+            "category": "EMAIL",
+            "tier": "medium"
+        }
+    ]
+}
+{
+    "id": "B001-8",
+    "text": "const config = { apiKey: 'sk_demo_4eC39HqLyjWDarjtT1zdp7dc', dbUrl: 'postgres://admin:P@ssw0rd2024@db.internal:5432/prod' };",
+    "doc_type": "code snippet",
+    "app": "VS Code",
+    "domain": null,
+    "title": "config.js",
+    "source": "uia",
+    "context_kind": "code",
+    "spans": [
+        {
+            "surface": "sk_demo_4eC39HqLyjWDarjtT1zdp7dc",
+            "category": "CREDENTIAL",
+            "tier": "high"
+        },
+        {
+            "surface": "postgres://admin:P@ssw0rd2024@db.internal:5432/prod",
+            "category": "CREDENTIAL",
+            "tier": "high"
+        }
+    ]
+}
+{
+    "id": "B001-9",
+    "text": "BREAKING: Minister Ranil Wickramasinghe announced new infrastructure plans for Kandy district yesterday. The project is expected to cost LKR 4.5 billion.",
+    "doc_type": "news article",
+    "app": "Daily News",
+    "domain": "dailynews.lk",
+    "title": "Infrastructure Plans Announced",
+    "source": "uia",
+    "context_kind": "news",
+    "spans": [
+        {
+            "surface": "Ranil Wickramasinghe",
+            "category": "PERSON",
+            "tier": "none"
+        },
+        {
+            "surface": "Kandy",
+            "category": "LOCATION",
+            "tier": "none"
+        },
+        {
+            "surface": "LKR 4.5 billion",
+            "category": "FINANCIAL_FIGURE",
+            "tier": "none"
+        }
+    ]
+}
+{
+    "id": "B001-10",
+    "text": "Great workout today! 5km run in 28 mins. Anyone want to join tomorrow at Viharamahadevi Park? 😊",
+    "doc_type": "social media post",
+    "app": "Instagram",
+    "domain": "instagram.com",
+    "title": "Post",
+    "source": "uia",
+    "context_kind": "social",
+    "spans": [
+        {
+            "surface": "Viharamahadevi Park",
+            "category": "LOCATION",
+            "tier": "low"
+        }
+    ]
+}
+{
+    "id": "B001-11",
+    "text": "NIC: 912345678V, DOB: 15/08/1991. Passport: N1234567. Address: 123 Temple Road, Negombo.",
+    "doc_type": "government form",
+    "app": "Department of Immigration",
+    "domain": "immigration.gov.lk",
+    "title": "Passport Application",
+    "source": "uia",
+    "context_kind": "notes",
+    "spans": [
+        {
+            "surface": "912345678V",
+            "category": "NATIONAL_ID",
+            "tier": "high"
+        },
+        {
+            "surface": "15/08/1991",
+            "category": "DATE",
+            "tier": "high"
+        },
+        {
+            "surface": "N1234567",
+            "category": "NATIONAL_ID",
+            "tier": "high"
+        },
+        {
+            "surface": "123 Temple Road, Negombo",
+            "category": "LOCATION",
+            "tier": "high"
+        }
+    ]
+}
+{
+    "id": "B001-12",
+    "text": "Hey machan, send me the notes for CS201. I'll pick them up at 6pm. Thanks da!",
+    "doc_type": "whatsapp",
+    "app": "WhatsApp",
+    "domain": null,
+    "title": "Chat - Rukshan",
+    "source": "uia",
+    "context_kind": "social",
+    "spans": []
+}
+{
+    "id": "B001-13",
+    "text": "Your card ending 4821 was charged $45.99 at AMAZON.COM on 03/15/2025. If unauthorized call +1 (415) 555-0132.",
+    "doc_type": "sms",
+    "app": "Messages",
+    "domain": null,
+    "title": "SMS - Bank Alert",
+    "source": "uia",
+    "context_kind": "banking",
+    "spans": [
+        {
+            "surface": "4821",
+            "category": "CARD_LIKE_NUMBER",
+            "tier": "medium"
+        },
+        {
+            "surface": "$45.99",
+            "category": "FINANCIAL_FIGURE",
+            "tier": "medium"
+        },
+        {
+            "surface": "03/15/2025",
+            "category": "DATE",
+            "tier": "medium"
+        },
+        {
+            "surface": "+1 (415) 555-0132",
+            "category": "PHONE",
+            "tier": "none"
+        }
+    ]
+}
+{
+    "id": "B001-14",
+    "text": "Employee: Sarah Mitchell. Employee ID: EMP-4471. Department: Marketing. Salary: GBP 4,250/month. NI: QQ 12 34 56 C. Start date: 01/09/2023.",
+    "doc_type": "HR record",
+    "app": "BambooHR",
+    "domain": "bamboohr.com",
+    "title": "Employee Profile",
+    "source": "uia",
+    "context_kind": "hr",
+    "spans": [
+        {
+            "surface": "Sarah Mitchell",
+            "category": "PERSON",
+            "tier": "high"
+        },
+        {
+            "surface": "EMP-4471",
+            "category": "MEDICAL",
+            "tier": "medium"
+        },
+        {
+            "surface": "GBP 4,250",
+            "category": "FINANCIAL_FIGURE",
+            "tier": "high"
+        },
+        {
+            "surface": "QQ 12 34 56 C",
+            "category": "NATIONAL_ID",
+            "tier": "high"
+        },
+        {
+            "surface": "01/09/2023",
+            "category": "DATE",
+            "tier": "medium"
+        }
+    ]
+}
+{
+    "id": "B001-15",
+    "text": "def connect():\n    # TODO: remove hardcoded password\n    password = 'admin123'\n    host = '192.168.1.45'\n    return connect(host, password)",
+    "doc_type": "code snippet",
+    "app": "PyCharm",
+    "domain": null,
+    "title": "db.py",
+    "source": "uia",
+    "context_kind": "code",
+    "spans": [
+        {
+            "surface": "admin123",
+            "category": "CREDENTIAL",
+            "tier": "high"
+        },
+        {
+            "surface": "192.168.1.45",
+            "category": "IP_ADDRESS",
+            "tier": "low"
+        }
+    ]
+}
+{
+    "id": "B001-16",
+    "text": "Invoice INV-2025-0334. Bill to: Tech Solutions Ltd, 88 Park Street, London EC2A 4NE. Amount: £1,250.00. Due: 30/04/2025.",
+    "doc_type": "invoice",
+    "app": "QuickBooks",
+    "domain": "quickbooks.intuit.com",
+    "title": "Invoice",
+    "source": "uia",
+    "context_kind": "shopping",
+    "spans": [
+        {
+            "surface": "INV-2025-0334",
+            "category": "FINANCIAL_FIGURE",
+            "tier": "none"
+        },
+        {
+            "surface": "Tech Solutions Ltd",
+            "category": "ORG",
+            "tier": "low"
+        },
+        {
+            "surface": "88 Park Street, London EC2A 4NE",
+            "category": "LOCATION",
+            "tier": "medium"
+        },
+        {
+            "surface": "£1,250.00",
+            "category": "FINANCIAL_FIGURE",
+            "tier": "medium"
+        },
+        {
+            "surface": "30/04/2025",
+            "category": "DATE",
+            "tier": "low"
+        }
+    ]
+}
+{
+    "id": "B001-17",
+    "text": "Hi, I'm Dr. Anjali Sharma. Please book my appointment for 22 March. My number is +91 98765 43210.",
+    "doc_type": "sms",
+    "app": "Messages",
+    "domain": null,
+    "title": "SMS - Dr. Sharma",
+    "source": "uia",
+    "context_kind": "health",
+    "spans": [
+        {
+            "surface": "Anjali Sharma",
+            "category": "PERSON",
+            "tier": "medium"
+        },
+        {
+            "surface": "22 March",
+            "category": "DATE",
+            "tier": "low"
+        },
+        {
+            "surface": "+91 98765 43210",
+            "category": "PHONE",
+            "tier": "medium"
+        }
+    ]
+}
+{
+    "id": "B001-18",
+    "text": "2025-01-15 08:23:11 INFO User jdoe logged in from 203.0.113.42\n2025-01-15 08:23:45 ERROR Failed login for admin@example.com",
+    "doc_type": "log file",
+    "app": "Terminal",
+    "domain": null,
+    "title": "auth.log",
+    "source": "uia",
+    "context_kind": "code",
+    "spans": [
+        {
+            "surface": "2025-01-15 08:23:11",
+            "category": "DATE",
+            "tier": "none"
+        },
+        {
+            "surface": "jdoe",
+            "category": "PERSON",
+            "tier": "low"
+        },
+        {
+            "surface": "203.0.113.42",
+            "category": "IP_ADDRESS",
+            "tier": "low"
+        },
+        {
+            "surface": "admin@example.com",
+            "category": "EMAIL",
+            "tier": "none"
+        }
+    ]
+}
+{
+    "id": "B001-19",
+    "text": "My NIC is 9 1 2 3 4 5 6 7 V and my mobile is 0 7 7 1 2 3 4 5 6 7. Please update my records.",
+    "doc_type": "web form",
+    "app": "Bank Portal",
+    "domain": "seylan.lk",
+    "title": "Update Contact Details",
+    "source": "uia",
+    "context_kind": "banking",
+    "spans": [
+        {
+            "surface": "9 1 2 3 4 5 6 7 V",
+            "category": "NATIONAL_ID",
+            "tier": "high"
+        },
+        {
+            "surface": "0 7 7 1 2 3 4 5 6 7",
+            "category": "PHONE",
+            "tier": "high"
+        }
+    ]
+}
+{
+    "id": "B001-20",
+    "text": "Dear Mr. Fernando, Thank you for your email. We have processed your request. Best regards, Customer Service Team",
+    "doc_type": "email",
+    "app": "Outlook",
+    "domain": "outlook.com",
+    "title": "Re: Your Request",
+    "source": "uia",
+    "context_kind": "email",
+    "spans": [
+        {
+            "surface": "Fernando",
+            "category": "PERSON",
+            "tier": "low"
+        }
+    ]
+}
+{
+    "id": "B001-21",
+    "text": "Transfer complete: EUR 1.250,00 from DE89 3704 0044 0532 0130 00 to GB29 NWBK 6016 1331 9268 19. Reference: RENT-MAR.",
+    "doc_type": "bank statement",
+    "app": "N26",
+    "domain": "n26.com",
+    "title": "Transfer Confirmation",
+    "source": "uia",
+    "context_kind": "banking",
+    "spans": [
+        {
+            "surface": "EUR 1.250,00",
+            "category": "FINANCIAL_FIGURE",
+            "tier": "high"
+        },
+        {
+            "surface": "DE89 3704 0044 0532 0130 00",
+            "category": "BANK_ACCOUNT",
+            "tier": "high"
+        },
+        {
+            "surface": "GB29 NWBK 6016 1331 9268 19",
+            "category": "BANK_ACCOUNT",
+            "tier": "high"
+        },
+        {
+            "surface": "RENT-MAR",
+            "category": "FINANCIAL_FIGURE",
+            "tier": "none"
+        }
+    ]
+}
+{
+    "id": "B001-22",
+    "text": "こんにちは田中さん、明日の会議は10時からです。資料を送ります。",
+    "doc_type": "email",
+    "app": "Gmail",
+    "domain": "mail.google.com",
+    "title": "明日の会議",
+    "source": "uia",
+    "context_kind": "work_chat",
+    "spans": [
+        {
+            "surface": "田中",
+            "category": "PERSON",
+            "tier": "low"
+        }
+    ]
+}
+{
+    "id": "B001-23",
+    "text": "Re: order. My email is john dot doe at gmail dot com. Please send the invoice there.",
+    "doc_type": "email",
+    "app": "Mail",
+    "domain": null,
+    "title": "Order",
+    "source": "uia",
+    "context_kind": "shopping",
+    "spans": [
+        {
+            "surface": "john dot doe at gmail dot com",
+            "category": "EMAIL",
+            "tier": "medium"
+        }
+    ]
+}
+{
+    "id": "B001-24",
+    "text": "Blood test results: Patient ID PT-5521. HbA1c 7.2%. Cholesterol 210 mg/dL. Suggest lifestyle changes and review in 3 months.",
+    "doc_type": "medical report",
+    "app": "Health Records",
+    "domain": null,
+    "title": "Lab Results",
+    "source": "uia",
+    "context_kind": "health",
+    "spans": [
+        {
+            "surface": "PT-5521",
+            "category": "MEDICAL",
+            "tier": "high"
+        },
+        {
+            "surface": "HbA1c 7.2%",
+            "category": "MEDICAL",
+            "tier": "high"
+        },
+        {
+            "surface": "Cholesterol 210 mg/dL",
+            "category": "MEDICAL",
+            "tier": "high"
+        }
+    ]
+}
+{
+    "id": "B001-25",
+    "text": "Invoice #INV-8821-3321. Total: ₹12,50,000. GST: 18%. Pay to: HDFC Bank, IFSC HDFC0001234, A/C 50100234567890.",
+    "doc_type": "invoice",
+    "app": "Zoho",
+    "domain": "zoho.in",
+    "title": "Tax Invoice",
+    "source": "uia",
+    "context_kind": "shopping",
+    "spans": [
+        {
+            "surface": "INV-8821-3321",
+            "category": "FINANCIAL_FIGURE",
+            "tier": "none"
+        },
+        {
+            "surface": "₹12,50,000",
+            "category": "FINANCIAL_FIGURE",
+            "tier": "medium"
+        },
+        {
+            "surface": "HDFC0001234",
+            "category": "BANK_ACCOUNT",
+            "tier": "high"
+        },
+        {
+            "surface": "50100234567890",
+            "category": "BANK_ACCOUNT",
+            "tier": "high"
+        }
+    ]
+}
+{
+    "id": "B001-26",
+    "text": "Meeting with Ahmed Al-Farsi on 15/06/2025 at Dubai office. Contact: +971 50 123 4567. Discussed expansion plans.",
+    "doc_type": "calendar entry",
+    "app": "Google Calendar",
+    "domain": "calendar.google.com",
+    "title": "Meeting - Dubai",
+    "source": "uia",
+    "context_kind": "work_chat",
+    "spans": [
+        {
+            "surface": "Ahmed Al-Farsi",
+            "category": "PERSON",
+            "tier": "low"
+        },
+        {
+            "surface": "15/06/2025",
+            "category": "DATE",
+            "tier": "low"
+        },
+        {
+            "surface": "Dubai",
+            "category": "LOCATION",
+            "tier": "none"
+        },
+        {
+            "surface": "+971 50 123 4567",
+            "category": "PHONE",
+            "tier": "medium"
+        }
+    ]
+}
+{
+    "id": "B001-27",
+    "text": "Payment received: $4,500.00. Card: 4111 1111 1111 1111. Name on card: Test User. Expiry: 12/26.",
+    "doc_type": "receipt",
+    "app": "Stripe",
+    "domain": "stripe.com",
+    "title": "Payment Receipt",
+    "source": "uia",
+    "context_kind": "shopping",
+    "spans": [
+        {
+            "surface": "$4,500.00",
+            "category": "FINANCIAL_FIGURE",
+            "tier": "medium"
+        },
+        {
+            "surface": "4111 1111 1111 1111",
+            "category": "CARD_LIKE_NUMBER",
+            "tier": "high"
+        },
+        {
+            "surface": "12/26",
+            "category": "DATE",
+            "tier": "low"
+        }
+    ]
+}
+{
+    "id": "B001-28",
+    "text": "Reference: REF-20250315-001. Serial: SN-98765432. Version: 3.14.159. No personal data in this document.",
+    "doc_type": "support ticket",
+    "app": "Jira",
+    "domain": "atlassian.net",
+    "title": "Ticket #4521",
+    "source": "uia",
+    "context_kind": "code",
+    "spans": [
+        {
+            "surface": "REF-20250315-001",
+            "category": "FINANCIAL_FIGURE",
+            "tier": "none"
+        },
+        {
+            "surface": "SN-98765432",
+            "category": "FINANCIAL_FIGURE",
+            "tier": "none"
+        },
+        {
+            "surface": "3.14.159",
+            "category": "FINANCIAL_FIGURE",
+            "tier": "none"
+        }
+    ]
+}
+{
+    "id": "B001-29",
+    "text": "Hola, soy María García. Mi teléfono es +34 612 345 678. Mi dirección: Calle Mayor 15, Madrid.",
+    "doc_type": "sms",
+    "app": "Messages",
+    "domain": null,
+    "title": "SMS - María",
+    "source": "uia",
+    "context_kind": "social",
+    "spans": [
+        {
+            "surface": "María García",
+            "category": "PERSON",
+            "tier": "low"
+        },
+        {
+            "surface": "+34 612 345 678",
+            "category": "PHONE",
+            "tier": "medium"
+        },
+        {
+            "surface": "Calle Mayor 15, Madrid",
+            "category": "LOCATION",
+            "tier": "medium"
+        }
+    ]
+}
+{
+    "id": "B001-30",
+    "text": "Hi team, please note the deployment is scheduled for 20/03/2025 at 02:00 UTC. Rollback plan is in the wiki.",
+    "doc_type": "work chat",
+    "app": "Slack",
+    "domain": "slack.com",
+    "title": "#deployments",
+    "source": "uia",
+    "context_kind": "work_chat",
+    "spans": [
+        {
+            "surface": "20/03/2025",
+            "category": "DATE",
+            "tier": "low"
+        }
+    ]
+}
+{
+    "id": "B001-31",
+    "text": "My SSN is 123-45-6789 and my DOB is 04/12/1985. Please verify my identity.",
+    "doc_type": "web form",
+    "app": "IRS Portal",
+    "domain": "irs.gov",
+    "title": "Identity Verification",
+    "source": "uia",
+    "context_kind": "banking",
+    "spans": [
+        {
+            "surface": "123-45-6789",
+            "category": "NATIONAL_ID",
+            "tier": "high"
+        },
+        {
+            "surface": "04/12/1985",
+            "category": "DATE",
+            "tier": "high"
+        }
+    ]
+}
+{
+    "id": "B001-32",
+    "text": "Support ticket #TKT-9921: User reports error code E-5021. Browser: Chrome 120. No PII attached.",
+    "doc_type": "support ticket",
+    "app": "Zendesk",
+    "domain": "zendesk.com",
+    "title": "Ticket #TKT-9921",
+    "source": "uia",
+    "context_kind": "code",
+    "spans": [
+        {
+            "surface": "TKT-9921",
+            "category": "FINANCIAL_FIGURE",
+            "tier": "none"
+        },
+        {
+            "surface": "E-5021",
+            "category": "FINANCIAL_FIGURE",
+            "tier": "none"
+        },
+        {
+            "surface": "Chrome 120",
+            "category": "FINANCIAL_FIGURE",
+            "tier": "none"
+        }
+    ]
+}
+{
+    "id": "B001-33",
+    "text": "Payslip for January 2025. Employee: Rajesh Kumar. Basic: ₹45,000. HRA: ₹18,000. Net Pay: ₹58,500. PAN: ABCDE1234F.",
+    "doc_type": "payslip",
+    "app": "Payroll",
+    "domain": null,
+    "title": "Payslip Jan 2025",
+    "source": "uia",
+    "context_kind": "hr",
+    "spans": [
+        {
+            "surface": "January 2025",
+            "category": "DATE",
+            "tier": "low"
+        },
+        {
+            "surface": "Rajesh Kumar",
+            "category": "PERSON",
+            "tier": "high"
+        },
+        {
+            "surface": "₹45,000",
+            "category": "FINANCIAL_FIGURE",
+            "tier": "high"
+        },
+        {
+            "surface": "₹18,000",
+            "category": "FINANCIAL_FIGURE",
+            "tier": "high"
+        },
+        {
+            "surface": "₹58,500",
+            "category": "FINANCIAL_FIGURE",
+            "tier": "high"
+        },
+        {
+            "surface": "ABCDE1234F",
+            "category": "NATIONAL_ID",
+            "tier": "high"
+        }
+    ]
+}
+{
+    "id": "B001-34",
+    "text": "New message from unknown: Click this link to claim your prize http://bit.ly/3xYzAbC?session=eyJhbGciOiJIUzI1NiJ9",
+    "doc_type": "sms",
+    "app": "Messages",
+    "domain": null,
+    "title": "SMS - Unknown",
+    "source": "uia",
+    "context_kind": "email",
+    "spans": [
+        {
+            "surface": "http://bit.ly/3xYzAbC?session=eyJhbGciOiJIUzI1NiJ9",
+            "category": "URL_TOKEN",
+            "tier": "medium"
+        }
+    ]
+}
+{
+    "id": "B001-35",
+    "text": "Properties: id=88213, name='Test Product', sku='SKU-11223344', price=19.99, isbn='978-3-16-148410-0'",
+    "doc_type": "JSON snippet",
+    "app": "Text Editor",
+    "domain": null,
+    "title": "data.json",
+    "source": "uia",
+    "context_kind": "code",
+    "spans": [
+        {
+            "surface": "SKU-11223344",
+            "category": "FINANCIAL_FIGURE",
+            "tier": "none"
+        },
+        {
+            "surface": "978-3-16-148410-0",
+            "category": "FINANCIAL_FIGURE",
+            "tier": "none"
+        }
+    ]
+}
+{
+    "id": "B001-36",
+    "text": "Hi, this is Sunil. My new number is +94 71 888 9999. Save it. Old one disconnected.",
+    "doc_type": "whatsapp",
+    "app": "WhatsApp",
+    "domain": null,
+    "title": "Chat - Sunil",
+    "source": "uia",
+    "context_kind": "social",
+    "spans": [
+        {
+            "surface": "Sunil",
+            "category": "PERSON",
+            "tier": "low"
+        },
+        {
+            "surface": "+94 71 888 9999",
+            "category": "PHONE",
+            "tier": "medium"
+        }
+    ]
+}
+{
+    "id": "B001-37",
+    "text": "Passport No: C01X00T47. Issued: 12.05.2022. Expiry: 11.05.2032. Holder: Hans Müller, Berlin.",
+    "doc_type": "government form",
+    "app": "Bundesdruckerei",
+    "domain": null,
+    "title": "Passport Data",
+    "source": "uia",
+    "context_kind": "notes",
+    "spans": [
+        {
+            "surface": "C01X00T47",
+            "category": "NATIONAL_ID",
+            "tier": "high"
+        },
+        {
+            "surface": "12.05.2022",
+            "category": "DATE",
+            "tier": "medium"
+        },
+        {
+            "surface": "11.05.2032",
+            "category": "DATE",
+            "tier": "medium"
+        },
+        {
+            "surface": "Hans Müller",
+            "category": "PERSON",
+            "tier": "high"
+        },
+        {
+            "surface": "Berlin",
+            "category": "LOCATION",
+            "tier": "low"
+        }
+    ]
+}
+{
+    "id": "B001-38",
+    "text": "From: accounts@acme-corp.com\nTo: j.smith@example.org\nSubject: Q1 Report\n\nPlease find attached the Q1 report. Let me know if you need anything else.",
+    "doc_type": "email",
+    "app": "Outlook",
+    "domain": "outlook.com",
+    "title": "Q1 Report",
+    "source": "uia",
+    "context_kind": "email",
+    "spans": [
+        {
+            "surface": "accounts@acme-corp.com",
+            "category": "EMAIL",
+            "tier": "none"
+        },
+        {
+            "surface": "j.smith@example.org",
+            "category": "EMAIL",
+            "tier": "medium"
+        }
+    ]
+}
+{
+    "id": "B001-39",
+    "text": "Account balance: AUD 12,345.67. BSB: 062-000. Account: 12345678. Transaction on 15/03/2025 at Woolworths Sydney.",
+    "doc_type": "bank statement",
+    "app": "CommBank",
+    "domain": "commbank.com.au",
+    "title": "Account Summary",
+    "source": "uia",
+    "context_kind": "banking",
+    "spans": [
+        {
+            "surface": "AUD 12,345.67",
+            "category": "FINANCIAL_FIGURE",
+            "tier": "high"
+        },
+        {
+            "surface": "062-000",
+            "category": "BANK_ACCOUNT",
+            "tier": "high"
+        },
+        {
+            "surface": "12345678",
+            "category": "BANK_ACCOUNT",
+            "tier": "high"
+        },
+        {
+            "surface": "15/03/2025",
+            "category": "DATE",
+            "tier": "medium"
+        },
+        {
+            "surface": "Woolworths Sydney",
+            "category": "ORG",
+            "tier": "low"
+        }
+    ]
+}
+{
+    "id": "B001-40",
+    "text": "Customer: 陈伟. Phone: +86 138 0013 8000. Address: 北京市朝阳区建国路88号.",
+    "doc_type": "shopping confirmation",
+    "app": "Taobao",
+    "domain": "taobao.com",
+    "title": "Order Confirmation",
+    "source": "uia",
+    "context_kind": "shopping",
+    "spans": [
+        {
+            "surface": "陈伟",
+            "category": "PERSON",
+            "tier": "medium"
+        },
+        {
+            "surface": "+86 138 0013 8000",
+            "category": "PHONE",
+            "tier": "medium"
+        },
+        {
+            "surface": "北京市朝阳区建国路88号",
+            "category": "LOCATION",
+            "tier": "medium"
+        }
+    ]
+}
+{
+    "id": "B001-41",
+    "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam.",
+    "doc_type": "notes",
+    "app": "Notes",
+    "domain": null,
+    "title": "Draft",
+    "source": "uia",
+    "context_kind": "notes",
+    "spans": []
+}
+{
+    "id": "B001-42",
+    "text": "Hi, I need to reschedule my appointment. My patient ID is 4471-88213. Please call 011 234 5678.",
+    "doc_type": "email",
+    "app": "Gmail",
+    "domain": "mail.google.com",
+    "title": "Appointment Reschedule",
+    "source": "uia",
+    "context_kind": "health",
+    "spans": [
+        {
+            "surface": "4471-88213",
+            "category": "MEDICAL",
+            "tier": "high"
+        },
+        {
+            "surface": "011 234 5678",
+            "category": "PHONE",
+            "tier": "high"
+        }
+    ]
+}
+{
+    "id": "B001-43",
+    "text": "Tracking number: LK123456789CN. Status: In transit. Estimated delivery: 18/03/2025.",
+    "doc_type": "delivery confirmation",
+    "app": "AliExpress",
+    "domain": "aliexpress.com",
+    "title": "Order Tracking",
+    "source": "uia",
+    "context_kind": "shopping",
+    "spans": [
+        {
+            "surface": "LK123456789CN",
+            "category": "FINANCIAL_FIGURE",
+            "tier": "none"
+        },
+        {
+            "surface": "18/03/2025",
+            "category": "DATE",
+            "tier": "low"
+        }
+    ]
+}
+{
+    "id": "B001-44",
+    "text": "Server at 10.0.0.55 returned 500. Traceback: File '/app/main.py', line 42, in handler. User: anonymous.",
+    "doc_type": "log file",
+    "app": "Terminal",
+    "domain": null,
+    "title": "error.log",
+    "source": "uia",
+    "context_kind": "code",
+    "spans": [
+        {
+            "surface": "10.0.0.55",
+            "category": "IP_ADDRESS",
+            "tier": "low"
+        }
+    ]
+}
+{
+    "id": "B001-45",
+    "text": "Dear Ms. Perera, Your loan application LA-2025-8891 has been approved. Amount: LKR 2,500,000. Repayment: 60 months. Contact 011-2345678.",
+    "doc_type": "email",
+    "app": "Outlook",
+    "domain": "outlook.com",
+    "title": "Loan Approval",
+    "source": "uia",
+    "context_kind": "banking",
+    "spans": [
+        {
+            "surface": "Perera",
+            "category": "PERSON",
+            "tier": "medium"
+        },
+        {
+            "surface": "LA-2025-8891",
+            "category": "FINANCIAL_FIGURE",
+            "tier": "medium"
+        },
+        {
+            "surface": "LKR 2,500,000",
+            "category": "FINANCIAL_FIGURE",
+            "tier": "high"
+        },
+        {
+            "surface": "60 months",
+            "category": "FINANCIAL_FIGURE",
+            "tier": "medium"
+        },
+        {
+            "surface": "011-2345678",
+            "category": "PHONE",
+            "tier": "medium"
+        }
+    ]
+}
+{
+    "id": "B001-46",
+    "text": "Meeting minutes: Attendees - S. Fernando, K. Silva. Date: 10/03/2025. Topics: budget review, Q2 planning. Next meeting: 17/03/2025.",
+    "doc_type": "meeting notes",
+    "app": "Google Docs",
+    "domain": "docs.google.com",
+    "title": "Minutes 10-03",
+    "source": "uia",
+    "context_kind": "work_chat",
+    "spans": [
+        {
+            "surface": "S. Fernando",
+            "category": "PERSON",
+            "tier": "low"
+        },
+        {
+            "surface": "K. Silva",
+            "category": "PERSON",
+            "tier": "low"
+        },
+        {
+            "surface": "10/03/2025",
+            "category": "DATE",
+            "tier": "low"
+        },
+        {
+            "surface": "17/03/2025",
+            "category": "DATE",
+            "tier": "low"
+        }
+    ]
+}
+{
+    "id": "B001-47",
+    "text": "Voicemail transcript: Ayubowan, this is Chaminda. Call me back at 077 123 4567. It's about the project.",
+    "doc_type": "voice-note transcript",
+    "app": "WhatsApp",
+    "domain": null,
+    "title": "Voice Note",
+    "source": "uia",
+    "context_kind": "work_chat",
+    "spans": [
+        {
+            "surface": "Chaminda",
+            "category": "PERSON",
+            "tier": "low"
+        },
+        {
+            "surface": "077 123 4567",
+            "category": "PHONE",
+            "tier": "medium"
+        }
+    ]
+}
+{
+    "id": "B001-48",
+    "text": "TAX INVOICE. Seller: ABC Traders, 12 Main Street, Kandy. Buyer: XYZ Corp. Invoice: 2025-001. Total: LKR 45,000.00.",
+    "doc_type": "invoice",
+    "app": "QuickBooks",
+    "domain": "quickbooks.intuit.com",
+    "title": "Tax Invoice",
+    "source": "uia",
+    "context_kind": "shopping",
+    "spans": [
+        {
+            "surface": "ABC Traders",
+            "category": "ORG",
+            "tier": "low"
+        },
+        {
+            "surface": "12 Main Street, Kandy",
+            "category": "LOCATION",
+            "tier": "low"
+        },
+        {
+            "surface": "XYZ Corp",
+            "category": "ORG",
+            "tier": "low"
+        },
+        {
+            "surface": "2025-001",
+            "category": "FINANCIAL_FIGURE",
+            "tier": "none"
+        },
+        {
+            "surface": "LKR 45,000.00",
+            "category": "FINANCIAL_FIGURE",
+            "tier": "medium"
+        }
+    ]
+}
+{
+    "id": "B001-49",
+    "text": "Oi, tudo bem? Meu CPF é 123.456.789-09. Me liga no +55 11 91234-5678.",
+    "doc_type": "whatsapp",
+    "app": "WhatsApp",
+    "domain": null,
+    "title": "Chat - João",
+    "source": "uia",
+    "context_kind": "social",
+    "spans": [
+        {
+            "surface": "123.456.789-09",
+            "category": "NATIONAL_ID",
+            "tier": "high"
+        },
+        {
+            "surface": "+55 11 91234-5678",
+            "category": "PHONE",
+            "tier": "medium"
+        }
+    ]
+}
+{
+    "id": "B001-50",
+    "text": "Deployment checklist:\n1. Run tests\n2. Build image\n3. Push to registry\n4. Update k8s manifest\n5. Verify health endpoint",
+    "doc_type": "notes",
+    "app": "Notion",
+    "domain": "notion.so",
+    "title": "Deploy Checklist",
+    "source": "uia",
+    "context_kind": "code",
+    "spans": []
+}
