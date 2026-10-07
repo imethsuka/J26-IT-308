@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CAPRLM Research Prototype</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app-shell">
+    <header class="app-header">
+      <div>
+        <p class="eyebrow">Member2 / research prototype</p>
+        <h1>Context-Aware Privacy Risk Learning Model</h1>
+        <p class="subtitle">Desktop context review and privacy protection study interface.</p>
+      </div>
+      <div class="prototype-status" aria-label="Frontend status">
+        <span class="status-indicator" aria-hidden="true"></span>
+        <span>Prototype / not connected</span>
+      </div>
+    </header>
+
+    <div id="analysis-status" class="notice" role="status" aria-live="polite">
+      <strong>Research interface</strong>
+      <span>Backend connection is available for prototype testing.</span>
+    </div>
+
+    <div class="workspace-grid">
+      <section class="workspace input-panel" aria-labelledby="input-heading">
+        <div class="section-heading">
+          <div>
+            <p class="section-label">01 / Input</p>
+            <h2 id="input-heading">Desktop context</h2>
+          </div>
+          <span class="section-status">Input ready</span>
+        </div>
+
+        <label for="context-input">Context description</label>
+        <textarea id="context-input" rows="7" placeholder="Enter or paste captured desktop context for a future analysis workflow..."></textarea>
+
+        <div class="screenshot-upload">
+          <label for="screenshot-input">Screenshot</label>
+          <p class="field-help">Select a JPG, JPEG, or PNG screenshot for local preview.</p>
+          <input id="screenshot-input" type="file" accept=".jpg,.jpeg,.png,image/jpeg,image/png">
+          <div id="screenshot-preview" class="screenshot-preview" hidden>
+            <div class="preview-header">
+              <span id="screenshot-filename" class="screenshot-filename"></span>
+              <button id="remove-screenshot" class="button button-secondary" type="button">Remove</button>
+            </div>
+            <img id="screenshot-image" alt="Selected screenshot preview">
+          </div>
+        </div>
+
+        <div class="input-footer">
+          <span id="character-count" aria-live="polite">0 characters</span>
+          <button id="clear-button" class="button button-secondary" type="button">Clear</button>
+        </div>
+
+        <div class="configuration" aria-labelledby="configuration-heading">
+          <div class="section-heading configuration-heading">
+            <div>
+              <p class="section-label">02 / Configuration</p>
+              <h2 id="configuration-heading">Analysis context</h2>
+            </div>
+          </div>
+
+          <div class="field-grid">
+            <div class="field">
+              <label for="application-context">Application context</label>
+              <select id="application-context">
+                <option value="">Select an application</option>
+                <option>Google Chrome</option>
+                <option>Visual Studio Code</option>
+                <option>ChatGPT</option>
+                <option>Microsoft Word</option>
+                <option>Other</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="privacy-preference">Privacy preference</label>
+              <select id="privacy-preference">
+                <option value="">Select a preference</option>
+                <option>Low</option>
+                <option>Medium</option>
+                <option>High</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="historical-protection">Historical protection level</label>
+              <select id="historical-protection">
+                <option value="">Select a protection level</option>
+                <option>Low</option>
+                <option>Medium</option>
+                <option>High</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="action-row">
+            <button id="analyze-button" class="button button-primary" type="button" disabled>Analyze</button>
+            <span id="action-note" class="action-note">Select a screenshot and all configuration values.</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="workspace results-panel" aria-labelledby="results-heading">
+        <div class="section-heading">
+          <div>
+            <p class="section-label">03 / Results</p>
+            <h2 id="results-heading">Analysis results</h2>
+          </div>
+          <span class="section-status">No analysis</span>
+        </div>
+
+        <div class="result-list">
+          <article class="result-item">
+            <h3>Sensitive Information Detection</h3>
+            <div id="detection-output" class="response-output">
+              <p class="response-empty">No analysis has been performed.</p>
+            </div>
+          </article>
+          <article class="result-item">
+            <h3>Privacy Risk</h3>
+            <div id="risk-output" class="response-output">
+              <p class="response-empty">No risk assessment has been performed.</p>
+            </div>
+          </article>
+          <article class="result-item">
+            <h3>Protection Decision</h3>
+            <div id="protection-output" class="response-output">
+              <p class="response-empty">No protection decision is available.</p>
+            </div>
+          </article>
+          <article class="result-item">
+            <h3>Extracted Features</h3>
+            <div id="features-output" class="response-output">
+              <p class="response-empty">No extracted features are available.</p>
+            </div>
+          </article>
+        </div>
+
+        <div id="model-status" class="model-status" role="status" aria-live="polite">
+          <span class="status-indicator" aria-hidden="true"></span>
+          <span>Model status: awaiting analysis</span>
+        </div>
+      </section>
+    </div>
+
+    <footer class="app-footer">
+      <span>Adaptive Privacy-Preserving Cognitive Memory System</span>
+      <span>Frontend foundation</span>
+    </footer>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
