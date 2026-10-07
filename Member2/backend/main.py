@@ -3,6 +3,7 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 
 from services.feature_extraction import extract_features
 from services.ocr_service import extract_text
@@ -11,6 +12,14 @@ from services.risk_prediction import predict_privacy_risk
 from services.sensitive_detection import detect_sensitive_entities
 
 app = FastAPI(title="J26-IT-308 CAPRLM Backend")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://127.0.0.1:5500",
+        "http://localhost:5500",
+    ],
+)
 
 
 @app.get("/")
