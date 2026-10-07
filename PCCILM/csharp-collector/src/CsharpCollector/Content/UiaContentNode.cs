@@ -24,22 +24,43 @@ internal sealed class UiaContentNode : IContentNode
             return new UiaContentNode(AutomationElement.FromHandle(hwnd));
     }
 
+    /// <summary>
+    /// The panel the user is working in, when it is a document of its own that is clearly smaller than the window (a chat
+    /// or tool pane beside an editor, a browser side panel), or null to read the whole window. See <see cref="ReadingScope"/>.
+    /// </summary>
+    public static UiaContentNode? FocusedPane(IntPtr hwnd, ScreenRect window)
+    {
+        var focused = AutomationElement.FocusedElement;
+        var walker = TreeWalker.ControlViewWalker;
+        var chain = new List<(bool IsDocument, ScreenRect Bounds, AutomationElement Element)>();
+        var inWindow = false;
+        for (var e = focused; e is not null && chain.Count < ReadingScope.MaxDepth; e = walker.GetParent(e))
+        {
+            var current = e.Current;
+            if (current.NativeWindowHandle == hwnd.ToInt32())
+            {
+                inWindow = true; // the focus is inside the window being read, not some other app's popup
+                break;
+            }
+            chain.Add((current.ControlType == ControlType.Document, ToRect(current.BoundingRectangle), e));
+        }
+        if (!inWindow) return null;
+        var index = ReadingScope.Choose(window, chain.Select(c => (c.IsDocument, c.Bounds)).ToList());
+        if (index is not { } i) return null;
+        using (Request.Activate())
+            return new UiaContentNode(chain[i].Element.GetUpdatedCache(Request));
+    }
+
+    private static ScreenRect ToRect(System.Windows.Rect r) =>
+        r.IsEmpty || double.IsInfinity(r.Width) ? default : new ScreenRect((int)r.X, (int)r.Y, (int)r.Width, (int)r.Height);
+
     public ContentKind Kind => KindOf(_element.Cached.ControlType);
     public string? Name => _element.Cached.Name;
     public bool IsOffscreen => _element.Cached.IsOffscreen;
     public bool IsPassword => _element.Cached.IsPassword;
     public bool HasKeyboardFocus => _element.Cached.HasKeyboardFocus;
 
-    public ScreenRect Bounds
-    {
-        get
-        {
-            var r = _element.Cached.BoundingRectangle;
-            return r.IsEmpty || double.IsInfinity(r.Width)
-                ? default
-                : new ScreenRect((int)r.X, (int)r.Y, (int)r.Width, (int)r.Height);
-        }
-    }
+    public ScreenRect Bounds => ToRect(_element.Cached.BoundingRectangle);
 
     public string? TryGetValue()
     {
@@ -144,6 +165,19 @@ internal sealed class UiaScreenContentReader : IScreenContentReader
 
     public UiaScreenContentReader(ContentLimits limits) => _limits = limits;
 
+    /// <summary>The focused pane, or null (read the whole window) when there is none or it can't be found.</summary>
+    private static UiaContentNode? TryFocusedPane(IntPtr hwnd, ScreenRect window)
+    {
+        try
+        {
+            return UiaContentNode.FocusedPane(hwnd, window);
+        }
+        catch (Exception ex) when (ex is ElementNotAvailableException or COMException or InvalidOperationException or ArgumentException)
+        {
+            return null;
+        }
+    }
+
     /// <summary>The window's content, or null if UIA couldn't read it (window closed, app hung, ...).
     /// A page that is re-rendering can invalidate an element mid-read, so a failed read is retried once.</summary>
     public ScreenContent? TryRead(IntPtr hwnd)
@@ -153,9 +187,9 @@ internal sealed class UiaScreenContentReader : IScreenContentReader
             var start = System.Diagnostics.Stopwatch.GetTimestamp();
             try
             {
-                return ScreenContentExtractor.Extract(
-                    UiaContentNode.FromHandle(hwnd), _limits,
-                    () => System.Diagnostics.Stopwatch.GetElapsedTime(start));
+                var window = UiaContentNode.FromHandle(hwnd);
+                var root = TryFocusedPane(hwnd, window.Bounds) ?? window;
+                return ScreenContentExtractor.Extract(root, _limits, () => System.Diagnostics.Stopwatch.GetElapsedTime(start));
             }
             catch (Exception ex) when (ex is ElementNotAvailableException or COMException or InvalidOperationException or ArgumentException)
             {
