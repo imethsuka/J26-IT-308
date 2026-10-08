@@ -7,7 +7,8 @@ records, and nothing that reads ``context.db`` (the dashboard, reports, training
     * Encrypted at rest: each capture's text (and image alt texts) is compressed with zlib, then protected with
       Windows DPAPI in the current-user scope (``DpapiProtector``, ctypes, no extra dependency). Only code
       running as the same Windows user can decrypt it. Compression comes first, as encrypted bytes don't compress.
-    * Time limit: rows older than ``ttl_days`` (default 3) are deleted whether processed or not.
+    * Time limit: rows older than ``ttl_days`` (default 7; the dashboard passes the user's setting) are deleted
+      whether processed or not.
     * Size limit: when the stored text passes ``max_text_mb``, the text of the *lowest-importance* rows is dropped
       first; their metadata row stays so the timeline is still known.
     * Fail closed: if the text cannot be encrypted, it is not stored (nothing is ever written in plain text).
@@ -36,7 +37,7 @@ from storage.database import from_epoch_us, now_epoch_us, to_epoch_us
 
 logger = logging.getLogger("worker.raw_buffer")
 
-DEFAULT_TTL_DAYS = 3.0
+DEFAULT_TTL_DAYS = 7.0
 DEFAULT_MAX_TEXT_MB = 200.0
 RAW_SCHEMA_VERSION = 1
 ENCODING = "dpapi+zlib/v1"
@@ -60,12 +61,12 @@ class DpapiProtector:
 
     name = "dpapi"
 
-    def __init__(self) -> None:
+    def __init__(self, entropy: bytes = _ENTROPY) -> None:
         if sys.platform != "win32":
             raise RuntimeError("DPAPI is only available on Windows")
+        self._entropy = entropy
 
-    @staticmethod
-    def _call(function_name: str, data: bytes) -> bytes:
+    def _call(self, function_name: str, data: bytes) -> bytes:
         import ctypes
         from ctypes import wintypes
 
@@ -84,7 +85,7 @@ class DpapiProtector:
             return Blob(len(raw), ctypes.cast(buffer, ctypes.POINTER(ctypes.c_char))), buffer
 
         source, keep_source = blob(data)
-        entropy, keep_entropy = blob(_ENTROPY)
+        entropy, keep_entropy = blob(self._entropy)
         out = Blob()
         # CryptProtectData / CryptUnprotectData(in, descr, entropy, reserved, prompt, flags, out): flags 0 =
         # current-user scope, no UI.

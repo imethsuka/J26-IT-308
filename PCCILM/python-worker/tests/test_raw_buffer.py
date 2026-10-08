@@ -170,9 +170,12 @@ def test_long_text_is_compressed(tmp_path) -> None:
 
 
 def test_ttl_deletes_old_rows_processed_or_not(tmp_path) -> None:
-    buf = buffer(tmp_path, ttl_days=3)
+    # The first write runs maintenance with the real clock, which would already purge T0 rows once T0 is 3 days old:
+    # add with a long TTL, then check the 3-day TTL against the test's own "now".
+    buf = buffer(tmp_path, ttl_days=36_500)
     old = add(buf, "old", minutes=0)
     keep = add(buf, "recent", minutes=60 * 24 * 4)
+    buf.ttl_days = 3
     buf.mark_processed([old])
     assert buf.purge_expired(now=T0 + timedelta(days=4, minutes=1)) == 1
     assert [c.id for c in buf.iter_unprocessed()] == [keep]

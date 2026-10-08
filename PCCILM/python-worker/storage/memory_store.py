@@ -22,11 +22,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from features.text_merge import TextDocument
+from features.text_merge import AnchorLocator, TextDocument
 from storage.database import now_epoch_us, to_epoch_us
 from storage.raw_buffer import Protector, default_protector
 
-MEMORY_SCHEMA_VERSION = 1
+MEMORY_SCHEMA_VERSION = 3  # 2: moments, 3: memory_entries.hidden
 
 _DDL = """
 CREATE TABLE IF NOT EXISTS documents (
@@ -75,7 +75,8 @@ CREATE TABLE IF NOT EXISTS memory_entries (
     summary_model    TEXT,
     needs_summary    INTEGER NOT NULL DEFAULT 0,
     text_persisted   INTEGER NOT NULL DEFAULT 0,
-    filter_version   TEXT
+    filter_version   TEXT,
+    hidden           TEXT                    -- why it is not a memory (task switching, a glance); NULL = shown. Reversible
 );
 CREATE INDEX IF NOT EXISTS ix_episodes_doc ON episodes(doc_id, start_ts);
 CREATE INDEX IF NOT EXISTS ix_entries_created ON memory_entries(created_at);
@@ -91,14 +92,32 @@ CREATE TABLE IF NOT EXISTS session_notes (
     tag        TEXT,
     tldr       TEXT,
     model      TEXT,
-    created_at INTEGER NOT NULL
+    created_at INTEGER NOT NULL,
+    note_version INTEGER NOT NULL DEFAULT 1    -- adaptation/rollups.NOTES_VERSION when written: older notes are rewritten
 );
+-- One row per capture whose filtered text went into a page: the history slider highlights where it sits in the page.
+-- `anchors` are hashes of 8-word runs (features/text_merge.capture_anchors), never words; `fragment`/`start_word` are
+-- re-computed each time the page is rewritten, and are NULL when the capture can no longer be found in it.
+CREATE TABLE IF NOT EXISTS moments (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    doc_id            TEXT NOT NULL,
+    ts                INTEGER NOT NULL,
+    context_record_id INTEGER,                   -- context.db context_records.id (other file: not a foreign key)
+    anchors           TEXT NOT NULL,             -- JSON [[offset in the capture, hash], ...]
+    n_words           INTEGER NOT NULL,
+    fragment          INTEGER,
+    start_word        INTEGER,
+    UNIQUE (doc_id, ts)
+);
+CREATE INDEX IF NOT EXISTS ix_moments_ts ON moments(ts);
+CREATE INDEX IF NOT EXISTS ix_moments_record ON moments(context_record_id);
 CREATE TABLE IF NOT EXISTS day_notes (
     day          TEXT PRIMARY KEY,
     sessions_key TEXT NOT NULL,                -- hash of the session keys the recap was written from
     tldr         TEXT,
     model        TEXT,
-    created_at   INTEGER NOT NULL
+    created_at   INTEGER NOT NULL,
+    note_version INTEGER NOT NULL DEFAULT 1
 );
 """
 
@@ -132,6 +151,11 @@ class MemoryStore:
         conn.execute("PRAGMA synchronous = NORMAL")
         conn.execute("PRAGMA foreign_keys = ON")
         conn.executescript(_DDL)
+        if not any(r[1] == "hidden" for r in conn.execute("PRAGMA table_info(memory_entries)")):
+            conn.execute("ALTER TABLE memory_entries ADD COLUMN hidden TEXT")  # a file from before version 3
+        for table in ("session_notes", "day_notes"):
+            if not any(r[1] == "note_version" for r in conn.execute(f"PRAGMA table_info({table})")):
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN note_version INTEGER NOT NULL DEFAULT 1")
         conn.execute(f"PRAGMA user_version = {MEMORY_SCHEMA_VERSION}")
         conn.commit()
         self._conn = conn
@@ -189,6 +213,7 @@ class MemoryStore:
                 return []
             rows = conn.execute(
                 "SELECT e.id, e.doc_id, e.entry_json FROM memory_entries e WHERE e.needs_summary = 1 AND e.text_persisted = 1 "
+                "AND e.hidden IS NULL "
                 "AND NOT EXISTS (SELECT 1 FROM memory_entries x WHERE x.doc_id = e.doc_id "
                 "AND COALESCE(x.filter_version, '') LIKE 'passthrough%') "  # never read a page that held unfiltered text
                 "ORDER BY e.created_at DESC, e.id DESC LIMIT ?", (int(limit),)).fetchall()
@@ -214,7 +239,7 @@ class MemoryStore:
                 return []
             rows = conn.execute(
                 "SELECT e.id, e.tier, e.importance, e.entry_json, e.summary, e.text_persisted FROM memory_entries e "
-                "JOIN episodes p ON p.id = e.episode_id WHERE e.tier IN ('high', 'medium') AND p.start_ts >= ? "
+                "JOIN episodes p ON p.id = e.episode_id WHERE e.tier IN ('high', 'medium') AND e.hidden IS NULL AND p.start_ts >= ? "
                 "ORDER BY p.start_ts ASC, e.id ASC", (int(since_us),)).fetchall()
             return [{"id": r["id"], "tier": r["tier"], "importance": r["importance"], "entry": json.loads(r["entry_json"]),
                      "summary": r["summary"], "text_persisted": bool(r["text_persisted"])} for r in rows]
@@ -240,20 +265,23 @@ class MemoryStore:
                 pages.append(stored.document.text().splitlines())
         return pages
 
-    def session_note_keys(self) -> set[str]:
+    def session_note_keys(self, *, min_version: int = 0) -> set[str]:
+        """Sessions that have a note written with at least ``min_version`` of the note rules."""
         with self._lock:
             conn = self._connection(create=False)
-            return set() if conn is None else {r[0] for r in conn.execute("SELECT key FROM session_notes")}
+            return set() if conn is None else {
+                r[0] for r in conn.execute("SELECT key FROM session_notes WHERE note_version >= ?", (min_version,))}
 
     def save_session_note(self, *, key: str, day: str, first_ts: int, last_ts: int, n_entries: int,
-                          title: str | None, tag: str | None, tldr: str | None, model: str | None) -> None:
+                          title: str | None, tag: str | None, tldr: str | None, model: str | None, version: int = 1) -> None:
         with self._lock:
             conn = self._connection(create=True)
             assert conn is not None
             with conn:
                 conn.execute(
-                    "INSERT OR REPLACE INTO session_notes(key, day, first_ts, last_ts, n_entries, title, tag, tldr, model, created_at) "
-                    "VALUES (?,?,?,?,?,?,?,?,?,?)", (key, day, first_ts, last_ts, n_entries, title, tag, tldr, model, now_epoch_us()))
+                    "INSERT OR REPLACE INTO session_notes(key, day, first_ts, last_ts, n_entries, title, tag, tldr, model, created_at, "
+                    "note_version) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                    (key, day, first_ts, last_ts, n_entries, title, tag, tldr, model, now_epoch_us(), version))
 
     def get_session_notes(self, keys: list[str]) -> dict[str, dict[str, Any]]:
         if not keys:
@@ -266,19 +294,21 @@ class MemoryStore:
             rows = conn.execute(f"SELECT key, title, tag, tldr FROM session_notes WHERE key IN ({marks})", keys).fetchall()
             return {r["key"]: {"title": r["title"], "tag": r["tag"], "tldr": r["tldr"]} for r in rows}
 
-    def day_note_key(self, day: str) -> str | None:
+    def day_note_key(self, day: str, *, min_version: int = 0) -> str | None:
+        """Which sessions the day's recap covers, or None when there is none written with ``min_version`` of the rules."""
         with self._lock:
             conn = self._connection(create=False)
-            row = None if conn is None else conn.execute("SELECT sessions_key FROM day_notes WHERE day = ?", (day,)).fetchone()
+            row = None if conn is None else conn.execute(
+                "SELECT sessions_key FROM day_notes WHERE day = ? AND note_version >= ?", (day, min_version)).fetchone()
             return None if row is None else row[0]
 
-    def save_day_note(self, *, day: str, sessions_key: str, tldr: str | None, model: str | None) -> None:
+    def save_day_note(self, *, day: str, sessions_key: str, tldr: str | None, model: str | None, version: int = 1) -> None:
         with self._lock:
             conn = self._connection(create=True)
             assert conn is not None
             with conn:
-                conn.execute("INSERT OR REPLACE INTO day_notes(day, sessions_key, tldr, model, created_at) VALUES (?,?,?,?,?)",
-                             (day, sessions_key, tldr, model, now_epoch_us()))
+                conn.execute("INSERT OR REPLACE INTO day_notes(day, sessions_key, tldr, model, created_at, note_version) "
+                             "VALUES (?,?,?,?,?,?)", (day, sessions_key, tldr, model, now_epoch_us(), version))
 
     def prune_notes(self, *, before_us: int) -> None:
         with self._lock:
@@ -319,11 +349,50 @@ class MemoryStore:
             with conn:
                 conn.execute("UPDATE documents SET fragments_blob = ?, word_count = ?, filter_version = ? WHERE doc_id = ?",
                              (blob, words, filter_version if keep else None, doc_id))
+                self._locate_moments(conn, doc_id, document if keep else None)
                 conn.execute(
                     "UPDATE memory_entries SET filter_version = ?, text_persisted = ?, "
                     "needs_summary = CASE WHEN ? = 1 AND tier = 'high' AND summary IS NULL THEN 1 ELSE 0 END "
                     "WHERE doc_id = ? AND text_persisted = 1",
                     (filter_version if keep else None, int(keep), int(keep), doc_id))
+
+    # -- hiding what is not a memory (adaptation/memory_tidy.py) ------------------------------------------------------------
+
+    def visible_episodes(self) -> list[dict[str, Any]]:
+        """Every entry not hidden yet, with its episode's timing, oldest first."""
+        with self._lock:
+            conn = self._connection(create=False)
+            if conn is None:
+                return []
+            return [dict(r) for r in conn.execute(
+                "SELECT e.id, e.entry_json, p.start_ts, p.end_ts, p.key_presses, p.n_captures FROM memory_entries e "
+                "JOIN episodes p ON p.id = e.episode_id WHERE e.hidden IS NULL ORDER BY p.start_ts, e.id")]
+
+    def episode_starts(self) -> list[int]:
+        with self._lock:
+            conn = self._connection(create=False)
+            return [] if conn is None else [r[0] for r in conn.execute("SELECT start_ts FROM episodes ORDER BY start_ts")]
+
+    def hide_entries(self, reasons: dict[int, str]) -> int:
+        """Mark entries as not memories. Nothing is deleted: ``unhide_all`` brings them back."""
+        if not reasons:
+            return 0
+        with self._lock:
+            conn = self._connection(create=False)
+            if conn is None:
+                return 0
+            with conn:
+                conn.executemany("UPDATE memory_entries SET hidden = ?, needs_summary = 0 WHERE id = ? AND hidden IS NULL",
+                                 [(why, i) for i, why in reasons.items()])
+            return len(reasons)
+
+    def unhide_all(self) -> int:
+        with self._lock:
+            conn = self._connection(create=False)
+            if conn is None:
+                return 0
+            with conn:
+                return conn.execute("UPDATE memory_entries SET hidden = NULL WHERE hidden IS NOT NULL").rowcount
 
     def stats(self) -> dict[str, int]:
         with self._lock:
@@ -354,9 +423,13 @@ class MemoryStore:
         tier: str,
         needs_summary: bool,
         text_persisted: bool,
+        moments: list[Any] | None = None,
     ) -> int | None:
         """Write the document, the episode and its entry in one transaction. Returns the entry id, or ``None`` if this
-        episode was already saved (so reprocessing after a crash adds nothing)."""
+        episode was already saved (so reprocessing after a crash adds nothing).
+
+        ``moments`` (``adaptation.episodes.Moment``) are kept only when the page text is: without text there is nothing to
+        highlight. Every moment of the page is then located again in the new text."""
         blob = None
         word_count = 0
         if document is not None and document.word_count:
@@ -402,6 +475,13 @@ class MemoryStore:
                     ),
                 )
                 episode_id = int(cursor.lastrowid)
+                if blob is not None and document is not None:
+                    conn.executemany(
+                        "INSERT OR IGNORE INTO moments(doc_id, ts, context_record_id, anchors, n_words) VALUES (?,?,?,?,?)",
+                        [(doc_id, to_epoch_us(m.ts), m.context_record_id, json.dumps(m.anchors), m.n_words)
+                         for m in moments or ()],
+                    )
+                    self._locate_moments(conn, doc_id, document)
                 entry_json = {**entry_json, "visit_number": visits}
                 cursor = conn.execute(
                     "INSERT INTO memory_entries(episode_id, doc_id, created_at, tier, importance, entry_text, entry_json, "
@@ -417,6 +497,29 @@ class MemoryStore:
                 if conn.in_transaction:
                     conn.execute("ROLLBACK")
                 raise
+
+
+    @staticmethod
+    def _locate_moments(conn: sqlite3.Connection, doc_id: str, document: TextDocument | None) -> None:
+        """Point every moment of ``doc_id`` at its place in ``document`` (inside the caller's transaction)."""
+        rows = conn.execute("SELECT id, anchors FROM moments WHERE doc_id = ?", (doc_id,)).fetchall()
+        if not rows:
+            return
+        locator = AnchorLocator(document) if document is not None else None
+        updates = []
+        for row in rows:
+            hit = locator.locate(json.loads(row["anchors"])) if locator is not None else None
+            updates.append((*(hit if hit is not None else (None, None)), row["id"]))
+        conn.executemany("UPDATE moments SET fragment = ?, start_word = ? WHERE id = ?", updates)
+
+    def moments(self, doc_id: str) -> list[dict[str, Any]]:
+        with self._lock:
+            conn = self._connection(create=False)
+            if conn is None:
+                return []
+            return [dict(r) for r in conn.execute(
+                "SELECT ts, context_record_id, n_words, fragment, start_word FROM moments WHERE doc_id = ? ORDER BY ts",
+                (doc_id,))]
 
 
 def memory_path_for(db_path: str | Path) -> Path:

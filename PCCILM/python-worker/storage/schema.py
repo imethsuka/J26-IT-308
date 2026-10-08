@@ -75,6 +75,38 @@ MIGRATIONS: list[tuple[int, str, str]] = [
         ALTER TABLE context_records ADD COLUMN drc_trigger TEXT;
         """,
     ),
+    (
+        4,
+        "model_decisions: every model's score and would-save per context (champion + shadows); champion_events",
+        """
+        -- One row per (context, model): what the champion and each shadow model said about it, with the cutoff it
+        -- was judged against. Shadows are recorded, never enforced. Labels arrive later on context_records.
+        CREATE TABLE model_decisions (
+            record_id        INTEGER NOT NULL REFERENCES context_records(id),
+            model            TEXT    NOT NULL,          -- '<algorithm>-<version>' or 'rules-1.0'
+            algorithm        TEXT    NOT NULL,
+            model_version_id INTEGER REFERENCES model_versions(id),
+            role             TEXT    NOT NULL CHECK (role IN ('champion', 'shadow')),
+            ts               INTEGER NOT NULL,          -- the context's capture time, epoch microseconds, UTC
+            score            REAL    NOT NULL,
+            cutoff           REAL,
+            would_save       INTEGER NOT NULL CHECK (would_save IN (0, 1)),
+            latency_us       INTEGER,
+            PRIMARY KEY (record_id, model)
+        );
+        CREATE INDEX ix_decisions_algorithm_ts ON model_decisions(algorithm, ts);
+
+        -- Every change of champion (manual or by the deploy gate), so the timeline can show who decided when.
+        CREATE TABLE champion_events (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            ts           INTEGER NOT NULL,              -- epoch microseconds, UTC
+            from_version TEXT,
+            to_version   TEXT    NOT NULL,
+            algorithm    TEXT,
+            reason       TEXT
+        );
+        """,
+    ),
 ]
 
 # Bookkeeping table for applied migrations. Created before any migration runs.

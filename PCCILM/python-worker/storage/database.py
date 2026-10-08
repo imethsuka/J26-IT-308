@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
@@ -10,6 +11,8 @@ from typing import Union
 import numpy as np
 
 from .schema import MIGRATIONS, SCHEMA_MIGRATIONS_DDL
+
+logger = logging.getLogger("worker.storage")
 
 EMBEDDING_DTYPE = np.float32
 DEFAULT_EMBEDDING_DIM = 512
@@ -41,10 +44,14 @@ def connect(db_path: PathLike, *, read_only: bool = False, check_same_thread: bo
 
 
 def migrate(conn: sqlite3.Connection) -> list[int]:
-    """Apply all pending migrations in order. Returns the versions applied this call."""
+    """Apply all pending migrations in order. Returns the versions applied this call. A database that already holds
+    data is backed up first (:func:`backup_before_migration`), so a migration can never lose it."""
     conn.execute(SCHEMA_MIGRATIONS_DDL)
     applied_rows = conn.execute("SELECT version FROM schema_migrations").fetchall()
     applied = {row["version"] for row in applied_rows}
+    pending = [m[0] for m in MIGRATIONS if m[0] not in applied]
+    if applied and pending:
+        backup_before_migration(conn, max(applied), max(pending))
 
     newly_applied: list[int] = []
     for version, description, sql in sorted(MIGRATIONS, key=lambda m: m[0]):
@@ -65,6 +72,26 @@ def migrate(conn: sqlite3.Connection) -> list[int]:
             raise
         newly_applied.append(version)
     return newly_applied
+
+
+def backup_before_migration(conn: sqlite3.Connection, from_version: int, to_version: int) -> Path | None:
+    """Copy the database to ``backups/<name>.bak-before-v<to>-<time>.db`` beside it (SQLite backup API, consistent
+    while open). None for an in-memory database. Raises if the copy fails, so the migration does not run."""
+    row = conn.execute("PRAGMA database_list").fetchone()  # (seq, name, file) of "main"
+    path = row[2] if row is not None else ""
+    if not path:
+        return None
+    source = Path(path)
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    target = source.parent / "backups" / f"{source.stem}.bak-before-v{to_version}-{stamp}.db"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    copy = sqlite3.connect(target)
+    try:
+        conn.backup(copy)
+    finally:
+        copy.close()
+    logger.info("backed up %s (schema v%d) to %s before migrating to v%d", source, from_version, target, to_version)
+    return target
 
 
 def current_schema_version(conn: sqlite3.Connection) -> int:

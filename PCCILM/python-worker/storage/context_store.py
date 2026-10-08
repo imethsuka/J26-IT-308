@@ -166,6 +166,132 @@ def list_context_records(
     return [_row_to_record(row) for row in conn.execute(sql, params).fetchall()]
 
 
+@dataclass
+class TimelineEntry:
+    id: int
+    ts: datetime
+    app: str | None
+    domain: str | None
+    title: str | None
+    decision: Decision
+
+
+def list_timeline(conn: sqlite3.Connection, *, since: datetime) -> list[TimelineEntry]:
+    """Records from ``since`` in time order, without features or embeddings, so a week of them loads quickly.
+    The worker rebuilds its visit log and app-switch history from it at startup."""
+    rows = conn.execute(
+        "SELECT id, ts, app, domain, title, decision FROM context_records WHERE ts >= ? ORDER BY ts ASC, id ASC",
+        (to_epoch_us(since),),
+    ).fetchall()
+    return [TimelineEntry(r["id"], from_epoch_us(r["ts"]), r["app"], r["domain"], r["title"], r["decision"]) for r in rows]
+
+
+def features_by_id(conn: sqlite3.Connection, ids: list[int]) -> dict[int, dict[str, Any]]:
+    """The stored feature dicts of ``ids``."""
+    found: dict[int, dict[str, Any]] = {}
+    for start in range(0, len(ids), 500):
+        chunk = ids[start:start + 500]
+        marks = ",".join("?" * len(chunk))
+        for row in conn.execute(f"SELECT id, features_json FROM context_records WHERE id IN ({marks})", chunk):
+            found[row["id"]] = json.loads(row["features_json"])
+    return found
+
+
+def scoring_inputs_by_id(conn: sqlite3.Connection, ids: list[int]) -> dict[int, tuple[dict[str, Any], np.ndarray | None]]:
+    """``(features, embedding)`` of ``ids``, for rescoring stored records with a model that also uses the embedding."""
+    found: dict[int, tuple[dict[str, Any], np.ndarray | None]] = {}
+    for start in range(0, len(ids), 500):
+        chunk = ids[start:start + 500]
+        marks = ",".join("?" * len(chunk))
+        for row in conn.execute(f"SELECT id, features_json, embedding FROM context_records WHERE id IN ({marks})", chunk):
+            found[row["id"]] = (json.loads(row["features_json"]), decode_embedding(row["embedding"]))
+    return found
+
+
+def latest_saves(conn: sqlite3.Connection, limit: int) -> list[tuple[datetime, np.ndarray | None]]:
+    """The last ``limit`` saved records as ``(ts, embedding)``, oldest first (to refill the novelty ring)."""
+    rows = conn.execute(
+        "SELECT ts, embedding FROM context_records WHERE decision = 'save' ORDER BY ts DESC, id DESC LIMIT ?", (limit,)
+    ).fetchall()
+    return [(from_epoch_us(r["ts"]), decode_embedding(r["embedding"])) for r in reversed(rows)]
+
+
+# --------------------------------------------------------------------------- model decisions (champion + shadows)
+
+@dataclass
+class ModelDecision:
+    """What one model said about one context (``model_decisions``, schema v4)."""
+    record_id: int
+    model: str
+    algorithm: str
+    role: str  # 'champion' or 'shadow'
+    ts: datetime
+    score: float
+    would_save: bool
+    cutoff: float | None = None
+    model_version_id: int | None = None
+    latency_us: int | None = None
+
+
+def insert_model_decisions(conn: sqlite3.Connection, decisions: list[ModelDecision]) -> None:
+    """Append decisions. Commits. A repeat of (record, model) is ignored: what was recorded first stands."""
+    if not decisions:
+        return
+    with conn:
+        conn.executemany(
+            "INSERT OR IGNORE INTO model_decisions (record_id, model, algorithm, model_version_id, role, ts, score, cutoff, "
+            "would_save, latency_us) VALUES (?,?,?,?,?,?,?,?,?,?)",
+            [(d.record_id, d.model, d.algorithm, d.model_version_id, d.role, to_epoch_us(d.ts), float(d.score),
+              None if d.cutoff is None else float(d.cutoff), 1 if d.would_save else 0, d.latency_us) for d in decisions],
+        )
+
+
+def list_model_decisions(conn: sqlite3.Connection, record_id: int) -> list[ModelDecision]:
+    rows = conn.execute("SELECT * FROM model_decisions WHERE record_id = ? ORDER BY role, model", (record_id,)).fetchall()
+    return [ModelDecision(r["record_id"], r["model"], r["algorithm"], r["role"], from_epoch_us(r["ts"]), r["score"],
+                          bool(r["would_save"]), r["cutoff"], r["model_version_id"], r["latency_us"]) for r in rows]
+
+
+def recent_scores(conn: sqlite3.Connection, model: str, limit: int) -> list[float]:
+    """The last ``limit`` scores ``model`` recorded, oldest first (to refill its rolling cutoff after a restart)."""
+    rows = conn.execute(
+        "SELECT score FROM model_decisions WHERE model = ? ORDER BY ts DESC LIMIT ?", (model, limit)).fetchall()
+    return [float(r["score"]) for r in reversed(rows)]
+
+
+# --------------------------------------------------------------------------- champion
+
+def record_champion_event(conn: sqlite3.Connection, *, from_version: str | None, to_version: str,
+                          algorithm: str | None, reason: str, ts: datetime | None = None) -> None:
+    """Note a change of champion. Commits."""
+    with conn:
+        conn.execute(
+            "INSERT INTO champion_events (ts, from_version, to_version, algorithm, reason) VALUES (?,?,?,?,?)",
+            (to_epoch_us(ts) if ts else now_epoch_us(), from_version, to_version, algorithm, reason),
+        )
+
+
+def set_champion(conn: sqlite3.Connection, version: str, *, reason: str) -> ModelVersion:
+    """Make ``version`` the champion (the active model) and record the change. Nothing is deleted: the previous
+    champion stays a saved version and can be made champion again the same way."""
+    target = get_model_version(conn, version)
+    if target is None:
+        raise ValueError(f"no model version {version!r}")
+    previous = get_active_model_version(conn)
+    set_active_model_version(conn, target.id)
+    record_champion_event(conn, from_version=previous.version if previous else None, to_version=version,
+                          algorithm=target.algorithm, reason=reason)
+    return get_model_version(conn, version)
+
+
+def latest_versions_by_algorithm(conn: sqlite3.Connection) -> dict[str, ModelVersion]:
+    """The newest saved version of each algorithm (NULL algorithm = LightGBM, as in rows from before challengers)."""
+    latest: dict[str, ModelVersion] = {}
+    for version in list_model_versions(conn):  # oldest first, so later ones win
+        latest[version.algorithm or "lightgbm"] = version
+    return latest
+
+
 # --------------------------------------------------------------------------- model versions
 
 def insert_model_version(conn: sqlite3.Connection, version: ModelVersion) -> int:
