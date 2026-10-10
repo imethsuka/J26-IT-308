@@ -16,6 +16,7 @@ Text that scrolled away is never deleted. Cost is linear in the text length.
 
 from __future__ import annotations
 
+import hashlib
 import re
 from collections import Counter
 from dataclasses import dataclass, field
@@ -203,3 +204,49 @@ class TextDocument:
             fragments=[Fragment(list(f["words"]), list(f["breaks"])) for f in data.get("fragments", [])],
             captures=int(data.get("captures", 0)),
         )
+
+
+# --- where a capture sits in the merged page ------------------------------------------------------------------------
+# The history slider shows "what was on screen at 10:42" as a highlighted span of the stored page. Word offsets are not
+# stable (a later capture may prepend text or join fragments), so each capture keeps a few *anchors*: hashes of 8-word
+# runs at known positions inside it. Whenever the page is saved, the anchors are looked up again in the current text.
+# Hashes, not words, so the anchor list holds no page text of its own.
+
+def _shingle_hash(words: list[str]) -> str:
+    return hashlib.sha1("\x1f".join(words).encode("utf-8")).hexdigest()[:16]
+
+
+def capture_anchors(text: str) -> tuple[list[tuple[int, str]], int]:
+    """``([(offset in the capture, shingle hash), ...], word count)`` for one capture's text.
+
+    Anchors sit just inside the start, in the middle and just inside the end: the screen edge may have cut the first and
+    last word, and the merge keeps the stored wording there, so position 0 would often not match."""
+    words, _ = tokenize(text)
+    n = len(words)
+    if n < SHINGLE_WORDS:
+        return [], n
+    last = n - SHINGLE_WORDS
+    offsets = sorted({min(1, last), last // 2, max(0, last - 1)})
+    return [(o, _shingle_hash(words[o:o + SHINGLE_WORDS])) for o in offsets], n
+
+
+class AnchorLocator:
+    """Finds captures in one document. Build it once per saved document, then call :meth:`locate` per capture."""
+
+    def __init__(self, document: TextDocument) -> None:
+        self._index: dict[str, tuple[int, int]] = {}
+        for f, fragment in enumerate(document.fragments):
+            words = fragment.words
+            for i in range(len(words) - SHINGLE_WORDS + 1):
+                self._index.setdefault(_shingle_hash(words[i:i + SHINGLE_WORDS]), (f, i))
+        self._lengths = [len(fragment) for fragment in document.fragments]
+
+    def locate(self, anchors: list[tuple[int, str]] | list[list[Any]]) -> tuple[int, int] | None:
+        """``(fragment, first word)`` of the capture in the document, or ``None`` when no anchor is found (for example
+        after a re-filter changed those words)."""
+        for offset, digest in anchors:
+            hit = self._index.get(digest)
+            if hit is not None:
+                fragment, position = hit
+                return fragment, max(0, min(position - int(offset), self._lengths[fragment] - 1))
+        return None

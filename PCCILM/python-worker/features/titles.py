@@ -41,3 +41,18 @@ def normalize_title(title: str | None) -> str | None:
     text = _MORE_PAGES.sub("", text)
     text = _SPACES.sub(" ", text).strip()
     return text or None
+
+
+# Browser and editor names a window title ends with, and the profile segment Edge puts before its name. They say which app,
+# which the memory already records, and to a small model they read as page content ("Personal" became a topic).
+_APP_SUFFIX = re.compile(
+    r"(\s+[-–—]\s+(Personal|Work|Profile \d+))?"
+    r"\s+[-–—]\s+(Microsoft\s*Edge|Google Chrome|Mozilla Firefox|Zen Browser|Brave|Opera|Visual Studio Code)\s*$"
+)
+
+
+def display_title(title: str | None) -> str:
+    """The title as a person would name the page: ``normalize_title`` without the browser/editor name and Edge's profile.
+    ``"(3) Inbox and 2 more pages - Personal - Microsoft​ Edge"`` -> ``"Inbox"``."""
+    text = normalize_title(title) or ""
+    return _APP_SUFFIX.sub("", text).strip() or text

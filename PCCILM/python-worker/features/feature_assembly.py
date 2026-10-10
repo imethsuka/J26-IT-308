@@ -38,6 +38,8 @@ _DEFAULT_RING_CAPACITY = 32
 # A gap longer than this ends a visit even if the context is unchanged. Matches
 # adaptation.label_construction.DEFAULT_SESSION_GAP, so features and labels agree on what a visit is.
 VISIT_GAP = timedelta(minutes=30)
+# How far back a VisitLog looks for revisits. A week covers weekly routines.
+REVISIT_HORIZON = timedelta(days=7)
 # Reported for time-since-last-save when nothing has been saved yet. Paired with tmp_has_prior_save
 # so a model can tell "no prior save" apart from a genuine gap.
 _NO_SAVE_SENTINEL = -1.0
@@ -144,6 +146,7 @@ def assemble_features(
     saved_embeddings: SavedEmbeddingRing | None = None,
     now: datetime | None = None,
     title_normalizer: Callable[[str | None], str | None] | None = None,
+    visit_log: "VisitLog | None" = None,
 ) -> dict[str, Any]:
     """
     Build the feature dict for ``sensing_event``.
@@ -153,7 +156,9 @@ def assemble_features(
     pairs (empty/omitted at cold start). ``saved_embeddings`` is the novelty ring; ``now`` overrides
     the reference time (defaults to the event timestamp). ``title_normalizer`` (opt-in, e.g.
     ``features.titles.normalize_title``) is applied to titles before revisit matching and title
-    tokenization, matching the v4 label rule; by default exact titles are used.
+    tokenization, matching the v4 label rule; by default exact titles are used. ``visit_log`` (the live
+    worker and the replays pass one) gives the revisit features a time window instead of the last
+    ``recent_context_history`` entries; the caller adds the event to it afterwards.
     """
     event = sensing_event if isinstance(sensing_event, SensingEvent) else SensingEvent.from_snapshot(sensing_event)
     reference_time = _as_utc(now) if now is not None else event.ts
@@ -163,6 +168,8 @@ def assemble_features(
     features.update(_behavioural(event, history))
     features.update(_temporal(event, reference_time, saved_embeddings))
     features.update(_contextual(event, history, title_normalizer))
+    if visit_log is not None:
+        features.update(visit_log.revisit_features(event.ts, event.app, event.domain, event.title, excluded=event.excluded))
     features.update(_visual(embedding, prototypes, saved_embeddings))
     return features
 
@@ -243,6 +250,75 @@ def _visits(history: list[ContextHistoryEntry], normalize=lambda title: title) -
         else:
             visits.append((key, entry.ts))
     return visits
+
+
+class VisitLog:
+    """The visits of the last ``horizon``, for the revisit features (``ctx_seen_before``, ``ctx_revisit_count``,
+    ``ctx_revisit_ratio``).
+
+    A visit is the same as in :func:`_visits`: one context with no gap over :data:`VISIT_GAP`. The window is time,
+    not a number of snapshots, so the features mean the same at 400 captures a day (the DRC history) and at 10 a
+    minute (live). The worker rebuilds the log from the store at startup, so a restart does not make every context
+    look new. Add events in time order with :meth:`observe`, after scoring them.
+    """
+
+    def __init__(self, horizon: timedelta = REVISIT_HORIZON, title_normalizer: Callable[[str | None], str | None] | None = None) -> None:
+        self.horizon = horizon
+        self._normalize = title_normalizer or (lambda title: title)
+        self._visits: deque[list[Any]] = deque()  # [key, last_seen_ts], oldest first
+        self._counts: dict[tuple[str, str, str], int] = {}
+
+    def __len__(self) -> int:
+        return len(self._visits)
+
+    def observe(self, ts: datetime, app: str | None, domain: str | None, title: str | None) -> None:
+        ts = _as_utc(ts)
+        self._prune(ts)
+        key = _context_key(app, domain, self._normalize(title))
+        if self._visits and self._visits[-1][0] == key and (ts - self._visits[-1][1]) <= VISIT_GAP:
+            self._visits[-1][1] = max(ts, self._visits[-1][1])
+            return
+        self._visits.append([key, ts])
+        self._counts[key] = self._counts.get(key, 0) + 1
+
+    def revisit_features(self, ts: datetime, app: str | None, domain: str | None, title: str | None, *, excluded: bool = False) -> dict[str, Any]:
+        ts = _as_utc(ts)
+        self._prune(ts)
+        key = _context_key(app, domain, self._normalize(title))
+        count, total = self._counts.get(key, 0), len(self._visits)
+        # The visit the current event continues is in progress, not a revisit.
+        if self._visits and self._visits[-1][0] == key and (ts - self._visits[-1][1]) <= VISIT_GAP:
+            count, total = count - 1, total - 1
+        if excluded:
+            count = 0
+        return {
+            "ctx_seen_before": 1 if count > 0 else 0,
+            "ctx_revisit_count": count,
+            "ctx_revisit_ratio": round(count / total, 4) if total else 0.0,
+        }
+
+    def _prune(self, now: datetime) -> None:
+        cutoff = now - self.horizon
+        while self._visits and self._visits[0][1] < cutoff:
+            key, _ = self._visits.popleft()
+            left = self._counts[key] - 1
+            if left:
+                self._counts[key] = left
+            else:
+                del self._counts[key]
+
+
+def refresh_revisit_features(records: Iterable[Any], *, horizon: timedelta = REVISIT_HORIZON) -> int:
+    """Recompute the revisit features of stored records (anything with ``ts``, ``app``, ``domain``, ``title`` and a
+    ``features`` dict) with a :class:`VisitLog`, in place, so a retrain sees what the worker serves now. Pass the whole
+    timeline, not just the labelled rows: the unlabelled ones are visits too. Returns how many were updated."""
+    log = VisitLog(horizon)
+    n = 0
+    for record in sorted(records, key=lambda r: _as_utc(r.ts)):
+        record.features.update(log.revisit_features(record.ts, record.app, record.domain, record.title))
+        log.observe(record.ts, record.app, record.domain, record.title)
+        n += 1
+    return n
 
 
 def prototype_features(embedding: Sequence[float] | None, prototypes: Sequence[Any] | None) -> dict[str, Any]:

@@ -17,7 +17,9 @@ from features.feature_assembly import (
     ContextHistoryEntry,
     SavedEmbeddingRing,
     SensingEvent,
+    VisitLog,
     assemble_features,
+    refresh_revisit_features,
 )
 
 T0 = datetime(2026, 9, 24, 14, 0, 0, tzinfo=timezone.utc)
@@ -266,3 +268,42 @@ def test_from_snapshot_adapter_reads_wire_shape() -> None:
     assert feats["ctx_app"] == "chrome"
     assert feats["tmp_dwell_seconds"] == 4.0
     assert feats["beh_key_presses"] == 3
+
+
+# --------------------------------------------------------------------------- visit log (time-based revisits)
+
+
+def test_visit_log_counts_a_return_but_not_the_visit_in_progress() -> None:
+    log = VisitLog()
+    log.observe(T0, "chrome", "docs.example.com", "Docs - Example")
+    assert log.revisit_features(T0 + timedelta(seconds=5), "chrome", "docs.example.com", "Docs - Example")["ctx_seen_before"] == 0
+    log.observe(T0 + timedelta(minutes=1), "code", "", "main.py")
+    back = log.revisit_features(T0 + timedelta(minutes=2), "chrome", "docs.example.com", "Docs - Example")
+    assert back == {"ctx_seen_before": 1, "ctx_revisit_count": 1, "ctx_revisit_ratio": 0.5}
+
+
+def test_visit_log_is_time_based_not_snapshot_based() -> None:
+    log = VisitLog(horizon=timedelta(days=7))
+    log.observe(T0, "chrome", "docs.example.com", "Docs - Example")
+    for i in range(1, 500):  # many snapshots of another window would have pushed it out of a 200-entry history
+        log.observe(T0 + timedelta(minutes=1, seconds=i), "vlc", "", "film.mkv")
+    assert log.revisit_features(T0 + timedelta(hours=1), "chrome", "docs.example.com", "Docs - Example")["ctx_seen_before"] == 1
+    assert log.revisit_features(T0 + timedelta(days=8), "chrome", "docs.example.com", "Docs - Example")["ctx_seen_before"] == 0
+
+
+def test_visit_log_matches_assemble_features_and_refresh() -> None:
+    class Row:
+        def __init__(self, ts, app, title):
+            self.ts, self.app, self.domain, self.title, self.features = ts, app, "", title, {}
+
+    rows = [Row(T0 + timedelta(minutes=m), app, title) for m, app, title in
+            [(0, "chrome", "A"), (1, "code", "B"), (2, "chrome", "A"), (3, "code", "B"), (4, "chrome", "C")]]
+    log = VisitLog()
+    served = []
+    for r in rows:
+        f = assemble_features(event(app=r.app, title=r.title, domain="", ts=r.ts), None, [], visit_log=log)
+        served.append({k: f[k] for k in ("ctx_seen_before", "ctx_revisit_count", "ctx_revisit_ratio")})
+        log.observe(r.ts, r.app, r.domain, r.title)
+    assert refresh_revisit_features(list(reversed(rows))) == 5
+    assert [r.features for r in rows] == served
+    assert [s["ctx_revisit_count"] for s in served] == [0, 0, 1, 1, 0]
