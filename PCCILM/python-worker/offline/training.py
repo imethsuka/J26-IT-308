@@ -39,7 +39,7 @@ import numpy as np
 import pandas as pd
 
 from adaptation.label_construction import DEFAULT_LABEL_DELAY, DEFAULT_LABEL_HORIZON, LabelConstructor
-from features.feature_assembly import ContextHistoryEntry, SavedEmbeddingRing, assemble_features, prototype_features
+from features.feature_assembly import ContextHistoryEntry, SavedEmbeddingRing, VisitLog, assemble_features, prototype_features
 from models.base import ImportanceScorer
 from models.rule_based import RuleBasedImportanceScorer
 
@@ -137,13 +137,16 @@ def build_dataset(
     scorer = scorer or RuleBasedImportanceScorer()
     history: deque[ContextHistoryEntry] = deque(maxlen=history_size)
     ring = SavedEmbeddingRing(capacity=ring_capacity)
+    visits = VisitLog(title_normalizer=title_normalizer)
     embeddings = embeddings or {}
 
     rows = []
     for index, capture in enumerate(sorted(captures, key=lambda c: c.ts)):
         event = capture.event
         embedding = embeddings.get(capture.screenshot_id)
-        features = assemble_features(event, embedding, history, saved_embeddings=ring, title_normalizer=title_normalizer)
+        features = assemble_features(
+            event, embedding, history, saved_embeddings=ring, title_normalizer=title_normalizer, visit_log=visits,
+        )
         proba = float(scorer.predict_proba(features))
         decision = "save" if proba >= threshold else "discard"
         if decision == "save":
@@ -152,6 +155,7 @@ def build_dataset(
             else:
                 ring.mark_saved(event.ts)
         history.append(ContextHistoryEntry(ts=event.ts, app=event.app, title=event.title, domain=event.domain))
+        visits.observe(event.ts, event.app, event.domain, event.title)
         rows.append({
             "id": index,
             "screenshot_id": capture.screenshot_id,

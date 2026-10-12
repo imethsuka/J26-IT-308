@@ -125,17 +125,22 @@ def budget_threshold(scores, keep_rate: float = DEFAULT_KEEP_RATE) -> float | No
     return round(float(np.quantile(values, 1.0 - keep_rate)), 6)
 
 
+def model_scores(model: ImportanceScorer, features: list[Features]) -> list[float]:
+    """Scores of many contexts, in one batch when the model can (a forest scored one row at a time is slow)."""
+    batch = getattr(model, "predict_proba_batch", None)
+    if batch is not None and features:
+        return [float(v) for v in batch(features)]
+    return [float(model.predict_proba(f)) for f in features]
+
+
 def evaluate_model(model: ImportanceScorer, held_out: LabelledData, threshold: float = 0.5) -> ClassificationMetrics:
     """Threshold metrics at ``threshold`` plus the threshold-free ranking metrics of ``model`` on the held-out set."""
     tp = fp = fn = tn = 0
-    labels: list[int] = []
-    scores: list[float] = []
-    for features, label in _iter_labelled(held_out):
-        score = float(model.predict_proba(features))
+    pairs = list(_iter_labelled(held_out))
+    labels: list[int] = [int(label) for _, label in pairs]
+    scores: list[float] = model_scores(model, [features for features, _ in pairs])
+    for score, actual in zip(scores, labels):
         predicted = 1 if score >= threshold else 0
-        actual = int(label)
-        labels.append(actual)
-        scores.append(score)
         if predicted == 1 and actual == 1:
             tp += 1
         elif predicted == 1 and actual == 0:
@@ -187,10 +192,13 @@ def validate_and_maybe_deploy(
     notes: str | None = None,
     metrics_fn: MetricsFn | None = None,
     keep_rate: float | None = DEFAULT_KEEP_RATE,
+    deploy_allowed: bool = True,
+    not_allowed_reason: str = "",
 ) -> DeploymentDecision:
     """
     Score both models on ``held_out_labelled_data``, deploy the candidate only if strictly better on
-    ``primary_metric``, and log the comparison to ``model_versions``.
+    ``primary_metric``, and log the comparison to ``model_versions``. With ``deploy_allowed`` False the candidate is
+    graded and recorded the same way but never deployed (a challenger whose family is not the champion's).
 
     The candidate is always recorded (as the active version if deployed, otherwise inactive), with
     its metrics and the full comparison in the row's ``metrics`` JSON. ``metrics_fn`` can be injected
@@ -208,8 +216,11 @@ def validate_and_maybe_deploy(
     current_metrics = evaluate(current_model, materialized, threshold) if current_model is not None else None
 
     deployed, reason = decide_deployment(candidate_metrics, current_metrics, primary_metric=primary_metric)
+    if not deploy_allowed:
+        reason = f"{not_allowed_reason or 'challenger, not deployed'}; {reason}"
+        deployed = False
     decision_threshold = (
-        budget_threshold((candidate_model.predict_proba(f) for f, _ in materialized), keep_rate) if keep_rate else None
+        budget_threshold(model_scores(candidate_model, [f for f, _ in materialized]), keep_rate) if keep_rate else None
     )
 
     incumbent = get_active_model_version(conn)
@@ -241,6 +252,11 @@ def validate_and_maybe_deploy(
             is_active=deployed,  # deploying makes this the sole active version
         ),
     )
+    if deployed:
+        from storage.context_store import record_champion_event
+
+        record_champion_event(conn, from_version=current_version, to_version=candidate_version, algorithm=algorithm,
+                              reason=f"deploy gate: {reason}")
 
     return DeploymentDecision(
         deployed=deployed,
@@ -261,12 +277,15 @@ def rollback_to(conn, version: str):
     Re-activate a prior model version by its version name. Raises ``KeyError`` if it does not exist
     (so we never end up with no active version). Returns the now-active ``ModelVersion``.
     """
-    from storage.context_store import get_model_version, set_active_model_version
+    from storage.context_store import get_active_model_version, get_model_version, record_champion_event, set_active_model_version
 
     target = get_model_version(conn, version)
     if target is None:
         raise KeyError(f"model version {version!r} not found; cannot roll back to it")
+    previous = get_active_model_version(conn)
     set_active_model_version(conn, target.id)
+    record_champion_event(conn, from_version=previous.version if previous else None, to_version=version,
+                          algorithm=target.algorithm, reason="rollback")
     return get_model_version(conn, version)
 
 

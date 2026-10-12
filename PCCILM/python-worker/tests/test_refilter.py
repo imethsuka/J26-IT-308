@@ -6,7 +6,7 @@ import pytest
 
 from adaptation.privacy import FilterResult, PrivacyContext
 from adaptation.refilter import refilter_memory
-from adaptation.summarizer import SummarizeJob, run_summaries
+from adaptation.summarizer import SummarizeConfig, SummarizeJob, run_summaries
 from features.text_merge import TextDocument
 from storage.memory_store import MemoryStore
 from tests.test_raw_buffer import XorProtector
@@ -131,11 +131,11 @@ def test_a_failing_filter_leaves_the_page_exactly_as_it_was(memory):
 def test_the_summariser_ignores_unfiltered_pages_until_they_are_cleaned(memory):
     add(memory, 1, version="passthrough-dev")
     model = FakeModel()
-    before = run_summaries(SummarizeJob(memory=memory, model_factory=lambda: model))
+    before = run_summaries(SummarizeJob(memory=memory, model_factory=lambda: model, config=SummarizeConfig(min_words=0)))
     assert before["waiting"] == 0 and model.prompts == []
 
     refilter_memory(memory, Redactor(), apply=True)
-    after = run_summaries(SummarizeJob(memory=memory, model_factory=lambda: model))
+    after = run_summaries(SummarizeJob(memory=memory, model_factory=lambda: model, config=SummarizeConfig(min_words=0)))
 
     assert after["summarized"] == 1
     assert "hunter22xyz" not in model.prompts[0] and "077-123-4567" not in model.prompts[0]

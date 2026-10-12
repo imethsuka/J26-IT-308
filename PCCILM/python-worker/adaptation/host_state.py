@@ -12,6 +12,7 @@ On non-Windows hosts the native calls are unavailable; ``seconds_since_last_inpu
 from __future__ import annotations
 
 import sys
+import time
 from dataclasses import dataclass
 
 # ACLineStatus values from GetSystemPowerStatus.
@@ -69,11 +70,52 @@ if sys.platform == "win32":
             return "battery"
         return "unknown"
 
+    class _FILETIME(ctypes.Structure):
+        _fields_ = [("low", wintypes.DWORD), ("high", wintypes.DWORD)]
+
+    class _MEMORYSTATUSEX(ctypes.Structure):
+        _fields_ = [
+            ("dwLength", wintypes.DWORD), ("dwMemoryLoad", wintypes.DWORD),
+            ("ullTotalPhys", ctypes.c_ulonglong), ("ullAvailPhys", ctypes.c_ulonglong),
+            ("ullTotalPageFile", ctypes.c_ulonglong), ("ullAvailPageFile", ctypes.c_ulonglong),
+            ("ullTotalVirtual", ctypes.c_ulonglong), ("ullAvailVirtual", ctypes.c_ulonglong),
+            ("ullAvailExtendedVirtual", ctypes.c_ulonglong),
+        ]
+
+    def _system_times() -> tuple[int, int]:
+        """(idle, total) CPU time of the whole machine, in 100 ns units."""
+        idle, kernel, user = _FILETIME(), _FILETIME(), _FILETIME()
+        if not _kernel32.GetSystemTimes(ctypes.byref(idle), ctypes.byref(kernel), ctypes.byref(user)):
+            raise OSError(ctypes.get_last_error(), "GetSystemTimes failed")
+        as_int = lambda t: (t.high << 32) | t.low  # noqa: E731
+        return as_int(idle), as_int(kernel) + as_int(user)  # kernel time includes idle time
+
+    def cpu_load_percent(sample_seconds: float = 2.0) -> float:
+        """How busy the CPU is across all cores (0-100), measured over ``sample_seconds``."""
+        idle0, total0 = _system_times()
+        time.sleep(sample_seconds)
+        idle1, total1 = _system_times()
+        total = total1 - total0
+        return 0.0 if total <= 0 else round(100.0 * (1 - (idle1 - idle0) / total), 1)
+
+    def available_memory_mb() -> float:
+        status = _MEMORYSTATUSEX()
+        status.dwLength = ctypes.sizeof(_MEMORYSTATUSEX)
+        if not _kernel32.GlobalMemoryStatusEx(ctypes.byref(status)):
+            raise OSError(ctypes.get_last_error(), "GlobalMemoryStatusEx failed")
+        return status.ullAvailPhys / (1024 * 1024)
+
 else:  # pragma: no cover - exercised only off Windows
     def seconds_since_last_input() -> float:
         # TODO(cross-platform): implement idle detection for Linux/macOS if the worker ever runs
         # there. On Windows this uses GetLastInputInfo. Until then, inject idle_fn on non-Windows.
         raise NotImplementedError("idle detection is only implemented on Windows; inject idle_fn")
+
+    def cpu_load_percent(sample_seconds: float = 2.0) -> float:
+        raise NotImplementedError("CPU load is only measured on Windows; inject load_fn")
+
+    def available_memory_mb() -> float:
+        raise NotImplementedError("free memory is only measured on Windows; inject memory_fn")
 
     def power_status() -> str:
         # TODO(cross-platform): implement AC detection for Linux/macOS (e.g. /sys/class/power_supply).
@@ -111,3 +153,27 @@ def check_host_ready(
     return HostReadiness(
         ready=ready, idle=idle, on_ac_power=on_ac, seconds_idle=round(seconds_idle, 1), power=power, reason=reason
     )
+
+
+# The memory-writing model is the heaviest thing the job runs. Beyond "idle and on AC", it starts only when the machine is
+# also lightly loaded right now: a render, a download being unpacked or a game left running keeps it waiting.
+MAX_CPU_LOAD_FOR_MODEL = 35.0     # percent, all cores
+MODEL_RAM_HEADROOM_MB = 1024.0    # free RAM needed beyond the model file itself
+
+
+def check_light_load(
+    model_bytes: int,
+    *,
+    load_fn=None,
+    memory_fn=None,
+    max_cpu_load: float = MAX_CPU_LOAD_FOR_MODEL,
+) -> str | None:
+    """``None`` when the PC is quiet enough to run the local model now, otherwise the reason it is not."""
+    load = (load_fn or cpu_load_percent)()
+    if load > max_cpu_load:
+        return f"CPU busy ({load:.0f}% > {max_cpu_load:.0f}%)"
+    free_mb = (memory_fn or available_memory_mb)()
+    need_mb = model_bytes / (1024 * 1024) + MODEL_RAM_HEADROOM_MB
+    if free_mb < need_mb:
+        return f"not enough free memory ({free_mb:.0f} MB < {need_mb:.0f} MB)"
+    return None
