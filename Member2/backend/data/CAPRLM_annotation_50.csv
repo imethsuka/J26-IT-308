@@ -1,0 +1,51 @@
+screenshot_id,application_context,EMAIL,PHONE,URL,IP_ADDRESS,DATE,WINDOWS_PATH,sensitive_entity_present,privacy_risk_label
+000c260f-f0c1-4337-9ff7-d3711e600adc.jpg,ChatGPT,0,0,0,0,1,0,1,LOW
+0024e4cb-aacb-44f7-8fe2-5c633f1ec67f.jpg,VS Code,0,0,0,0,1,0,1,LOW
+00453f5f-3bdf-4a4c-9ab8-fa9a19478f00.jpg,ChatGPT,0,0,0,0,1,0,1,LOW
+006f71ca-863f-4ae4-98a0-fd55e866532e.jpg,VS Code + ChatGPT,0,0,0,0,1,0,1,LOW
+007c22ef-4132-4455-a919-23d936e099a6.jpg,ChatGPT,0,0,0,0,1,0,1,LOW
+00912b35-817c-47f8-883d-7f2f29fa69bf.jpg,Google Chrome,0,0,1,0,1,0,1,MEDIUM
+0098ecf8-9706-4a81-ac97-a01766193004.jpg,Word,0,0,0,0,1,0,1,LOW
+00a3b7cb-0490-4a19-8f11-e37dad461566.jpg,Desktop,0,0,0,0,1,0,1,MEDIUM
+00b44336-1669-47cc-8b12-833069e478bb.jpg,ChatGPT,0,0,0,0,1,0,1,LOW
+00b49807-ea64-491a-984d-ec08e127849b.jpg,Google Chrome,0,0,1,0,1,0,1,MEDIUM
+00c019f8-0be1-426d-ace4-b8e3c6fa8d35.jpg,YouTube,0,0,1,0,1,0,1,HIGH
+00c34dc6-612f-43cb-9b9f-297d92b6868a.jpg,VS Code,0,0,0,0,1,0,1,LOW
+00e7560f-f51a-4d8a-ad26-f6461fe5d6de.jpg,VS Code + ChatGPT,0,0,0,0,1,0,1,LOW
+00fa95dd-5a9e-458b-a071-fc2f8913e888.jpg,,0,0,0,0,0,0,0,MEDIUM
+010c07bc-4c57-432b-bb3c-8222b56fcd41.jpg,,0,0,0,0,0,0,0,LOW
+01115b63-e4d5-4f3c-8ca1-7115a9906715.jpg,,0,0,0,0,0,0,0,LOW
+013df303-0289-4d06-b9d1-d470d5565bc8.jpg,,0,0,0,0,0,0,0,LOW
+014635cf-027c-4bec-a6c2-304828e4e9f9.jpg,,0,0,0,0,0,0,0,LOW
+01583a1d-7ccf-49d9-99c8-7ebf3b94cf01.jpg,,0,0,0,0,0,0,0,MEDIUM
+01604395-c180-47df-9f94-59b000c1695d.jpg,,0,0,0,0,0,0,0,LOW
+017fa22c-a3a9-4fec-ab7e-b6e2ff0c0274.jpg,,0,0,0,0,0,0,0,LOW
+0181c10d-ac5a-4a65-8393-d0602df7ab83.jpg,,0,0,0,0,0,0,0,LOW
+0186d91a-a84e-4a22-8ba5-a99e16e8f9fa.jpg,,0,0,0,0,0,0,0,LOW
+0189b2c7-251a-4a66-b6c6-4c3bc12ddf5c.jpg,,0,0,0,0,0,0,0,LOW
+018cbd96-6a05-419e-96c7-6b03b401a789.jpg,,0,0,0,0,0,0,0,LOW
+01934b28-9454-4ecc-b334-344450d739b7.jpg,,0,0,0,0,0,0,0,LOW
+019e6ab3-6506-4b56-a264-ee144f3ed7c1.jpg,,0,0,0,0,0,0,0,LOW
+01a758f4-84ee-400c-a583-b7b70573c076.jpg,,0,0,0,0,0,0,0,MEDIUM
+01bf28e2-c70b-4c32-82b4-31d786589ec3.jpg,Google Chrome + YouTube,0,0,1,0,1,0,1,LOW
+01c54e27-a00d-4d14-8f2a-a9d45b4d1768.jpg,,0,0,0,0,0,0,0,LOW
+01e09fd1-5c04-4cf6-98e0-27eeacf2de60.jpg,,0,0,0,0,0,0,0,LOW
+01f6a6fd-4485-41c7-8ba1-01d540cf618f.jpg,,0,0,0,0,0,0,0,LOW
+0204df57-d859-4686-87e6-d0d584096bc2.jpg,,0,0,0,0,0,0,0,LOW
+02488e7f-132f-4e80-b164-d34cf38424ff.jpg,,0,0,0,0,0,0,0,LOW
+024fd28f-aeb8-42dc-8484-9a8e2cd3ecf5.jpg,,0,0,0,0,0,0,0,MEDIUM
+026696df-c131-4362-875b-ed13c6ebd1d5.jpg,,0,0,0,0,0,0,0,LOW
+026b2eb2-b5c3-490f-9e63-322262b99068.jpg,,0,0,0,0,0,0,0,LOW
+0273232a-f504-413f-b64f-6e420fcf3184.jpg,,0,0,0,0,0,0,0,LOW
+029eefdf-43d2-4a6d-b19f-e53968f27d45.jpg,,0,0,0,0,0,0,0,LOW
+02a21f24-9c87-4c14-bfdc-44fdcbd7aa38.jpg,,0,0,0,0,0,0,0,LOW
+02a2b06a-c518-4509-8d0c-e167fd425a73.jpg,,0,0,0,0,0,0,0,LOW
+02aedc78-27c3-4fb0-84fa-22b7c8cc2442.jpg,,0,0,0,0,0,0,0,LOW
+02b09eb1-6029-4bad-a53a-0651b48f0f3f.jpg,,0,0,0,0,0,0,0,LOW
+02e86b37-426a-46c0-8adf-00fe16ff2f2d.jpg,,1,0,0,0,1,0,1,MEDIUM
+02f39c8f-ce99-49ba-a2a3-aeea8504ae3a.jpg,,0,0,0,0,0,0,0,HIGH
+02fa79ba-a144-4448-a4d3-3b166715ce94.jpg,,0,0,0,0,0,0,0,LOW
+030418e4-16d0-49e3-bf6f-29da65d0b6fb.jpg,,0,0,0,0,0,0,0,LOW
+03222282-3dd8-4492-b251-d50bfa03d7e9.jpg,,0,0,0,0,0,0,0,LOW
+033abfbe-b7f6-4c58-a769-8ffe082b38e4.jpg,,0,0,0,0,0,0,0,MEDIUM
+034e7035-d661-417e-8cab-6e3131d7a671.jpg,,0,0,0,0,0,0,0,MEDIUM

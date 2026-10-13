@@ -215,10 +215,12 @@ analyzeButton.addEventListener("click", async () => {
     }
 
     renderBackendResponse(result);
+    activateFeedbackPanel(result.risk_prediction, result.user_profile_summary);
     setAnalysisStatus("Analysis complete", "Actual values returned by the local backend are shown below.");
     actionNote.textContent = "Analysis completed.";
   } catch (error) {
     resetResults();
+    deactivateFeedbackPanel();
     setModelStatus("Model status: unavailable", "error");
     actionNote.classList.add("is-error");
     if (error instanceof TypeError) {
@@ -239,3 +241,104 @@ analyzeButton.addEventListener("click", async () => {
 });
 
 updateAnalyzeButton();
+
+// ---------------------------------------------------------------------------
+// Feedback panel
+// ---------------------------------------------------------------------------
+
+const feedbackUserIdInput = document.querySelector("#feedback-user-id");
+const feedbackLabelSelect = document.querySelector("#feedback-label");
+const feedbackButton = document.querySelector("#feedback-button");
+const feedbackNote = document.querySelector("#feedback-note");
+const feedbackStatusEl = document.querySelector("#feedback-status");
+const recalibrationThresholdSpan = document.querySelector("#recalibration-threshold");
+
+const FEEDBACK_URL = "http://127.0.0.1:8000/feedback";
+
+let lastScreenshotId = null;
+let lastPredictedLabel = null;
+
+function setFeedbackStatus(message, state = "") {
+  feedbackStatusEl.hidden = false;
+  feedbackStatusEl.classList.toggle("is-error", state === "error");
+  feedbackStatusEl.classList.toggle("is-analyzing", state === "analyzing");
+  feedbackStatusEl.querySelector("span:last-child").textContent = message;
+}
+
+function updateFeedbackButton() {
+  feedbackButton.disabled = !(
+    lastScreenshotId
+    && feedbackUserIdInput.value.trim()
+    && feedbackLabelSelect.value
+  );
+  if (!feedbackButton.disabled) {
+    feedbackNote.textContent = "Ready to submit your correction.";
+    feedbackNote.classList.remove("is-error");
+  }
+}
+
+[feedbackUserIdInput, feedbackLabelSelect].forEach((el) => {
+  el.addEventListener("input", updateFeedbackButton);
+});
+
+function activateFeedbackPanel(riskPrediction, userProfileSummary) {
+  lastPredictedLabel = riskPrediction?.risk_level ?? null;
+  lastScreenshotId = screenshotInput.files[0]?.name ?? "unknown";
+  if (userProfileSummary?.recalibration_threshold) {
+    recalibrationThresholdSpan.textContent = userProfileSummary.recalibration_threshold;
+  }
+  feedbackLabelSelect.value = "";
+  feedbackNote.textContent = "Select the correct risk level and submit.";
+  feedbackNote.classList.remove("is-error");
+  feedbackStatusEl.hidden = true;
+  updateFeedbackButton();
+}
+
+function deactivateFeedbackPanel() {
+  lastScreenshotId = null;
+  lastPredictedLabel = null;
+  feedbackButton.disabled = true;
+  feedbackNote.textContent = "Analyse a screenshot first.";
+  feedbackStatusEl.hidden = true;
+}
+
+feedbackButton.addEventListener("click", async () => {
+  if (!lastScreenshotId || !feedbackLabelSelect.value) return;
+
+  feedbackButton.disabled = true;
+  feedbackButton.textContent = "Submitting…";
+  setFeedbackStatus("Submitting feedback…", "analyzing");
+
+  try {
+    const response = await fetch(FEEDBACK_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        user_id: feedbackUserIdInput.value.trim() || "default",
+        screenshot_id: lastScreenshotId,
+        predicted_label: lastPredictedLabel ?? "LOW",
+        user_label: feedbackLabelSelect.value,
+      }),
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err?.detail ?? `HTTP_${response.status}`);
+    }
+
+    const result = await response.json();
+    const summary = result?.user_profile_summary ?? {};
+    const count = summary.feedback_count ?? "?";
+    const active = summary.recalibration_active ? " (threshold calibrated)" : "";
+    setFeedbackStatus(`Recorded. Feedback count: ${count}${active}.`);
+    feedbackNote.textContent = "Feedback recorded.";
+  } catch (error) {
+    setFeedbackStatus(`Submission failed: ${error.message}`, "error");
+    feedbackNote.classList.add("is-error");
+    feedbackNote.textContent = "Could not submit feedback. Check that the backend is running.";
+    feedbackButton.disabled = false;
+  } finally {
+    feedbackButton.textContent = "Submit feedback";
+    updateFeedbackButton();
+  }
+});

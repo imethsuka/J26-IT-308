@@ -148,6 +148,48 @@
       </section>
     </div>
 
+    <section class="workspace feedback-panel" aria-labelledby="feedback-heading">
+      <div class="section-heading">
+        <div>
+          <p class="section-label">04 / Feedback</p>
+          <h2 id="feedback-heading">Correct the prediction</h2>
+        </div>
+        <span class="section-status">Optional</span>
+      </div>
+      <p class="field-help">
+        If the risk level above is incorrect, select the right level and submit.
+        Your corrections improve personalised threshold calibration after
+        <span id="recalibration-threshold">10</span> examples.
+      </p>
+      <div class="field-grid">
+        <div class="field">
+          <label for="feedback-user-id">User ID</label>
+          <input id="feedback-user-id" type="text" value="default" maxlength="64"
+            placeholder="Identifies your preference profile">
+        </div>
+        <div class="field">
+          <label for="feedback-label">Correct risk level</label>
+          <select id="feedback-label">
+            <option value="">Select the correct level</option>
+            <option>LOW</option>
+            <option>MEDIUM</option>
+            <option>HIGH</option>
+            <option>CRITICAL</option>
+          </select>
+        </div>
+      </div>
+      <div class="action-row">
+        <button id="feedback-button" class="button button-secondary" type="button" disabled>
+          Submit feedback
+        </button>
+        <span id="feedback-note" class="action-note">Analyse a screenshot first.</span>
+      </div>
+      <div id="feedback-status" class="model-status" role="status" aria-live="polite" hidden>
+        <span class="status-indicator" aria-hidden="true"></span>
+        <span>Feedback status</span>
+      </div>
+    </section>
+
     <footer class="app-footer">
       <span>Adaptive Privacy-Preserving Cognitive Memory System</span>
       <span>Frontend foundation</span>
