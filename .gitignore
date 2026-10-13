@@ -1,0 +1,60 @@
+# ── Python bytecode ─────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+
+# ── Python packaging artifacts ───────────────────────────────────────────────
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# ── Virtual environments ─────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+
+# ── Test / coverage ──────────────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ── CAPRLM security-sensitive artifacts ─────────────────────────────────────
+
+# Trained model files — may contain learned patterns from private screenshots
+*.joblib
+
+# Per-user profiles — may indirectly reveal screenshot content via feedback
+Member2/backend/data/profiles/
+
+# Training log — contains label distributions derived from private screenshots
+Member2/backend/data/training_log.json
+
+# ── Research dataset — keep the annotation CSV, exclude raw screenshot data ──
+# CAPRLM_annotation_50.csv is intentionally tracked; do not add rules that
+# would cause it to be ignored.
+Member2/backend/data/screenshots/
+*.jpg
+*.jpeg
+*.png
+*.bmp
+*.tiff
+*.tif
+
+# ── IDE ──────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.suo
+*.user
+
+# ── OS ───────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Python cache files
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+desktop.ini

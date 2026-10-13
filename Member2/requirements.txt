@@ -1,0 +1,51 @@
+# CAPRLM Backend — pinned runtime dependencies
+# Python 3.14.7 | Generated 2026-10-14
+#
+# Install into the project venv:
+#   python -m pip install -r requirements.txt
+#
+# Note: torch and torchvision are required by easyocr but are large.
+# They are installed separately with the appropriate CUDA/CPU variant:
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+
+# ── API framework ───────────────────────────────────────────────────────────
+fastapi==0.142.2
+uvicorn==0.54.0
+starlette==1.7.0
+pydantic==2.13.5
+pydantic_core==2.46.5
+annotated-types==0.8.0
+typing_extensions==4.16.0
+typing-inspection==0.4.4
+anyio==4.15.1
+h11==0.16.0
+click==8.5.0
+
+# ── OCR ─────────────────────────────────────────────────────────────────────
+easyocr==1.7.2
+opencv-python-headless==5.0.0.93
+pillow==12.3.0
+numpy==2.5.3
+python-bidi==0.6.11
+pyclipper==1.4.0
+shapely==2.1.2
+
+# ── Machine learning ────────────────────────────────────────────────────────
+scikit-learn==1.9.1
+joblib==1.6.0
+threadpoolctl==3.7.0
+pandas==3.0.6
+python-dateutil==2.9.0.post0
+six==1.17.0
+
+# ── Testing ─────────────────────────────────────────────────────────────────
+pytest==9.1.1
+httpx==0.28.1
+httpcore==1.0.9
+certifi==2026.7.22
+idna==3.20
+colorama==0.4.6
+iniconfig==2.3.1
+pluggy==1.6.0
+packaging==26.3
+pygments==2.21.0
