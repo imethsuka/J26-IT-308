@@ -40,10 +40,14 @@ main.py  (FastAPI)
     GET  /model-info
     │
     ▼
-data/profiles/<user_id>.json   ← adaptive per-user thresholds (not committed)
+data/caprlm.db  (SQLite, WAL mode)
+    ├── user_profile     ← per-user preferences + adaptive thresholds
+    ├── feedback_log     ← every user correction (FK → user_profile)
+    ├── analysis_log     ← every /analyze call (no raw OCR text)
+    └── training_run     ← every /train call + evaluation metrics
 ```
 
-**Storage**: entirely file-based. No relational database is used or required. Per-user "adaptive memory" is implemented as JSON profiles with feedback-driven threshold recalibration.
+**Storage**: SQLite (`backend/data/caprlm.db`). Tables are created automatically on first startup via `init_db()`. Existing JSON profiles under `backend/data/profiles/` are migrated non-destructively on startup (originals are preserved). View with DBeaver 26.2.2: *Database → New Connection → SQLite → browse to `caprlm.db`*.
 
 ---
 
@@ -118,25 +122,38 @@ Returns: `ocr_summary`, `detection_results`, `extracted_features`, `risk_predict
 | HIGH | 2 (4%) |
 | CRITICAL | 0 |
 
-36 of 50 rows have no recorded `application_context` (filled as "Unknown" during training). The dataset is heavily imbalanced.
+36 of 50 rows have no recorded `application_context` (filled as "Unknown" during training). The dataset is severely class-imbalanced.
 
 ### ML model — Random Forest (v1.0.0)
 
-Training split: 80/20 stratified. Encoder fitted on training fold only (no leakage).
+Split: 80/20 stratified, `random_state=42`. Encoder fitted on training fold only (leakage fix applied: `context_encoder` is fit on the training rows and only transformed on the test rows; unseen categories at inference map to −1).
 
 | Metric | Value |
 |--------|-------|
-| CV folds | 2 (capped by HIGH class size) |
+| Training rows | 40 (LOW=30, MEDIUM=8, HIGH=2) |
+| Test rows | 10 (LOW=8, MEDIUM=2, HIGH=0) |
+| CV folds | 2 (capped by smallest training-class count) |
 | CV macro F1 (mean ± std) | 0.353 ± 0.075 |
 | Test macro F1 (n=10) | 0.444 |
 | Test accuracy | 0.80 |
 | LOW F1 | 0.889 |
 | MEDIUM F1 | 0.000 |
-| HIGH support in test | 0 (insufficient minority class) |
+| HIGH support in test | 0 |
+
+**Confusion matrix** (rows = true label, columns = predicted label):
+
+```
+             HIGH  LOW  MEDIUM
+true HIGH       0    0       0   (0 HIGH rows in test set)
+true LOW        0    8       0
+true MEDIUM     0    2       0   (both MEDIUM rows predicted LOW)
+```
+
+The model predicted only LOW across all 10 test rows. No MEDIUM or HIGH predictions were produced.
 
 ### Rule baseline — deterministic classifier
 
-Evaluated on the full 50-row annotation CSV.
+Evaluated on the full 50-row annotation CSV (not a held-out split).
 
 | Metric | Value |
 |--------|-------|
@@ -146,19 +163,89 @@ Evaluated on the full 50-row annotation CSV.
 | MEDIUM F1 | 0.29 |
 | HIGH F1 | 0.00 |
 
+Note: rule-baseline metrics are computed on the same data used to design the rules; they are not held-out results and overestimate generalisation performance.
+
 ### Comparison
 
-Both classifiers struggle with MEDIUM and HIGH due to class imbalance and all-zero entity flags in several MEDIUM/HIGH rows. The ML model's advantage (threshold personalisation) is not reflected in static F1 scores but is the primary research contribution.
+The ML model achieves macro F1 = 0.444 on a 10-row test set; the rule baseline achieves macro F1 = 0.39 on the full 50-row set under non-holdout conditions. These figures are not directly comparable and neither is statistically reliable at these sample sizes.
 
-### Known limitations
+### OCR resize benchmark
 
-1. **n=50 is insufficient for robust generalisation.** All reported metrics have very wide confidence intervals.
-2. **CRITICAL class is absent** from the training data; neither classifier can predict it.
-3. **Entity columns are binary flags** in the CSV; integer counts from OCR are binarised at inference (`count > 0 → 1`) to match.
-4. **Several MEDIUM/HIGH rows have all-zero entity flags**, meaning the rule-based features cannot separate them from LOW. This limits the separability achievable with the current feature set.
-5. **Labels are manually annotated**; inter-annotator agreement is unknown.
-6. **Personalisation is threshold adjustment**, not per-user model retraining. Insufficient per-user labelled data makes retraining impractical.
-7. The **test macro F1 of 0.444 is evaluated on 10 samples** — the result is not statistically stable.
+EasyOCR is slow on full-resolution 1920×1080 screenshots. The benchmark
+(`scripts/benchmark_resize.py`, results in `data/resize_eval/results.json`)
+evaluated the effect of downscaling to 1600×900 before OCR.
+
+| Metric | Value |
+|--------|-------|
+| Images evaluated | 20 |
+| Input resolution | 1920×1080 → 1600×900 |
+| Mean baseline time (full res) | 81.4 s / image |
+| Mean resized time | 13.1 s / image |
+| Mean speedup | **5.94×** |
+| Total baseline detections | 1484 |
+| Total resize detections | 1410 |
+| Detection loss | 74 (5.0%) |
+| Images with detection mismatch | 18 / 20 |
+| Images with net detection loss | 15 / 20 |
+| Max single-image detection loss | 18 |
+
+**Caveat — extreme outlier dominates the mean**: one image took 1337.6 s at full
+resolution but only 14.0 s after resize (95.7× speedup). Removing that image,
+the remaining 19 images show a mean speedup of approximately **1.17×** and a
+mean baseline time of approximately **15.3 s**. The reported 5.94× mean is not
+representative of typical images. The resize optimisation reliably eliminates
+catastrophic stalls (likely caused by EasyOCR's internal tiling on high-detail
+regions) but provides only modest improvement on typical screenshots.
+
+The 5% detection loss is consistent across images (15 of 20 showed losses, max
+18 detections lost on one image). Whether this affects downstream entity
+detection depends on whether the lost detections include sensitive entities; that
+follow-up analysis was not performed.
+
+---
+
+## Research limitations
+
+The following limitations are stated as confirmed observations from the actual evaluation, not post-hoc rationalisations.
+
+### 1. Dataset size is insufficient for reliable evaluation
+
+The entire annotated dataset contains 50 rows. An 80/20 stratified split produces a 10-row test set. All reported test metrics — accuracy, F1, confusion matrix — are computed over 10 samples. At this scale, a single misclassification changes macro F1 by approximately 0.044. No confidence intervals can be computed with a single train/test split. The reported metrics describe the behaviour of one trained instance on one specific 10-row subset; they cannot support claims about generalisation.
+
+### 2. Severe class imbalance, compounded by insufficient minority-class representation
+
+The label distribution is LOW=38 (76%), MEDIUM=10 (20%), HIGH=2 (4%), CRITICAL=0. With stratified 80/20 splitting:
+
+- Training set: LOW=30, MEDIUM=8, HIGH=2
+- Test set: LOW=8, MEDIUM=2, **HIGH=0**
+
+Both HIGH-labelled rows were allocated to the training fold. The test set contains zero HIGH examples. HIGH-class performance cannot be evaluated from this split. Cross-validation is capped at 2 folds because the training fold contains only 2 HIGH rows; with 2-fold CV, each validation fold has 1 HIGH example, making per-fold HIGH metrics unreliable.
+
+### 3. Feature overlap between LOW and MEDIUM renders the classes unseparable by the current feature set
+
+The model uses seven binary entity-presence flags (EMAIL, PHONE, URL, IP\_ADDRESS, DATE, WINDOWS\_PATH, sensitive\_entity\_present) and an encoded application\_context field. Inspection of the 10 MEDIUM-labelled rows reveals that **6 of 10 have all-zero entity flags and no application context** (filled as "Unknown"). These rows have feature vectors identical to 28 of 38 LOW-labelled rows. The two MEDIUM rows in the test set were precisely these all-zero, Unknown-context rows.
+
+The classifier correctly learned that the all-zero, Unknown-context region is predominantly LOW (28 LOW rows vs 6 MEDIUM rows share this feature vector). When confronted with two MEDIUM test rows in that region, it predicted LOW for both. This is not a model failure; it is the expected rational behaviour given a training set where identical feature vectors map to different labels.
+
+**MEDIUM F1 = 0.000 is a confirmed result, reproducible with `random_state=42`.** It reflects a fundamental mismatch between the available features and the labelling criteria, not a bug in the code.
+
+### 4. OCR-derived features do not capture the visual context used during manual labelling
+
+The six all-zero MEDIUM rows were labelled MEDIUM through visual inspection of the screenshot content — context that a human reviewer could observe (e.g., layout, application branding, visible but OCR-unextracted elements) but that OCR entity detection did not capture as structured features. The entity-count feature set assumes that privacy risk correlates with the presence of machine-readable sensitive entities. Several screenshots in this dataset contradict that assumption: they were judged risky by a human annotator for reasons the feature set cannot encode.
+
+This gap between visual interpretation and OCR extraction is an inherent limitation of the current pipeline architecture. Addressing it would require either richer OCR post-processing (e.g., layout analysis, visual classification) or additional annotation columns recording the human-readable reason for each label.
+
+### 5. Annotation quality and independence are unknown
+
+All 50 rows were labelled by a single annotator. No inter-annotator agreement metric (e.g., Cohen's kappa) was computed. The labelling criteria for the MEDIUM class — particularly for rows with no detectable sensitive entities — are not formally specified. It is possible that a second annotator would label some of the all-zero MEDIUM rows as LOW, which would eliminate the feature-space contradiction entirely. This uncertainty cannot be resolved from the existing data.
+
+### 6. No generalisation claim is supported
+
+The prototype was trained and evaluated on screenshots drawn from a single collection process. The test set was not withheld before any model or rule design decisions were made. The reported accuracy of 0.80 reflects performance on a 10-row sample from the same distribution as the training data. No evidence is available about performance on screenshots from different users, applications, or time periods.
+
+### 7. Personalisation is threshold adjustment, not model adaptation
+
+The adaptive component adjusts the model's decision thresholds based on user feedback — it does not retrain the model or learn new feature representations. This design is appropriate given the data volume (per-user labelled examples are sparse) but means the system cannot correct for fundamental feature-class mismatches on a per-user basis. A user who consistently labels all-zero-feature screenshots as MEDIUM will receive threshold adjustments, but the model's underlying inability to separate those rows from LOW will persist.
 
 ---
 
@@ -167,7 +254,8 @@ Both classifiers struggle with MEDIUM and HIGH due to class imbalance and all-ze
 Files excluded from version control (`.gitignore`):
 
 - `*.joblib` — trained model (learned patterns from private screenshots)
-- `backend/data/profiles/` — per-user JSON profiles
+- `backend/data/caprlm.db` — SQLite database (user data, analysis history)
+- `backend/data/profiles/` — legacy JSON profiles (preserved for migration reference)
 - `backend/data/training_log.json` — label distributions
 - `backend/data/screenshots/` and image files — raw screenshots
 - All pilot and processing output directories
@@ -183,4 +271,4 @@ cd Member2
 python -m pytest backend/tests/ -v
 ```
 
-107 tests covering OCR pipeline, entity detection, feature extraction, rule baseline, risk prediction, user profiles, model training, and the FastAPI endpoints.
+124 tests covering OCR pipeline, entity detection, feature extraction, rule baseline, risk prediction, user profiles, model training, database schema/migration, and the FastAPI endpoints.

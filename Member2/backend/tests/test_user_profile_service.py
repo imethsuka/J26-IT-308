@@ -1,10 +1,10 @@
 """Unit tests for user_profile_service."""
 
-import json
 import pytest
 from pathlib import Path
 
 import backend.services.user_profile_service as ups
+from backend.database import init_db
 
 
 # ---------------------------------------------------------------------------
@@ -13,8 +13,10 @@ import backend.services.user_profile_service as ups
 
 @pytest.fixture(autouse=True)
 def _isolate_profiles(tmp_path, monkeypatch):
-    """Redirect profile storage to a temporary directory for each test."""
-    monkeypatch.setattr(ups, "_PROFILES_DIR", tmp_path / "profiles")
+    """Redirect profile storage to an isolated temporary SQLite DB for each test."""
+    db = tmp_path / "test.db"
+    init_db(db)
+    monkeypatch.setattr(ups, "_DB_PATH", db)
 
 
 # ---------------------------------------------------------------------------

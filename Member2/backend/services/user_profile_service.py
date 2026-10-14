@@ -3,13 +3,11 @@ User profile service — persistent per-user privacy preferences and feedback.
 
 Storage
 -------
-Profiles are written as JSON files under backend/data/profiles/<user_id>.json.
-These files contain user preferences, a feedback log, and a calibrated
-decision-threshold override that is updated after ≥ RECALIBRATION_THRESHOLD
-feedback examples are collected.
+Profiles are stored in the SQLite database at _DB_PATH.
+The database is managed by backend.database; call init_db() at startup.
 
-Profile schema
---------------
+Profile schema (dict returned by load_profile)
+----------------------------------------------
 {
   "user_id": str,
   "privacy_preference": "Low" | "Medium" | "High",
@@ -30,32 +28,36 @@ Profile schema
 
 Security notes
 --------------
-- user_id is sanitised before use as a filename (alphanumeric + '-' only).
-- Profile JSON never contains raw OCR text or screenshot content.
-- The profiles directory should be excluded from version control (.gitignore).
+- user_id is sanitised before use as a DB key (alphanumeric + '-' only).
+- Profile data never contains raw OCR text or screenshot content.
+- The legacy profiles directory (JSON) should be excluded from version control.
 """
 
 from __future__ import annotations
 
-import json
 import re
 import time
 from pathlib import Path
 from typing import Any
 
+from backend.database import get_connection
 from backend.services.risk_prediction import DEFAULT_MEDIUM_THRESHOLDS
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
-_PROFILES_DIR = Path(__file__).parent.parent / "data" / "profiles"
+
+# Monkeypatchable in tests — set to a temporary path to isolate test state.
+_DB_PATH: Path = Path(__file__).parent.parent / "data" / "caprlm.db"
+
+# Legacy JSON profiles directory; retained as a reference for init_db migration.
+_PROFILES_DIR: Path = Path(__file__).parent.parent / "data" / "profiles"
+
 _VALID_RISK_LABELS = frozenset({"LOW", "MEDIUM", "HIGH", "CRITICAL"})
 _VALID_PREFERENCE_VALUES = frozenset({"Low", "Medium", "High"})
 RECALIBRATION_THRESHOLD: int = 10
 
 _DEFAULT_THRESHOLDS: dict[str, float] = DEFAULT_MEDIUM_THRESHOLDS.copy()
-
-# How much each user-labelled upgrade shifts the threshold downward
 _THRESHOLD_STEP: float = 0.02
 
 
@@ -65,7 +67,7 @@ _THRESHOLD_STEP: float = 0.02
 
 def _sanitise_user_id(user_id: str) -> str:
     """Allow only alphanumeric characters and hyphens; raise on invalid input."""
-    cleaned = re.sub(r"[^A-Za-z0-9\-]", "", user_id)
+    cleaned = re.sub(r"[^A-Za-z0-9_\-]", "", user_id)
     if not cleaned:
         raise ValueError("user_id must contain at least one alphanumeric character.")
     return cleaned
@@ -75,45 +77,119 @@ def _now_iso() -> str:
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
 
-def _profile_path(user_id: str) -> Path:
-    return _PROFILES_DIR / f"{_sanitise_user_id(user_id)}.json"
-
-
 # ---------------------------------------------------------------------------
 # CRUD
 # ---------------------------------------------------------------------------
 
 def load_profile(user_id: str) -> dict[str, Any]:
-    """Load an existing profile or return a default one."""
-    path = _profile_path(user_id)
-    if path.exists():
-        try:
-            with path.open(encoding="utf-8") as fh:
-                return json.load(fh)
-        except (json.JSONDecodeError, OSError):
-            pass  # fall through to default
+    """Load an existing profile or return a default one (not persisted)."""
+    cleaned = _sanitise_user_id(user_id)
+    conn = get_connection(_DB_PATH)
+    try:
+        row = conn.execute(
+            "SELECT * FROM user_profile WHERE user_id = ?", (cleaned,)
+        ).fetchone()
 
-    now = _now_iso()
-    return {
-        "user_id": user_id,
-        "privacy_preference": "Medium",
-        "historical_protection_level": "Medium",
-        "feedback_count": 0,
-        "feedback_log": [],
-        "calibrated_threshold_override": None,
-        "created_at": now,
-        "updated_at": now,
-    }
+        if row is None:
+            now = _now_iso()
+            return {
+                "user_id": cleaned,
+                "privacy_preference": "Medium",
+                "historical_protection_level": "Medium",
+                "feedback_count": 0,
+                "feedback_log": [],
+                "calibrated_threshold_override": None,
+                "created_at": now,
+                "updated_at": now,
+            }
+
+        override = None
+        if row["calibrated_threshold_medium"] is not None:
+            override = {
+                "medium": row["calibrated_threshold_medium"],
+                "high": row["calibrated_threshold_high"],
+            }
+
+        fb_rows = conn.execute(
+            """
+            SELECT screenshot_id, predicted_label, user_label, submitted_at
+              FROM feedback_log
+             WHERE user_id = ?
+             ORDER BY id ASC
+            """,
+            (cleaned,),
+        ).fetchall()
+
+        feedback_log = [
+            {
+                "screenshot_id": r["screenshot_id"],
+                "predicted_label": r["predicted_label"],
+                "user_label": r["user_label"],
+                "timestamp": r["submitted_at"],
+            }
+            for r in fb_rows
+        ]
+
+        return {
+            "user_id": row["user_id"],
+            "privacy_preference": row["privacy_preference"],
+            "historical_protection_level": row["historical_protection_level"],
+            "feedback_count": row["feedback_count"],
+            "feedback_log": feedback_log,
+            "calibrated_threshold_override": override,
+            "created_at": row["created_at"],
+            "updated_at": row["updated_at"],
+        }
+    finally:
+        conn.close()
 
 
 def save_profile(profile: dict[str, Any]) -> None:
-    """Persist a profile dict to disk."""
-    _PROFILES_DIR.mkdir(parents=True, exist_ok=True)
-    user_id = profile.get("user_id", "")
-    path = _profile_path(str(user_id))
-    profile["updated_at"] = _now_iso()
-    path.write_text(json.dumps(profile, indent=2), encoding="utf-8")
+    """Upsert profile preferences and calibration state to the database."""
+    user_id = _sanitise_user_id(str(profile.get("user_id", "")))
+    override = profile.get("calibrated_threshold_override")
+    cal_medium = override["medium"] if isinstance(override, dict) else None
+    cal_high = override["high"] if isinstance(override, dict) else None
+    updated_at = _now_iso()
 
+    conn = get_connection(_DB_PATH)
+    try:
+        with conn:
+            conn.execute(
+                """
+                INSERT INTO user_profile
+                    (user_id, privacy_preference, historical_protection_level,
+                     feedback_count, calibrated_threshold_medium,
+                     calibrated_threshold_high, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(user_id) DO UPDATE SET
+                    privacy_preference          = excluded.privacy_preference,
+                    historical_protection_level = excluded.historical_protection_level,
+                    feedback_count              = excluded.feedback_count,
+                    calibrated_threshold_medium = excluded.calibrated_threshold_medium,
+                    calibrated_threshold_high   = excluded.calibrated_threshold_high,
+                    updated_at                  = excluded.updated_at
+                """,
+                (
+                    user_id,
+                    profile.get("privacy_preference", "Medium"),
+                    profile.get("historical_protection_level", "Medium"),
+                    int(profile.get("feedback_count", 0)),
+                    cal_medium,
+                    cal_high,
+                    profile.get("created_at", _now_iso()),
+                    updated_at,
+                ),
+            )
+    finally:
+        conn.close()
+
+    profile["updated_at"] = updated_at
+
+
+# ---------------------------------------------------------------------------
+# Preferences
+# ---------------------------------------------------------------------------
 
 def update_preferences(
     user_id: str,
@@ -154,23 +230,8 @@ def record_feedback(
     user_label: str,
 ) -> dict[str, Any]:
     """
-    Append a feedback record to the user profile and recalibrate thresholds
-    when RECALIBRATION_THRESHOLD examples have been collected.
-
-    Parameters
-    ----------
-    user_id:
-        Identifier for the user session.
-    screenshot_id:
-        Identifier for the screenshot that was analysed.
-    predicted_label:
-        The label that the model predicted.
-    user_label:
-        The label the user believes is correct (validated externally).
-
-    Returns
-    -------
-    Updated profile dict (does not include raw feedback text).
+    Append a feedback record and recalibrate thresholds when
+    RECALIBRATION_THRESHOLD examples have been collected.
     """
     user_label_upper = user_label.strip().upper()
     predicted_upper = predicted_label.strip().upper()
@@ -186,22 +247,78 @@ def record_feedback(
             f"got '{predicted_label}'."
         )
 
-    profile = load_profile(user_id)
+    cleaned_id = _sanitise_user_id(user_id)
+    now = _now_iso()
 
-    entry: dict[str, str] = {
-        "screenshot_id": str(screenshot_id),
-        "predicted_label": predicted_upper,
-        "user_label": user_label_upper,
-        "timestamp": _now_iso(),
-    }
-    profile["feedback_log"].append(entry)
-    profile["feedback_count"] = len(profile["feedback_log"])
+    conn = get_connection(_DB_PATH)
+    try:
+        with conn:
+            # Ensure the user_profile row exists before inserting into feedback_log.
+            existing = conn.execute(
+                "SELECT created_at FROM user_profile WHERE user_id = ?",
+                (cleaned_id,),
+            ).fetchone()
+            if existing is None:
+                conn.execute(
+                    """
+                    INSERT INTO user_profile
+                        (user_id, privacy_preference, historical_protection_level,
+                         feedback_count, created_at, updated_at)
+                    VALUES (?, 'Medium', 'Medium', 0, ?, ?)
+                    """,
+                    (cleaned_id, now, now),
+                )
 
-    if profile["feedback_count"] >= RECALIBRATION_THRESHOLD:
-        profile["calibrated_threshold_override"] = _recalibrate(profile["feedback_log"])
+            conn.execute(
+                """
+                INSERT INTO feedback_log
+                    (user_id, screenshot_id, predicted_label, user_label, submitted_at)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (cleaned_id, str(screenshot_id), predicted_upper, user_label_upper, now),
+            )
 
-    save_profile(profile)
-    return profile
+            # Count and fetch all feedback for recalibration.
+            fb_rows = conn.execute(
+                """
+                SELECT predicted_label, user_label
+                  FROM feedback_log
+                 WHERE user_id = ?
+                 ORDER BY id ASC
+                """,
+                (cleaned_id,),
+            ).fetchall()
+            feedback_count = len(fb_rows)
+
+            override: dict[str, float] | None = None
+            if feedback_count >= RECALIBRATION_THRESHOLD:
+                fb_list = [
+                    {
+                        "predicted_label": r["predicted_label"],
+                        "user_label": r["user_label"],
+                    }
+                    for r in fb_rows
+                ]
+                override = _recalibrate(fb_list)
+
+            cal_medium = override["medium"] if override else None
+            cal_high = override["high"] if override else None
+
+            conn.execute(
+                """
+                UPDATE user_profile SET
+                    feedback_count              = ?,
+                    calibrated_threshold_medium = ?,
+                    calibrated_threshold_high   = ?,
+                    updated_at                  = ?
+                WHERE user_id = ?
+                """,
+                (feedback_count, cal_medium, cal_high, now, cleaned_id),
+            )
+    finally:
+        conn.close()
+
+    return load_profile(cleaned_id)
 
 
 def _recalibrate(feedback_log: list[dict[str, str]]) -> dict[str, float]:
@@ -215,7 +332,6 @@ def _recalibrate(feedback_log: list[dict[str, str]]) -> dict[str, float]:
     The shift is bounded to [0.05, 0.90].
     """
     _LEVEL_ORDER = {"LOW": 0, "MEDIUM": 1, "HIGH": 2, "CRITICAL": 3}
-
     upgrades = 0
     downgrades = 0
     for record in feedback_log:
@@ -231,12 +347,12 @@ def _recalibrate(feedback_log: list[dict[str, str]]) -> dict[str, float]:
 
     return {
         "medium": round(max(0.05, min(0.90, _DEFAULT_THRESHOLDS["medium"] - shift)), 4),
-        "high":   round(max(0.05, min(0.90, _DEFAULT_THRESHOLDS["high"]   - shift)), 4),
+        "high": round(max(0.05, min(0.90, _DEFAULT_THRESHOLDS["high"] - shift)), 4),
     }
 
 
 # ---------------------------------------------------------------------------
-# Profile summary (safe for API responses — no raw OCR data)
+# Profile summary (safe for API responses — no raw feedback text)
 # ---------------------------------------------------------------------------
 
 def profile_summary(profile: dict[str, Any]) -> dict[str, Any]:

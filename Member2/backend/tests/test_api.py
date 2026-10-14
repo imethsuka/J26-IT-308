@@ -20,9 +20,14 @@ import backend.services.user_profile_service as ups
 # ---------------------------------------------------------------------------
 
 @pytest.fixture(scope="module")
-def client():
+def client(tmp_path_factory):
     from backend.main import app
-    return TestClient(app)
+    from backend.database import init_db
+    db = tmp_path_factory.mktemp("api_db") / "test.db"
+    init_db(db)
+    ups._DB_PATH = db
+    with TestClient(app) as c:
+        yield c
 
 
 # ---------------------------------------------------------------------------
@@ -80,8 +85,7 @@ def test_root_returns_200(client):
 # POST /analyze
 # ---------------------------------------------------------------------------
 
-def test_analyze_returns_200_with_mocks(client, tmp_path, monkeypatch):
-    monkeypatch.setattr(ups, "_PROFILES_DIR", tmp_path / "profiles")
+def test_analyze_returns_200_with_mocks(client):
     import backend.services.risk_prediction as rp
     with patch("backend.main.extract_text", _mock_ocr):
         with patch.object(rp, "_bundle", _mock_bundle()):
@@ -96,8 +100,7 @@ def test_analyze_returns_200_with_mocks(client, tmp_path, monkeypatch):
     assert "user_profile_summary" in body
 
 
-def test_analyze_risk_prediction_has_model_status(client, tmp_path, monkeypatch):
-    monkeypatch.setattr(ups, "_PROFILES_DIR", tmp_path / "profiles")
+def test_analyze_risk_prediction_has_model_status(client):
     import backend.services.risk_prediction as rp
     with patch("backend.main.extract_text", _mock_ocr):
         with patch.object(rp, "_bundle", _mock_bundle()):
@@ -107,8 +110,7 @@ def test_analyze_risk_prediction_has_model_status(client, tmp_path, monkeypatch)
     assert body["risk_prediction"]["model_status"] == "ML_MODEL_ACTIVE"
 
 
-def test_analyze_ocr_text_is_redacted(client, tmp_path, monkeypatch):
-    monkeypatch.setattr(ups, "_PROFILES_DIR", tmp_path / "profiles")
+def test_analyze_ocr_text_is_redacted(client):
     import backend.services.risk_prediction as rp
     with patch("backend.main.extract_text", _mock_ocr):
         with patch.object(rp, "_bundle", _mock_bundle()):
@@ -126,8 +128,7 @@ def test_analyze_missing_fields_returns_400(client):
     assert resp.status_code == 400
 
 
-def test_analyze_returns_rule_baseline(client, tmp_path, monkeypatch):
-    monkeypatch.setattr(ups, "_PROFILES_DIR", tmp_path / "profiles")
+def test_analyze_returns_rule_baseline(client):
     import backend.services.risk_prediction as rp
     with patch("backend.main.extract_text", _mock_ocr):
         with patch.object(rp, "_bundle", _mock_bundle()):
@@ -144,7 +145,10 @@ def test_analyze_returns_rule_baseline(client, tmp_path, monkeypatch):
 
 @pytest.fixture(autouse=True)
 def _isolate_profiles(tmp_path, monkeypatch):
-    monkeypatch.setattr(ups, "_PROFILES_DIR", tmp_path / "profiles")
+    from backend.database import init_db
+    db = tmp_path / "test.db"
+    init_db(db)
+    monkeypatch.setattr(ups, "_DB_PATH", db)
 
 
 def test_feedback_valid_payload_returns_200(client):

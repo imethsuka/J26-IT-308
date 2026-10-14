@@ -1,11 +1,15 @@
 import re
+import time
+from contextlib import asynccontextmanager
 from pathlib import Path
 from tempfile import NamedTemporaryFile
+from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, field_validator
 
+from backend.database import get_connection, init_db
 from backend.services.feature_extraction import extract_features
 from backend.services.ocr_service import extract_text
 from backend.services.protection import select_protection
@@ -14,7 +18,14 @@ from backend.services.rule_baseline import predict_rule_based
 from backend.services.sensitive_detection import detect_sensitive_entities
 from backend.services import user_profile_service as ups
 
-app = FastAPI(title="J26-IT-308 CAPRLM Backend")
+
+@asynccontextmanager
+async def _lifespan(app: FastAPI):
+    init_db(ups._DB_PATH, ups._PROFILES_DIR)
+    yield
+
+
+app = FastAPI(title="J26-IT-308 CAPRLM Backend", lifespan=_lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -51,7 +62,7 @@ def root():
 # Multipart upload parsing
 # ---------------------------------------------------------------------------
 
-async def _parse_analyze_request(request: Request) -> tuple[bytes, str, str, str, str, str]:
+async def _parse_analyze_request(request: Request) -> tuple[bytes, str, str, str, str, str, str]:
     content_type = request.headers.get("content-type", "")
     boundary_match = re.search(
         r"boundary=(?:\"([^\"]+)\"|([^;]+))", content_type, re.IGNORECASE
@@ -91,6 +102,7 @@ async def _parse_analyze_request(request: Request) -> tuple[bytes, str, str, str
         if filename is not None:
             image_bytes = value
             image_suffix = Path(filename).suffix or ".jpg"
+            image_filename = filename
         else:
             fields[field_name] = value.decode("utf-8")
 
@@ -115,11 +127,114 @@ async def _parse_analyze_request(request: Request) -> tuple[bytes, str, str, str
     return (
         image_bytes,
         image_suffix,
+        image_filename,
         fields["application_context"],
         fields["privacy_preference"],
         fields["historical_protection_level"],
         user_id,
     )
+
+
+# ---------------------------------------------------------------------------
+# DB logging helpers
+# ---------------------------------------------------------------------------
+
+def _log_analysis(
+    *,
+    screenshot_id: str,
+    user_id: str,
+    application_context: str,
+    privacy_preference: str,
+    historical_protection_level: str,
+    extracted_features: dict[str, Any],
+    risk_prediction: dict[str, Any],
+    rule_prediction: dict[str, Any],
+    protection_selection: dict[str, Any],
+) -> None:
+    now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    try:
+        conn = get_connection(ups._DB_PATH)
+        try:
+            with conn:
+                conn.execute(
+                    """
+                    INSERT INTO analysis_log (
+                        screenshot_id, analyzed_at, user_id,
+                        application_context, privacy_preference,
+                        historical_protection_level,
+                        ocr_text_length,
+                        email_count, phone_count, url_count, ip_count,
+                        date_count, windows_path_count,
+                        sensitive_entity_count,
+                        risk_level, confidence, model_type, protection_action,
+                        rule_risk_level, rule_confidence
+                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                    """,
+                    (
+                        screenshot_id, now, user_id,
+                        application_context, privacy_preference,
+                        historical_protection_level,
+                        extracted_features.get("ocr_text_length"),
+                        int(extracted_features.get("email_count", 0)),
+                        int(extracted_features.get("phone_count", 0)),
+                        int(extracted_features.get("url_count", 0)),
+                        int(extracted_features.get("ip_count", 0)),
+                        int(extracted_features.get("date_count", 0)),
+                        int(extracted_features.get("windows_path_count", 0)),
+                        int(extracted_features.get("sensitive_entity_count", 0)),
+                        risk_prediction.get("risk_level"),
+                        risk_prediction.get("confidence"),
+                        risk_prediction.get("model_type"),
+                        protection_selection.get("action"),
+                        rule_prediction.get("risk_level"),
+                        rule_prediction.get("confidence"),
+                    ),
+                )
+        finally:
+            conn.close()
+    except Exception:
+        pass  # logging must never fail an analysis request
+
+
+def _log_training_run(bundle: dict[str, Any]) -> None:
+    now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    label_dist: dict[str, int] = bundle.get("label_distribution", {})
+    try:
+        conn = get_connection(ups._DB_PATH)
+        try:
+            with conn:
+                conn.execute(
+                    """
+                    INSERT INTO training_run (
+                        model_version, trained_at,
+                        dataset_rows,
+                        label_low, label_medium, label_high, label_critical,
+                        train_size, test_size, cv_folds,
+                        cv_macro_f1_mean, cv_macro_f1_std,
+                        test_macro_f1, test_accuracy
+                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                    """,
+                    (
+                        bundle.get("model_version"),
+                        now,
+                        bundle.get("dataset_rows"),
+                        label_dist.get("LOW"),
+                        label_dist.get("MEDIUM"),
+                        label_dist.get("HIGH"),
+                        label_dist.get("CRITICAL"),
+                        bundle.get("train_size"),
+                        bundle.get("test_size"),
+                        bundle.get("cv_folds"),
+                        bundle.get("cv_macro_f1_mean"),
+                        bundle.get("cv_macro_f1_std"),
+                        bundle.get("test_macro_f1"),
+                        bundle.get("test_accuracy"),
+                    ),
+                )
+        finally:
+            conn.close()
+    except Exception:
+        pass  # logging must never fail a training request
 
 
 # ---------------------------------------------------------------------------
@@ -131,6 +246,7 @@ async def analyze(request: Request):
     (
         image_bytes,
         image_suffix,
+        image_filename,
         application_context,
         privacy_preference,
         historical_protection_level,
@@ -169,6 +285,18 @@ async def analyze(request: Request):
             risk_prediction["risk_level"],
             risk_prediction["confidence"],
             detection_output,
+        )
+
+        _log_analysis(
+            screenshot_id=image_filename,
+            user_id=user_id,
+            application_context=application_context,
+            privacy_preference=privacy_preference,
+            historical_protection_level=historical_protection_level,
+            extracted_features=extracted_features,
+            risk_prediction=risk_prediction,
+            rule_prediction=rule_prediction,
+            protection_selection=protection_selection,
         )
 
         return {
@@ -259,6 +387,7 @@ async def train(request: Request):
         from backend.services.train_model import train as run_training
         bundle = run_training()
         reload_bundle()
+        _log_training_run(bundle)
     except Exception as exc:
         raise HTTPException(
             status_code=500,
