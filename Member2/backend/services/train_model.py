@@ -151,21 +151,24 @@ def train() -> dict:
     print(f"Label distribution: {label_dist}")
     print()
 
-    X, context_encoder = build_features(df)
     y = df["privacy_risk_label"].values
-    feature_names = list(X.columns)
 
     # ------------------------------------------------------------------
-    # Fixed train / test split — established BEFORE any model fitting
-    # to prevent data leakage.
+    # Split the raw dataframe BEFORE fitting the encoder so the encoder
+    # never sees test-set application_context categories (leakage fix).
     # ------------------------------------------------------------------
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y,
+    df_train, df_test, y_train, y_test = train_test_split(
+        df, y,
         test_size=TEST_SIZE,
         random_state=RANDOM_STATE,
         stratify=y,
     )
-    print(f"Train: {len(X_train)} rows  |  Test: {len(X_test)} rows")
+    print(f"Train: {len(df_train)} rows  |  Test: {len(df_test)} rows")
+
+    # Fit encoder on training fold only; transform test fold with it.
+    X_train, context_encoder = build_features(df_train)
+    X_test, _ = build_features(df_test, context_encoder=context_encoder)
+    feature_names = list(X_train.columns)
 
     # ------------------------------------------------------------------
     # Stratified k-fold CV on the training fold only.

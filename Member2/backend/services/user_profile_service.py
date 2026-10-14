@@ -43,6 +43,8 @@ import time
 from pathlib import Path
 from typing import Any
 
+from backend.services.risk_prediction import DEFAULT_MEDIUM_THRESHOLDS
+
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
@@ -51,8 +53,7 @@ _VALID_RISK_LABELS = frozenset({"LOW", "MEDIUM", "HIGH", "CRITICAL"})
 _VALID_PREFERENCE_VALUES = frozenset({"Low", "Medium", "High"})
 RECALIBRATION_THRESHOLD: int = 10
 
-# Default thresholds (must stay in sync with risk_prediction._DEFAULT_THRESHOLDS["medium"])
-_DEFAULT_THRESHOLDS: dict[str, float] = {"medium": 0.35, "high": 0.22}
+_DEFAULT_THRESHOLDS: dict[str, float] = DEFAULT_MEDIUM_THRESHOLDS.copy()
 
 # How much each user-labelled upgrade shifts the threshold downward
 _THRESHOLD_STEP: float = 0.02

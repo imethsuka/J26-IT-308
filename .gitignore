@@ -41,6 +41,23 @@ Member2/backend/data/screenshots/
 *.tiff
 *.tif
 
+# ── Pipeline output and pilot directories — generated, not source ─────────────
+Member2/backend/data/pilot_10/
+Member2/backend/data/pilot_flush_opt/
+Member2/backend/data/processing_output/
+Member2/backend/data/processing_output_optimized_test/
+Member2/backend/data/resize_eval/
+Member2/backend/data/timeout_pilot/
+
+# ── Timestamped backup scripts created by the optimization workflow ───────────
+Member2/backend/scripts/process_screenshots_backup.py
+Member2/backend/scripts/process_screenshots_pre_*.py
+Member2/backend/scripts/process_screenshots_pre_optimization.py
+
+# ── Standalone benchmark/investigation scripts (not production code) ──────────
+Member2/backend/scripts/benchmark_ocr.py
+Member2/backend/scripts/benchmark_resize.py
+
 # ── IDE ──────────────────────────────────────────────────────────────────────
 .vscode/
 .idea/
