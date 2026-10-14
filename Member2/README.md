@@ -134,11 +134,11 @@ Returns: `ocr_summary`, `detection_results`, `extracted_features`, `risk_predict
 | HIGH or CRITICAL | Always tokenize |
 | MEDIUM | Always tokenize |
 | LOW, confidence < 0.75 | Tokenize (uncertain prediction) |
-| LOW, confidence ≥ 0.75 | Skip tokenization; `detection_results.matches` are **emptied** (counts preserved) |
+| LOW, confidence ≥ 0.75 | Skip tokenization; `detection_results.matches` contains the original detected entity strings (raw values present) |
 | UNAVAILABLE (model not loaded) | Always tokenize (fail-safe) |
 | LOW, confidence = None | Always tokenize (fail-safe) |
 
-The 0.75 confidence threshold is a design choice and has **not** been empirically optimised. When tokenization is skipped, the `detection_results` field still does not expose raw sensitive values — all `matches` lists are cleared and only entity counts are returned.
+The 0.75 confidence threshold is a design choice and has **not** been empirically optimised. When tokenization is skipped, `detection_results.matches` lists contain the original detected entity values. **This is a known privacy limitation of the prototype**: on screenshots predicted LOW with high confidence, the raw JSON API response includes unmasked entity strings (email addresses, phone numbers, etc.) in `detection_results[category]["matches"]`. The frontend (`app.js`) does not display `matches` to users (it reads only `.count`), but callers reading the raw response receive unmasked values.
 
 **Token-to-value restoration map**: the `token_map` is ephemeral. It is created per-request, used within the same request to mask entity values in the response, and then discarded. It is never returned to the client, logged, or stored. Cross-request restoration is not supported.
 
@@ -193,21 +193,33 @@ The model predicted only LOW across all 10 test rows. No MEDIUM or HIGH predicti
 
 ### Rule baseline — deterministic classifier
 
-Evaluated on the full 50-row annotation CSV (not a held-out split).
+Evaluated on the same held-out 10-row test fold as the ML model, using `services/baseline_eval.py`. The split is deterministic (`random_state=42`, 80/20 stratified) and matches the split used for ML model training, so both classifiers are evaluated on identical test rows.
 
 | Metric | Value |
 |--------|-------|
-| Accuracy | 0.78 |
-| Macro F1 | 0.39 |
-| LOW F1 | 0.89 |
-| MEDIUM F1 | 0.29 |
-| HIGH F1 | 0.00 |
+| Test rows | 10 (same fold as ML model) |
+| Accuracy | 0.80 |
+| Macro F1 | 0.444 |
+| LOW F1 | 0.889 |
+| MEDIUM F1 | 0.000 |
+| HIGH support in test | 0 |
 
-Note: rule-baseline metrics are computed on the same data used to design the rules; they are not held-out results and overestimate generalisation performance.
+The rule baseline predicted only LOW across all 10 test rows — the same outcome as the ML model. Both misclassified the 2 MEDIUM test rows as LOW.
+
+To reproduce: `python -m backend.services.baseline_eval`
 
 ### Comparison
 
-The ML model achieves macro F1 = 0.444 on a 10-row test set; the rule baseline achieves macro F1 = 0.39 on the full 50-row set under non-holdout conditions. These figures are not directly comparable and neither is statistically reliable at these sample sizes.
+Both classifiers are evaluated on the same held-out 10-row test set via `services/baseline_eval.py`:
+
+| Classifier | Accuracy | Macro F1 |
+|---|---|---|
+| Rule baseline | 0.80 | 0.444 |
+| Random Forest (ML) | 0.80 | 0.444 |
+
+The identical scores reflect that both classifiers predict only LOW on this test set: the 8 LOW rows are correct and the 2 MEDIUM rows are wrong for both. This result is a consequence of the feature-class overlap documented in Limitation 3 below, not a coincidence. Neither result is statistically reliable at n=10.
+
+**Macro F1 calculation note**: sklearn `f1_score(average="macro")` without explicit `labels` averages over only the classes present in predictions and true labels (LOW and MEDIUM), not over all three classes including HIGH. The reported 0.444 = (0.889 + 0.000) / 2. The classification report's "macro avg" row uses all three classes including HIGH (0 support) and reports 0.296.
 
 The rule-based classifier is the only conventional baseline evaluated. Comparisons against masking, anonymization, or pseudonymization pipelines are not implemented.
 
@@ -372,4 +384,4 @@ cd Member2
 python -m pytest backend/tests/ -v
 ```
 
-173 tests covering OCR pipeline, entity detection, feature extraction, rule baseline, risk prediction, reversible tokenization (T5), user profiles, model training, database schema/migration, and the FastAPI endpoints.
+209 tests covering OCR pipeline, entity detection, feature extraction, rule baseline, baseline comparison evaluation, risk prediction, reversible tokenization (T5), user profiles, model training, database schema/migration, and the FastAPI endpoints.
