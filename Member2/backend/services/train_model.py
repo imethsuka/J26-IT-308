@@ -25,6 +25,7 @@ from __future__ import annotations
 import json
 import time
 from pathlib import Path
+from typing import Optional
 
 import joblib
 import numpy as np
@@ -137,12 +138,62 @@ def build_features(
 # Training
 # ---------------------------------------------------------------------------
 
-def train() -> dict:
+def _write_training_run_to_db(bundle: dict, db_path: Path) -> None:
+    """
+    Write a training-run record to the SQLite training_run table.
+
+    Safe to call from both the CLI (__main__) and the /train API endpoint.
+    Errors are suppressed so a DB failure never aborts a successful training run.
+    """
+    from backend.database import get_connection
+    label_dist: dict = bundle.get("label_distribution", {})
+    now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    try:
+        conn = get_connection(db_path)
+        try:
+            with conn:
+                conn.execute(
+                    """
+                    INSERT INTO training_run (
+                        model_version, trained_at,
+                        dataset_rows,
+                        label_low, label_medium, label_high, label_critical,
+                        train_size, test_size, cv_folds,
+                        cv_macro_f1_mean, cv_macro_f1_std,
+                        test_macro_f1, test_accuracy
+                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                    """,
+                    (
+                        bundle.get("model_version"),
+                        now,
+                        bundle.get("dataset_rows"),
+                        label_dist.get("LOW"),
+                        label_dist.get("MEDIUM"),
+                        label_dist.get("HIGH"),
+                        label_dist.get("CRITICAL"),
+                        bundle.get("train_size"),
+                        bundle.get("test_size"),
+                        bundle.get("cv_folds"),
+                        bundle.get("cv_macro_f1_mean"),
+                        bundle.get("cv_macro_f1_std"),
+                        bundle.get("test_macro_f1"),
+                        bundle.get("test_accuracy"),
+                    ),
+                )
+        finally:
+            conn.close()
+    except Exception:
+        pass  # DB write failure must not abort a successful training run
+
+
+def train(db_path: Optional[Path] = None) -> dict:
     """
     Train the shared Random Forest classifier.
 
     Returns the model bundle dict and writes it to MODEL_PATH.
-    Also appends an entry to TRAINING_LOG_PATH.
+    Also appends an entry to TRAINING_LOG_PATH and, when db_path is
+    provided, writes a record to the SQLite training_run table so that
+    both CLI and API invocations keep the database consistent.
     """
     df = load_annotations()
 
@@ -296,6 +347,15 @@ def train() -> dict:
     TRAINING_LOG_PATH.write_text(json.dumps(history, indent=2), encoding="utf-8")
     print(f"Training log appended → {TRAINING_LOG_PATH}")
 
+    # Write to SQLite training_run table when a db_path is provided.
+    # This keeps the database consistent whether training is triggered via
+    # CLI or the /train API endpoint.
+    bundle["dataset_rows"] = int(len(df))
+    bundle["label_distribution"] = label_dist
+    if db_path is not None:
+        _write_training_run_to_db(bundle, db_path)
+        print(f"Training run logged → {db_path}")
+
     return bundle
 
 
@@ -304,4 +364,5 @@ def train() -> dict:
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    train()
+    from backend.services.user_profile_service import _DB_PATH
+    train(db_path=_DB_PATH)

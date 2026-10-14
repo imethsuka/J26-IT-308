@@ -16,6 +16,7 @@ from backend.services.protection import select_protection
 from backend.services.risk_prediction import predict_privacy_risk, reload_bundle
 from backend.services.rule_baseline import predict_rule_based
 from backend.services.sensitive_detection import detect_sensitive_entities
+from backend.services.tokenizer import tokenize as _tokenize_entities
 from backend.services import user_profile_service as ups
 
 
@@ -196,45 +197,6 @@ def _log_analysis(
         pass  # logging must never fail an analysis request
 
 
-def _log_training_run(bundle: dict[str, Any]) -> None:
-    now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-    label_dist: dict[str, int] = bundle.get("label_distribution", {})
-    try:
-        conn = get_connection(ups._DB_PATH)
-        try:
-            with conn:
-                conn.execute(
-                    """
-                    INSERT INTO training_run (
-                        model_version, trained_at,
-                        dataset_rows,
-                        label_low, label_medium, label_high, label_critical,
-                        train_size, test_size, cv_folds,
-                        cv_macro_f1_mean, cv_macro_f1_std,
-                        test_macro_f1, test_accuracy
-                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-                    """,
-                    (
-                        bundle.get("model_version"),
-                        now,
-                        bundle.get("dataset_rows"),
-                        label_dist.get("LOW"),
-                        label_dist.get("MEDIUM"),
-                        label_dist.get("HIGH"),
-                        label_dist.get("CRITICAL"),
-                        bundle.get("train_size"),
-                        bundle.get("test_size"),
-                        bundle.get("cv_folds"),
-                        bundle.get("cv_macro_f1_mean"),
-                        bundle.get("cv_macro_f1_std"),
-                        bundle.get("test_macro_f1"),
-                        bundle.get("test_accuracy"),
-                    ),
-                )
-        finally:
-            conn.close()
-    except Exception:
-        pass  # logging must never fail a training request
 
 
 # ---------------------------------------------------------------------------
@@ -287,6 +249,19 @@ async def analyze(request: Request):
             detection_output,
         )
 
+        # T5 — Risk-adaptive reversible tokenization.
+        # Replaces detected entity values in the API response with tokens.
+        # token_map is ephemeral: it is intentionally not returned to the
+        # client, not logged, and not stored.  See services/tokenizer.py.
+        tokenized_text, token_map, tokenized_detection = _tokenize_entities(
+            extracted_text,
+            detection_output,
+            risk_level=risk_prediction.get("risk_level", "LOW"),
+            confidence=risk_prediction.get("confidence"),
+        )
+
+        # DB logging uses the original detection_output (original counts are
+        # correct; we must not store tokenized values or the token_map).
         _log_analysis(
             screenshot_id=image_filename,
             user_id=user_id,
@@ -304,12 +279,21 @@ async def analyze(request: Request):
                 "extracted_text": "[redacted — not logged for privacy]",
                 "detections_count": detections_count,
             },
-            "detection_results": detection_output,
+            "detection_results": tokenized_detection,
             "extracted_features": extracted_features,
             "risk_prediction": risk_prediction,
             "rule_baseline": rule_prediction,
             "protection_selection": protection_selection,
             "user_profile_summary": ups.profile_summary(profile),
+            "tokenized_summary": {
+                "tokenized_text": tokenized_text,
+                "entity_token_count": len(token_map),
+                "tokenization_applied": len(token_map) > 0,
+                "note": (
+                    "Token-to-value restoration map is ephemeral and not "
+                    "returned. Restoration across requests is not supported."
+                ),
+            },
         }
     finally:
         temporary_path.unlink(missing_ok=True)
@@ -385,9 +369,8 @@ async def train(request: Request):
 
     try:
         from backend.services.train_model import train as run_training
-        bundle = run_training()
+        bundle = run_training(db_path=ups._DB_PATH)
         reload_bundle()
-        _log_training_run(bundle)
     except Exception as exc:
         raise HTTPException(
             status_code=500,
@@ -416,9 +399,8 @@ async def train(request: Request):
 
 @app.get("/model-info")
 async def model_info():
-    """Return current model metadata and last training results."""
-    import json
-    from backend.services.train_model import TRAINING_LOG_PATH, MODEL_PATH
+    """Return current model metadata and last training results from SQLite."""
+    from backend.services.train_model import MODEL_PATH
 
     if not MODEL_PATH.exists():
         return {
@@ -427,14 +409,27 @@ async def model_info():
         }
 
     last_entry: dict | None = None
-    if TRAINING_LOG_PATH.exists():
+    try:
+        conn = get_connection(ups._DB_PATH)
         try:
-            with TRAINING_LOG_PATH.open(encoding="utf-8") as fh:
-                history = json.load(fh)
-            if history:
-                last_entry = history[-1]
-        except (json.JSONDecodeError, OSError):
-            pass
+            row = conn.execute(
+                """
+                SELECT model_version, trained_at, dataset_rows,
+                       label_low, label_medium, label_high, label_critical,
+                       train_size, test_size, cv_folds,
+                       cv_macro_f1_mean, cv_macro_f1_std,
+                       test_macro_f1, test_accuracy
+                FROM training_run
+                ORDER BY id DESC
+                LIMIT 1
+                """
+            ).fetchone()
+            if row:
+                last_entry = dict(row)
+        finally:
+            conn.close()
+    except Exception:
+        pass
 
     return {
         "model_available": True,

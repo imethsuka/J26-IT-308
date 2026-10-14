@@ -7,9 +7,11 @@ J26-IT-308 · Research Prototype
 
 ## Overview
 
-CAPRLM is a desktop privacy-risk analysis prototype. It processes screenshots via OCR, detects sensitive entities (email, phone, URL, IP address, file paths), classifies privacy risk using a trained Random Forest model, selects a protection action, and adapts decision thresholds to per-user feedback over time.
+CAPRLM is a desktop privacy-risk analysis prototype. It processes screenshots via OCR, detects sensitive entities (email, phone, URL, IP address, file paths) using rule-based regex pattern matching, classifies privacy risk using a trained Random Forest model, selects a protection action (but does not execute image transformations), and adapts decision thresholds to per-user feedback over time.
 
 The system implements a full research loop: batch OCR pipeline → annotated training data → ML model training → live analysis API → user feedback → personalised threshold recalibration.
+
+**Scope note:** The implemented pipeline is text-based. The OCR stage extracts text from screenshots; all subsequent processing operates on that text. No computer vision, semantic embedding, or trained NER model is integrated. Protection actions (blur, block) are selected and returned by the API but image manipulation is not applied.
 
 ---
 
@@ -20,7 +22,13 @@ screenshots/            ← raw images (never committed)
     │
     ▼
 scripts/process_screenshots.py
-    │  EasyOCR (CPU), manifest-based resume, Windows subprocess timeout
+    │  EasyOCR (CPU, text extraction only), manifest-based resume,
+    │  Windows subprocess timeout
+    │
+    ▼
+services/sensitive_detection.py
+    │  Rule-based regex PII detection (EMAIL, PHONE, URL, IP_ADDRESS,
+    │  DATE, WINDOWS_PATH) — not a trained NER model
     │
     ▼
 data/candidates.csv     ← extracted OCR features + auto-label candidates
@@ -31,6 +39,11 @@ services/train_model.py
     │  Random Forest, stratified CV, encoder leakage fix
     ▼
 data/caprlm_model.joblib        ← trained model bundle (not committed)
+    │
+    ▼
+services/protection.py
+    │  Risk-to-action mapping (MONITOR / BLUR_SENSITIVE / BLUR_AND_ALERT /
+    │  BLOCK). Returns action name; does not apply image transformations.
     │
     ▼
 main.py  (FastAPI)
@@ -106,7 +119,30 @@ python -m backend.scripts.process_screenshots \
 
 **`POST /analyze`** — form fields: `image` (file), `application_context` (str), `privacy_preference` (Low/Medium/High), `historical_protection_level` (Low/Medium/High).
 
-Returns: `ocr_summary`, `detection_results`, `extracted_features`, `risk_prediction`, `protection_selection`, `user_profile_summary`.
+Returns: `ocr_summary`, `detection_results`, `extracted_features`, `risk_prediction`, `rule_baseline`, `protection_selection`, `user_profile_summary`, `tokenized_summary`.
+
+---
+
+## T5 — Reversible tokenization (prototype)
+
+`/analyze` applies risk-adaptive entity masking to the API response. Detected sensitive values (email, phone, URL, IP address, date, Windows path) in `detection_results` are replaced with opaque placeholder tokens such as `[EMAIL_1]`, `[PHONE_2]`.
+
+**When tokenization is applied:**
+
+| Predicted risk | Behaviour |
+|---|---|
+| HIGH or CRITICAL | Always tokenize |
+| MEDIUM | Always tokenize |
+| LOW, confidence < 0.75 | Tokenize (uncertain prediction) |
+| LOW, confidence ≥ 0.75 | Skip tokenization; `detection_results.matches` are **emptied** (counts preserved) |
+| UNAVAILABLE (model not loaded) | Always tokenize (fail-safe) |
+| LOW, confidence = None | Always tokenize (fail-safe) |
+
+The 0.75 confidence threshold is a design choice and has **not** been empirically optimised. When tokenization is skipped, the `detection_results` field still does not expose raw sensitive values — all `matches` lists are cleared and only entity counts are returned.
+
+**Token-to-value restoration map**: the `token_map` is ephemeral. It is created per-request, used within the same request to mask entity values in the response, and then discarded. It is never returned to the client, logged, or stored. Cross-request restoration is not supported.
+
+**Known limitation**: if OCR text already contains a literal string matching the token format (e.g. a UI element reading `[EMAIL_1]`), that string is indistinguishable from a genuine token and restoration will produce incorrect output at that position. This edge case is not handled at runtime.
 
 ---
 
@@ -123,6 +159,10 @@ Returns: `ocr_summary`, `detection_results`, `extracted_features`, `risk_predict
 | CRITICAL | 0 |
 
 36 of 50 rows have no recorded `application_context` (filled as "Unknown" during training). The dataset is severely class-imbalanced.
+
+### Sensitive entity detection
+
+Entities are detected by deterministic regex patterns in [services/sensitive_detection.py](backend/services/sensitive_detection.py). This is **rule-based PII pattern matching**, not a trained Named Entity Recognition (NER) model. Six entity categories are covered: EMAIL, PHONE, URL, IP\_ADDRESS, DATE, WINDOWS\_PATH. No NLP model, tokeniser, or trained classifier is involved in this stage.
 
 ### ML model — Random Forest (v1.0.0)
 
@@ -169,6 +209,53 @@ Note: rule-baseline metrics are computed on the same data used to design the rul
 
 The ML model achieves macro F1 = 0.444 on a 10-row test set; the rule baseline achieves macro F1 = 0.39 on the full 50-row set under non-holdout conditions. These figures are not directly comparable and neither is statistically reliable at these sample sizes.
 
+The rule-based classifier is the only conventional baseline evaluated. Comparisons against masking, anonymization, or pseudonymization pipelines are not implemented.
+
+### Risk-adaptive reversible tokenization (T5)
+
+[services/tokenizer.py](backend/services/tokenizer.py) implements the T5 proposal requirement.
+
+**What it does:** detected sensitive entity values in the OCR text and detection results are replaced with category-scoped placeholder tokens (`[EMAIL_1]`, `[PHONE_2]`, etc.) before the API response is assembled. The restoration mapping (token → original value) is held in memory for the duration of the request and then discarded; it is never returned to the client, logged, or stored.
+
+**Risk-adaptive gating:** the tokenizer inspects the ML model's `risk_level` and `confidence` to decide whether to apply tokenization:
+
+| Condition | Decision |
+|---|---|
+| risk_level = HIGH or CRITICAL | Always tokenize |
+| risk_level = MEDIUM | Always tokenize |
+| risk_level = UNAVAILABLE (model not loaded) | Tokenize (fail-safe) |
+| risk_level = LOW, confidence = None | Tokenize (fail-safe) |
+| risk_level = LOW, confidence < 0.75 | Tokenize (uncertain prediction) |
+| risk_level = LOW, confidence ≥ 0.75 | Skip (confident safe prediction) |
+
+The threshold 0.75 is a design choice and is **not empirically optimised**. It is configurable via `min_confidence_to_skip` in `tokenize()`.
+
+**API response fields:**
+- `detection_results[category]["matches"]` — contains token strings (e.g. `["[EMAIL_1]"]`) instead of original values when tokenization is applied.
+- `tokenized_summary.tokenized_text` — OCR text with entities replaced by tokens.
+- `tokenized_summary.entity_token_count` — number of unique entities tokenized.
+- `tokenized_summary.tokenization_applied` — bool.
+
+**What is never in the response:** the `token_map` (the restoration mapping). It is intentionally excluded.
+
+**Security limitations:**
+- Restoration is valid only within the same request. There is no mechanism to restore tokens from a later request.
+- The token format `[CATEGORY_N]` is distinctive but not cryptographically protected. This is a prototype demonstration, not a production privacy primitive.
+- If OCR text naturally contains the literal string `[EMAIL_1]` (extremely unlikely in typical screenshots), restoration would corrupt that position.
+
+### Protection action selection
+
+[services/protection.py](backend/services/protection.py) maps the predicted risk level to a named action:
+
+| Risk level | Action | Reversible |
+|---|---|---|
+| LOW | MONITOR | Yes |
+| MEDIUM | BLUR\_SENSITIVE | Yes |
+| HIGH | BLUR\_AND\_ALERT | Yes |
+| CRITICAL | BLOCK | No |
+
+**Important:** the `/analyze` endpoint returns the action name and affected entity categories. **No image transformation is applied** — blurring or blocking of the screenshot is not implemented in this prototype. The selection logic specifies what a downstream system should do; it does not modify the image bytes.
+
 ### OCR resize benchmark
 
 EasyOCR is slow on full-resolution 1920×1080 screenshots. The benchmark
@@ -204,9 +291,23 @@ follow-up analysis was not performed.
 
 ---
 
-## Research limitations
+## Research limitations and unimplemented requirements
 
 The following limitations are stated as confirmed observations from the actual evaluation, not post-hoc rationalisations.
+
+### Proposal requirements not implemented in this prototype
+
+The following requirements appear in the project proposal (TAF J26-IT-308, Member 2 tasks) but are **not implemented** in the current codebase. They are listed here so the research report does not inadvertently claim them.
+
+- **Computer vision integration** — the pipeline processes OCR text only. No image classification, layout analysis, or visual feature extraction is applied to the screenshot pixels.
+- **Semantic analysis** — `application_context` is label-encoded as a single integer. No word embeddings, sentence encoders, TF-IDF, topic models, or semantic similarity measures are used.
+- **Trained Named Entity Recognition (NER)** — entity detection uses deterministic regex patterns, not a trained NER model (e.g. spaCy, HuggingFace). The pipeline detects structured PII patterns reliably but cannot identify entity types that require contextual understanding.
+- **Actual image transformations** — the protection module returns a named action (BLUR\_SENSITIVE, BLOCK, etc.) but does not apply any pixel-level operation to the screenshot.
+- **Reversible tokenization framework** — implemented as a prototype in [services/tokenizer.py](backend/services/tokenizer.py). Restoration is ephemeral (same request only); persistent reversible restoration is not supported.
+- **Privacy leakage simulation / re-identification attack experiments** — no adversarial or re-identification evaluation was performed.
+- **Retrieval utility evaluation** — no downstream retrieval component exists; the claim that privacy protection preserves retrieval utility is not experimentally evaluated.
+- **Continual learning** — the personalisation mechanism is feedback-driven threshold recalibration (see Limitation 7 below), not a continual learning algorithm. No EWC, replay buffer, or online model update is implemented.
+- **Masking, anonymization, and pseudonymization baselines** — only the rule-based risk scoring baseline has been implemented and compared.
 
 ### 1. Dataset size is insufficient for reliable evaluation
 
@@ -271,4 +372,4 @@ cd Member2
 python -m pytest backend/tests/ -v
 ```
 
-124 tests covering OCR pipeline, entity detection, feature extraction, rule baseline, risk prediction, user profiles, model training, database schema/migration, and the FastAPI endpoints.
+173 tests covering OCR pipeline, entity detection, feature extraction, rule baseline, risk prediction, reversible tokenization (T5), user profiles, model training, database schema/migration, and the FastAPI endpoints.
