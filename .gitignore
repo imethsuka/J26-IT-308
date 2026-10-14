@@ -43,6 +43,7 @@ Member2/backend/data/screenshots/
 
 # ── Pipeline output and pilot directories — generated, not source ─────────────
 Member2/backend/data/pilot_10/
+Member2/backend/data/pilot_final_20/
 Member2/backend/data/pilot_flush_opt/
 Member2/backend/data/processing_output/
 Member2/backend/data/processing_output_optimized_test/
