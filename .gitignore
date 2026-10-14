@@ -24,7 +24,12 @@ htmlcov/
 # Trained model files — may contain learned patterns from private screenshots
 *.joblib
 
-# Per-user profiles — may indirectly reveal screenshot content via feedback
+# SQLite database — contains user data and analysis/training history
+Member2/backend/data/caprlm.db
+Member2/backend/data/caprlm.db-wal
+Member2/backend/data/caprlm.db-shm
+
+# Per-user profiles — legacy JSON, preserved for migration reference
 Member2/backend/data/profiles/
 
 # Training log — contains label distributions derived from private screenshots

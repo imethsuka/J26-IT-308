@@ -247,6 +247,7 @@ def train() -> dict:
         "cv_macro_f1_mean": float(np.mean(cv_f1_scores)) if cv_f1_scores else None,
         "cv_macro_f1_std": float(np.std(cv_f1_scores)) if cv_f1_scores else None,
         "test_macro_f1": test_macro_f1,
+        "test_accuracy": float(report_dict.get("accuracy", 0.0)),
         "test_classification_report": report_dict,
         "test_confusion_matrix": cm,
         "confusion_matrix_labels": classes,
