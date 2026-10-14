@@ -210,3 +210,21 @@ def test_train_endpoint_blocks_non_local(client):
     resp = client.post("/train")
     # Should be 403 since TestClient host is not in _TRAIN_ALLOWED_HOSTS
     assert resp.status_code == 403
+
+
+def test_train_error_does_not_leak_internal_paths(client):
+    """Training failures must not expose internal file paths in the response."""
+    import backend.main as main_mod
+    import backend.services.train_model as tm
+
+    def _raise(*a, **kw):
+        raise RuntimeError("/secret/internal/data/caprlm_model.joblib was not found")
+
+    with patch.object(main_mod, "_TRAIN_ALLOWED_HOSTS", {"testclient"}):
+        with patch.object(tm, "train", _raise):
+            resp = client.post("/train")
+
+    assert resp.status_code == 500
+    detail = resp.json().get("detail", "")
+    assert "/secret/internal" not in detail
+    assert "caprlm_model.joblib" not in detail

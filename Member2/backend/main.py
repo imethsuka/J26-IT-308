@@ -262,7 +262,7 @@ async def train(request: Request):
     except Exception as exc:
         raise HTTPException(
             status_code=500,
-            detail=f"Training failed: {exc}",
+            detail="Training failed. Check server logs for details.",
         ) from exc
 
     return {

@@ -60,19 +60,6 @@ def reload_bundle() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Risk level ordering
-# ---------------------------------------------------------------------------
-_RISK_LEVELS: list[str] = ["LOW", "MEDIUM", "HIGH", "CRITICAL"]
-
-
-def _risk_index(level: str) -> int:
-    try:
-        return _RISK_LEVELS.index(level.upper())
-    except ValueError:
-        return 0
-
-
-# ---------------------------------------------------------------------------
 # Feature preparation
 # ---------------------------------------------------------------------------
 
@@ -120,11 +107,15 @@ def _prepare_inference_features(
 # Threshold tables
 # ---------------------------------------------------------------------------
 
+# Exported so user_profile_service can import the same values for
+# recalibration without duplicating them.
+DEFAULT_MEDIUM_THRESHOLDS: dict[str, float] = {"medium": 0.35, "high": 0.22}
+
 # Per-preference thresholds: if P(HIGH or CRITICAL) exceeds high_thresh,
 # predict HIGH; if P(MEDIUM or above) exceeds medium_thresh, predict MEDIUM.
 _DEFAULT_THRESHOLDS: dict[str, dict[str, float]] = {
     "high":   {"medium": 0.20, "high": 0.10},
-    "medium": {"medium": 0.35, "high": 0.22},
+    "medium": DEFAULT_MEDIUM_THRESHOLDS,
     "low":    {"medium": 0.50, "high": 0.40},
 }
 
