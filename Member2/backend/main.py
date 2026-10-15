@@ -289,8 +289,9 @@ async def analyze(request: Request):
         # Visual features — spatial layout analysis from OCR bounding boxes
         from PIL import Image as _PIL_Image
         try:
-            _pil_img = _PIL_Image.open(temporary_path)
-            img_w, img_h = _pil_img.size
+            with _PIL_Image.open(temporary_path) as _pil_img:
+                _pil_img.load()
+                img_w, img_h = _pil_img.size
         except Exception:
             img_w, img_h = 0, 0
 
@@ -308,12 +309,13 @@ async def analyze(request: Request):
         redaction_stats: dict = {}
         try:
             from PIL import Image as _PIL_Image2
-            _src_img = _PIL_Image2.open(temporary_path)
-            _redacted_img, redacted_regions, redaction_stats = redact_image(
-                _src_img, ocr_detections, detection_output, protection_action
-            )
-            if redacted_regions:
-                redacted_png_bytes = image_to_png_bytes(_redacted_img)
+            with _PIL_Image2.open(temporary_path) as _src_img:
+                _src_img.load()
+                _redacted_img, redacted_regions, redaction_stats = redact_image(
+                    _src_img, ocr_detections, detection_output, protection_action
+                )
+                if redacted_regions:
+                    redacted_png_bytes = image_to_png_bytes(_redacted_img)
         except Exception:
             redacted_png_bytes = None
             redacted_regions = []

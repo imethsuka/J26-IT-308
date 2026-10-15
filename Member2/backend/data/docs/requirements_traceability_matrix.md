@@ -1,8 +1,24 @@
 # Requirements Traceability Matrix — CAPRLM
 **Project:** J26-IT-308  
-**Generated:** 2026-10-15  
+**Generated:** 2026-10-15 · **Updated:** 2026-10-15 (B4/B5 pass)  
 **Evaluator:** Claude Sonnet 4.6 (AI verification only — not human review)  
-**Test evidence:** 381 passed, 1 warning (live run 2026-10-15, venv pytest)
+**Test evidence:** 381 passed, 1 warning (live run 2026-10-15, venv pytest)  
+**Live API evidence:** POST /analyze with entity image → HTTP 200, risk_level=MEDIUM, confidence=0.86, redaction_status=redacted, regions_redacted=2, 2647 changed pixels confirmed, GET /redacted-image → valid PNG; error handling verified (missing field → 4xx, invalid label → 422); all routes verified (2026-10-15)
+
+---
+
+## Verification Level Key
+
+The statuses below distinguish implementation evidence quality:
+
+| Level | Meaning |
+|-------|---------|
+| Code exists | Function/class present in source |
+| Unit tests | Automated tests pass for this component in isolation |
+| API integration tested | Automated tests exercise the route via TestClient |
+| Live API tested | Real HTTP call confirmed in a running server process |
+| Browser tested | Manually confirmed in a browser with VS Code Live Server |
+| Research evaluated | Effectiveness measured experimentally on real data |
 
 ---
 
@@ -29,11 +45,11 @@
 | R5 | Rule-based baseline classifier | VERIFIED_COMPLETE | `services/rule_baseline.py`; maps entity flags to risk levels; CRITICAL produced internally (email+phone) | CRITICAL label creates known divergence with annotation CSV (no annotated CRITICAL examples) |
 | R6 | Fair baseline comparison (majority, rule, ML) | VERIFIED_COMPLETE | `services/baseline_eval.py`; all three produce identical macro F1=0.4444 — confirmed research finding | Only 10-row test fold; statistical significance not tested |
 | R7 | Risk-adaptive reversible tokenization | PARTIALLY_COMPLETE | `services/tokenizer.py`; T5 word-piece tokenization for HIGH risk; skips at LOW+confidence≥0.75; token map ephemeral | Token map is not persistent across requests (cannot restore across calls); T5 is prototype, not a trained T5 model |
-| R8 | Protection action selection with pixel redaction | VERIFIED_COMPLETE | `services/redaction.py`; actual Gaussian blur applied to sensitive text regions (PIL GaussianBlur r=15); BLUR_SENSITIVE targets entity bboxes, BLUR_AND_ALERT blurs all text, BLOCK fills black; integrated into `/analyze`; 15 pixel-level tests pass | Redacted image held in process memory; not persisted across restarts |
-| R9 | User feedback loop with adaptive threshold recalibration | VERIFIED_COMPLETE | `services/user_profile_service.py`; feedback stored to SQLite; windowed recalibration (last 50 records); poisoning guard (max 3 per screenshot); adaptation_log table; rollback to previous threshold; `/user/rollback` and `/user/calibration-history` routes | No live user study; recalibration evaluated on synthetic test data only |
-| R10 | SQLite persistence | VERIFIED_COMPLETE | `database.py`; WAL mode; 4 tables; idempotent `init_db()`; `analysis_log` intentionally excludes OCR/extracted text columns (privacy by design) | |
-| R11 | FastAPI REST API | VERIFIED_COMPLETE | Server started on port 8765 (session 5); `GET /` → 200; `POST /analyze` with real 65KB screenshot → 200, MEDIUM risk, EMAIL+DATE tokenized; `POST /feedback` → 200; `GET /model-info` → 200; `GET /redacted-image`, `GET /user/calibration-history`, `POST /user/rollback` all verified | |
-| R12 | Frontend UI | NOT_VERIFIED | `frontend/index.html`, `app.js`, `style.css`; reads `.count` only from detection_results; `user_id` now sent from feedback_user_id input; `redaction_summary` rendered; redacted image displayed via `/redacted-image?id=<token>`; port corrected to 8765; code-reviewed — no raw tokenized_text read | Browser rendering not tested in this session — VS Code Live Server required |
+| R8 | Protection action selection with pixel redaction | VERIFIED_COMPLETE | `services/redaction.py`; actual Gaussian blur applied to sensitive text regions (PIL GaussianBlur r=15); BLUR_SENSITIVE targets entity bboxes, BLUR_AND_ALERT blurs all text, BLOCK fills black; integrated into `/analyze`; 15 pixel-level tests pass; **live API test (2026-10-15):** entity image → protection_action=BLUR_SENSITIVE, regions_redacted=2, 2647 changed pixels confirmed, original file unchanged, redacted PNG valid | Redacted image held in process memory; not persisted across restarts; verification levels: code ✓, unit tests ✓, API integration tests ✓, live API test ✓, browser test ✗ |
+| R9 | User feedback loop with adaptive threshold recalibration | VERIFIED_COMPLETE | `services/user_profile_service.py`; feedback stored to SQLite; windowed recalibration (last 50 records); poisoning guard (max 3 per screenshot); adaptation_log table; rollback to previous threshold; `/user/rollback` and `/user/calibration-history` routes; **live API test (2026-10-15):** POST /feedback → 200 feedback_count=1; GET /calibration-history → 200; POST /rollback → 200 | No live user study; recalibration evaluated on synthetic test data only; verification levels: code ✓, unit tests ✓, API integration tests ✓, live API test ✓ |
+| R10 | SQLite persistence | VERIFIED_COMPLETE | `database.py`; WAL mode; 4 tables; idempotent `init_db()`; `analysis_log` intentionally excludes OCR/extracted text columns (privacy by design) | Verification levels: code ✓, unit tests ✓ |
+| R11 | FastAPI REST API | VERIFIED_COMPLETE | Live test (2026-10-15): `GET /` → 200; `POST /analyze` (entity image) → 200, risk_level=MEDIUM, confidence=0.86, PHONE/DATE detected, redaction_status=redacted, regions=2, tokenization_applied=True; `GET /redacted-image?id=<token>` → 200 PNG; `GET /redacted-image?id=badtoken` → 404; missing field → 4xx; invalid feedback label → 422; valid feedback → 200; BUG-01 (PIL Windows file-lock) fixed | Verification levels: code ✓, unit tests ✓, API integration tests ✓, live API test ✓, browser test ✗ |
+| R12 | Frontend UI | PARTIALLY_COMPLETE | `frontend/index.html`, `app.js`, `style.css`; code-reviewed: reads `.count` only from detection_results; `user_id` sent to analyze; `redaction_summary` rendered; redacted image fetched via `/redacted-image?id=<token>`; port 8765; no raw tokenized_text read; `resetResults()` clears redaction section | Browser rendering **not tested** — VS Code Live Server required; verification levels: code ✓, code review ✓, API integration tests ✓ (API side), browser test ✗ |
 | R13 | 50-row annotated ground truth dataset | BLOCKED_BY_HUMAN_REVIEW | `data/CAPRLM_annotation_50.csv` exists (6FA1FEC8…); 50 rows; 3 classes (LOW 38, MEDIUM 10, HIGH 2) | 16/50 rows (32%) have annotation anomalies; 0/16 reviewed by human; model trained on potentially incorrect labels |
 | R14 | Annotation guidelines | PARTIALLY_COMPLETE | `docs/annotation_guidelines_DRAFT.md` v0.2 | 8 policies unresolved; not yet supervisor-approved |
 
@@ -93,20 +109,24 @@ These features were not required by the original proposal (as inferred from code
 | X6 | Re-identification simulation experiments | NOT_IMPLEMENTED | Outside scope |
 | X7 | Retrieval utility evaluation | NOT_IMPLEMENTED | Outside scope |
 
-**Note on proposal document**: No formal project proposal (PDF, DOCX, or similar) was found in the repository. Requirements R1–R14 were derived by code inspection and cross-referenced against the annotation CSV, experiment artifacts, and session history. Gaps in proposal-scope coverage should be verified against the actual project brief before final submission.
+**Note on proposal document**: No formal project proposal (PDF, DOCX, or similar) was found in the repository. Requirements R1–R14 were derived by code inspection and cross-referenced against the annotation CSV, experiment artifacts, session history, and the `PROJECT_CONTROL_CENTER.md` stated objectives. The closest formal source is `PROJECT_CONTROL_CENTER.md` §1 ("Stated proposal objectives"). Gaps in proposal-scope coverage should be verified against the actual project brief before final submission.
+
+**Note on annotation_guidelines_DRAFT.md v0.2 stale content**: Section 2 of that document lists several capabilities as "NOT implemented" (image transformations, continual learning, CV features). Those have since been implemented as research extensions. The guidelines document needs a correction note before submission to avoid contradicting the implemented system.
 
 ---
 
-## Summary Count
+## Summary Count (B5 updated 2026-10-15)
 
 | Status | Count |
 |--------|-------|
-| VERIFIED_COMPLETE | 21 |
-| PARTIALLY_COMPLETE | 1 |
+| VERIFIED_COMPLETE | 20 |
+| PARTIALLY_COMPLETE | 2 |
 | NOT_IMPLEMENTED | 3 |
-| NOT_VERIFIED | 1 |
 | BLOCKED_BY_HUMAN_REVIEW | 1 |
+| NOT_VERIFIED | 1 |
 | **Total requirements** | **27** |
+
+*Note: R12 moved from NOT_VERIFIED to PARTIALLY_COMPLETE because code review and API integration confirmed correct behaviour; only browser rendering remains unconfirmed.*
 
 ---
 
@@ -114,8 +134,9 @@ These features were not required by the original proposal (as inferred from code
 
 1. **R13 BLOCKED**: 16/50 (32%) annotation rows have unresolved anomalies. Model was trained on potentially incorrect labels. All evaluation numbers are provisional until corrected.
 2. **R4 gap**: ML model provides no measurable advantage over majority-class baseline (identical F1=0.4444). This is an important honest research finding, not a bug — but must be clearly documented.
-3. **R12 NOT_VERIFIED**: Frontend UI not tested in browser this session.
+3. **R12 PARTIALLY_COMPLETE**: Frontend UI browser rendering not tested — VS Code Live Server required. Code and API integration verified.
 4. **E7/E8 NOT_IMPLEMENTED**: No inter-annotator agreement or statistical significance — standard academic expectations for a dataset paper.
+5. **annotation_guidelines_DRAFT.md stale claims**: Section 2 lists pixel redaction, continual learning, CV features as not implemented — these are now implemented extensions. Update before submission.
 
 ---
 
