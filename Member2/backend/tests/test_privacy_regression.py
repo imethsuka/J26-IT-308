@@ -76,6 +76,7 @@ def _mock_ocr_with_pii(_path):
         "Email: alice@example.com Phone: 555-123-4567 "
         "Visit https://example.com IP: 192.168.1.1",
         6,
+        [],
     )
 
 
@@ -91,7 +92,7 @@ def _make_analyze_request(client, *, ocr_mock=_mock_ocr_with_pii, bundle=None):
         "user_id": (None, "reg_test_user"),
         "image": ("test.jpg", io.BytesIO(image_content), "image/jpeg"),
     }
-    with patch("backend.main.extract_text", ocr_mock):
+    with patch("backend.main.extract_text_with_boxes", ocr_mock):
         with patch.object(rp, "_bundle", bundle):
             return client.post("/analyze", files=data)
 
@@ -287,7 +288,7 @@ def test_reg06_model_unavailable_via_api(client):
     tokenize PII in the response (fail-safe path through risk_prediction).
     """
     import backend.services.risk_prediction as rp
-    with patch("backend.main.extract_text", _mock_ocr_with_pii):
+    with patch("backend.main.extract_text_with_boxes", _mock_ocr_with_pii):
         with patch.object(rp, "_bundle", None):
             # Also prevent _load_bundle from loading the real model
             def _raise_model():

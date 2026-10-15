@@ -35,7 +35,8 @@ def client(tmp_path_factory):
 # ---------------------------------------------------------------------------
 
 def _mock_ocr(path):
-    return "Sample text with alice@example.com", 5
+    # Returns (text, count, detections) — detections is empty so redaction is a no-op
+    return "Sample text with alice@example.com", 5, []
 
 
 def _mock_bundle():
@@ -87,7 +88,7 @@ def test_root_returns_200(client):
 
 def test_analyze_returns_200_with_mocks(client):
     import backend.services.risk_prediction as rp
-    with patch("backend.main.extract_text", _mock_ocr):
+    with patch("backend.main.extract_text_with_boxes", _mock_ocr):
         with patch.object(rp, "_bundle", _mock_bundle()):
             resp = _analyze_multipart(client)
 
@@ -102,7 +103,7 @@ def test_analyze_returns_200_with_mocks(client):
 
 def test_analyze_risk_prediction_has_model_status(client):
     import backend.services.risk_prediction as rp
-    with patch("backend.main.extract_text", _mock_ocr):
+    with patch("backend.main.extract_text_with_boxes", _mock_ocr):
         with patch.object(rp, "_bundle", _mock_bundle()):
             resp = _analyze_multipart(client)
 
@@ -112,7 +113,7 @@ def test_analyze_risk_prediction_has_model_status(client):
 
 def test_analyze_ocr_text_is_redacted(client):
     import backend.services.risk_prediction as rp
-    with patch("backend.main.extract_text", _mock_ocr):
+    with patch("backend.main.extract_text_with_boxes", _mock_ocr):
         with patch.object(rp, "_bundle", _mock_bundle()):
             resp = _analyze_multipart(client)
 
@@ -130,7 +131,7 @@ def test_analyze_missing_fields_returns_400(client):
 
 def test_analyze_returns_rule_baseline(client):
     import backend.services.risk_prediction as rp
-    with patch("backend.main.extract_text", _mock_ocr):
+    with patch("backend.main.extract_text_with_boxes", _mock_ocr):
         with patch.object(rp, "_bundle", _mock_bundle()):
             resp = _analyze_multipart(client)
 
@@ -244,7 +245,7 @@ def _mock_bundle_high():
 def test_analyze_response_has_tokenized_summary(client):
     """tokenized_summary must be present in every /analyze response."""
     import backend.services.risk_prediction as rp
-    with patch("backend.main.extract_text", _mock_ocr):
+    with patch("backend.main.extract_text_with_boxes", _mock_ocr):
         with patch.object(rp, "_bundle", _mock_bundle()):
             resp = _analyze_multipart(client)
     body = resp.json()
@@ -259,7 +260,7 @@ def test_analyze_response_has_tokenized_summary(client):
 def test_analyze_token_map_not_in_response(client):
     """The restoration token_map must never appear in the API response."""
     import backend.services.risk_prediction as rp
-    with patch("backend.main.extract_text", _mock_ocr):
+    with patch("backend.main.extract_text_with_boxes", _mock_ocr):
         with patch.object(rp, "_bundle", _mock_bundle()):
             resp = _analyze_multipart(client)
     body = resp.json()
@@ -278,7 +279,7 @@ def test_analyze_high_risk_detection_results_no_raw_email(client):
     Mock OCR returns 'Sample text with alice@example.com'.
     """
     import backend.services.risk_prediction as rp
-    with patch("backend.main.extract_text", _mock_ocr):
+    with patch("backend.main.extract_text_with_boxes", _mock_ocr):
         with patch.object(rp, "_bundle", _mock_bundle_high()):
             resp = _analyze_multipart(client)
     assert resp.status_code == 200, resp.text
@@ -293,7 +294,7 @@ def test_analyze_high_risk_detection_results_no_raw_email(client):
 def test_analyze_high_risk_tokenization_applied(client):
     """With a HIGH-risk prediction, tokenization_applied must be True."""
     import backend.services.risk_prediction as rp
-    with patch("backend.main.extract_text", _mock_ocr):
+    with patch("backend.main.extract_text_with_boxes", _mock_ocr):
         with patch.object(rp, "_bundle", _mock_bundle_high()):
             resp = _analyze_multipart(client)
     body = resp.json()
@@ -304,7 +305,7 @@ def test_analyze_high_risk_tokenization_applied(client):
 def test_analyze_high_risk_tokenized_text_contains_token(client):
     """With HIGH risk and a detected email, tokenized_text must contain a token."""
     import backend.services.risk_prediction as rp
-    with patch("backend.main.extract_text", _mock_ocr):
+    with patch("backend.main.extract_text_with_boxes", _mock_ocr):
         with patch.object(rp, "_bundle", _mock_bundle_high()):
             resp = _analyze_multipart(client)
     body = resp.json()
@@ -320,7 +321,7 @@ def test_analyze_low_risk_skip_tokenization_does_not_leak_ocr_text(client):
     Mock model: P(LOW)=0.75 → LOW prediction, confidence=0.75 → skip threshold met.
     """
     import backend.services.risk_prediction as rp
-    with patch("backend.main.extract_text", _mock_ocr):
+    with patch("backend.main.extract_text_with_boxes", _mock_ocr):
         with patch.object(rp, "_bundle", _mock_bundle()):
             resp = _analyze_multipart(client)
     assert resp.status_code == 200, resp.text

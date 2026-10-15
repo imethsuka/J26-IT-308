@@ -93,9 +93,9 @@ def _post_analyze(client, *, ocr_text="Sample text", user_id="int_user",
         data.update(extra_fields)
 
     def _mock_ocr(_path):
-        return ocr_text, ocr_text.count(" ") + 1
+        return ocr_text, ocr_text.count(" ") + 1, []
 
-    with patch("backend.main.extract_text", _mock_ocr):
+    with patch("backend.main.extract_text_with_boxes", _mock_ocr):
         with patch.object(rp, "_bundle", bundle):
             return client.post("/analyze", files=data)
 
@@ -167,7 +167,7 @@ def test_int04_missing_application_context_returns_400(client):
         "historical_protection_level": (None, "Medium"),
         "image": ("test.jpg", io.BytesIO(image_content), "image/jpeg"),
     }
-    with patch("backend.main.extract_text", lambda _: ("text", 1)):
+    with patch("backend.main.extract_text_with_boxes", lambda _: ("text", 1, [])):
         with patch.object(rp, "_bundle", _make_bundle()):
             resp = client.post("/analyze", files=data)
     assert resp.status_code == 400
@@ -183,7 +183,7 @@ def test_int04_missing_privacy_preference_returns_400(client):
         "historical_protection_level": (None, "Medium"),
         "image": ("test.jpg", io.BytesIO(image_content), "image/jpeg"),
     }
-    with patch("backend.main.extract_text", lambda _: ("text", 1)):
+    with patch("backend.main.extract_text_with_boxes", lambda _: ("text", 1, [])):
         with patch.object(rp, "_bundle", _make_bundle()):
             resp = client.post("/analyze", files=data)
     assert resp.status_code == 400
@@ -339,7 +339,7 @@ def test_int09_analyze_missing_image_returns_400(client):
         "historical_protection_level": (None, "Medium"),
         # no image field
     }
-    with patch("backend.main.extract_text", lambda _: ("text", 1)):
+    with patch("backend.main.extract_text_with_boxes", lambda _: ("text", 1, [])):
         with patch.object(rp, "_bundle", _make_bundle()):
             resp = client.post("/analyze", files=data)
     assert resp.status_code == 400

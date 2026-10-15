@@ -18,7 +18,7 @@ const protectionOutput = document.querySelector("#protection-output");
 const featuresOutput = document.querySelector("#features-output");
 const modelStatus = document.querySelector("#model-status");
 
-const ANALYZE_URL = "http://127.0.0.1:8000/analyze";
+const ANALYZE_URL = "http://127.0.0.1:8765/analyze";
 
 let screenshotObjectUrl = null;
 
@@ -150,11 +150,55 @@ function renderDetectionResults(ocrSummary, detectionResults) {
   renderMetrics(detectionOutput, categoryCounts);
 }
 
+function renderRedactionSummary(redactionSummary) {
+  const el = document.querySelector("#redaction-output");
+  if (!el) return;
+  el.replaceChildren();
+
+  if (!redactionSummary) {
+    el.innerHTML = "<p class=\"response-empty\">No redaction information available.</p>";
+    return;
+  }
+
+  const { protection_action, regions_redacted, redacted_image_available,
+          redacted_image_endpoint, redaction_status, note } = redactionSummary;
+
+  renderMetrics(el, {
+    protection_action,
+    regions_redacted,
+    redacted_image_available,
+    redaction_status,
+  });
+
+  if (note) {
+    const p = document.createElement("p");
+    p.className = "response-note";
+    p.textContent = note;
+    el.append(p);
+  }
+
+  // Display the redacted image if available
+  const imgSection = document.querySelector("#redacted-image-section");
+  const imgEl = document.querySelector("#redacted-image-output");
+  if (imgSection && imgEl) {
+    if (redacted_image_available && redacted_image_endpoint) {
+      const src = `http://127.0.0.1:8765${redacted_image_endpoint}`;
+      imgEl.src = src;
+      imgEl.alt = "Redacted screenshot";
+      imgSection.hidden = false;
+    } else {
+      imgSection.hidden = true;
+      imgEl.removeAttribute("src");
+    }
+  }
+}
+
 function renderBackendResponse(response) {
   renderDetectionResults(response.ocr_summary || {}, response.detection_results || {});
   renderMetrics(featuresOutput, response.extracted_features || {});
   renderMetrics(riskOutput, response.risk_prediction || {});
   renderMetrics(protectionOutput, response.protection_selection || {});
+  renderRedactionSummary(response.redaction_summary || null);
 
   const modelStatusValue = response.risk_prediction?.model_status;
   setModelStatus(`Model status: ${displayValue(modelStatusValue)}`);
@@ -165,6 +209,10 @@ function resetResults() {
   riskOutput.innerHTML = "<p class=\"response-empty\">No risk assessment has been performed.</p>";
   protectionOutput.innerHTML = "<p class=\"response-empty\">No protection decision is available.</p>";
   featuresOutput.innerHTML = "<p class=\"response-empty\">No extracted features are available.</p>";
+  const redEl = document.querySelector("#redaction-output");
+  if (redEl) redEl.innerHTML = "<p class=\"response-empty\">No redaction information available.</p>";
+  const imgSection = document.querySelector("#redacted-image-section");
+  if (imgSection) imgSection.hidden = true;
   setModelStatus("Model status: awaiting analysis");
 }
 
@@ -198,6 +246,8 @@ analyzeButton.addEventListener("click", async () => {
   formData.append("application_context", applicationContext.value);
   formData.append("privacy_preference", privacyPreference.value);
   formData.append("historical_protection_level", historicalProtection.value);
+  const activeUserId = feedbackUserIdInput.value.trim() || "default";
+  formData.append("user_id", activeUserId);
 
   try {
     const response = await fetch(ANALYZE_URL, {
@@ -253,7 +303,7 @@ const feedbackNote = document.querySelector("#feedback-note");
 const feedbackStatusEl = document.querySelector("#feedback-status");
 const recalibrationThresholdSpan = document.querySelector("#recalibration-threshold");
 
-const FEEDBACK_URL = "http://127.0.0.1:8000/feedback";
+const FEEDBACK_URL = "http://127.0.0.1:8765/feedback";
 
 let lastScreenshotId = null;
 let lastPredictedLabel = null;
