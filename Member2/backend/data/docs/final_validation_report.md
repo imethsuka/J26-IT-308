@@ -9,7 +9,7 @@
 
 | Run | Tests Passed | Failures | Warnings |
 |-----|-------------|---------|---------|
-| Full suite (2026-10-15) | **381** | **0** | 1 (httpx deprecation, non-functional) |
+| Full suite (2026-10-15, post-PIL-fix) | **381** | **0** | 1 (httpx deprecation, non-functional) |
 
 Test files and coverage:
 
@@ -70,7 +70,7 @@ Test files and coverage:
 - **Status**: IMPLEMENTED (extension beyond original scope)
 - Layout analysis from OCR bounding boxes (no visual encoder needed)
 - Features: `text_density_ratio`, `sensitive_area_ratio`, `entity_cluster_score`, `quadrant_sensitive_counts`
-- `cv_method: "layout_analysis_from_ocr_bboxes"` — honest about what it is
+- `cv_method: "ocr_bbox_layout_analysis"` — honest about what it is
 - All 11 CV tests pass
 
 ### 2.7 Protection Action Selection + Pixel Redaction
@@ -108,6 +108,7 @@ Test files and coverage:
 |----|---------|-------------|
 | SEC-01 | Redacted-image store was keyed by client-supplied filename; any caller who knew (or guessed) another user's filename could retrieve their image | Changed to `secrets.token_hex(16)` (2^128 search space); verified by ROUTE-11 |
 | SEC-02 | Feedback `screenshot_id` whitespace not stripped; attacker could submit `"scr_001 "` to bypass poisoning guard | `str(screenshot_id).strip()` applied before DB query; verified by ADAPT-12 |
+| BUG-01 | `PIL.Image.open()` in `/analyze` held file handles open; `temporary_path.unlink()` in `finally` raised `PermissionError` on Windows | Changed to `with PIL.Image.open(...) as img: img.load()` context-manager pattern; verified by live smoke test (2026-10-15) returning HTTP 200 |
 
 ### 3.2 Residual Design-Level Properties
 
@@ -179,9 +180,46 @@ The requirements traceability matrix (`requirements_traceability_matrix.md`) doc
 - Does not read `tokenized_summary.tokenized_text` — no raw OCR leakage
 - Feedback submission validated: `user_label` must be one of LOW/MEDIUM/HIGH/CRITICAL
 
-### 6.3 Limitations
-- Browser rendering has **not been tested** this session — VS Code Live Server required; cannot automate browser execution in this environment
-- Frontend does not display `ner_summary` or `visual_features` (new backend fields) — these are returned in the API response but not rendered in the UI
+### 6.3 Live API and Pixel Redaction Verification (B4 — 2026-10-15)
+
+A synthetic test image containing real entity text (phone + date) was generated and submitted to the live API. Results confirmed end-to-end pixel-level redaction:
+
+| Check | Result |
+|-------|--------|
+| POST /analyze (entity image) | HTTP 200 |
+| risk_level | MEDIUM |
+| confidence | 0.86 |
+| protection_action | BLUR_SENSITIVE |
+| redaction_status | redacted |
+| regions_redacted | 2 |
+| redacted_image_available | True |
+| GET /redacted-image → valid PNG | HTTP 200, Content-Type image/png |
+| Pixels changed in redacted image | **2,647** (confirmed by numpy comparison) |
+| Original image unchanged | **YES** (size 4715 bytes, unchanged after API call) |
+| Bad token → 404 | CORRECT |
+| Missing required field | 4xx CORRECT |
+| Invalid feedback label | 422 CORRECT |
+| Valid feedback recorded | HTTP 200, feedback_count=1 |
+| GET /calibration-history | HTTP 200 |
+| POST /rollback | HTTP 200 |
+
+**Note on email entity**: The test image drew with the default PIL bitmap font (tiny pixels). EasyOCR detected PHONE and DATE from the rendered text but did not extract the email address from the small font rendering. Detection-to-redaction is confirmed for PHONE and DATE; email detection from bitmap fonts was not verified in this particular test. Unit tests (REDACT-01–15) cover email entity redaction directly.
+
+### 6.4 Browser Test Limitation
+
+Browser rendering has **not been tested** — VS Code Live Server required; browser automation is not available in this environment.
+
+Exact manual steps to complete browser verification:
+1. Start backend: `cd Member2 && .venv\Scripts\uvicorn backend.main:app --host 127.0.0.1 --port 8765`
+2. Open `Member2/frontend/index.html` via VS Code Live Server (port 5500)
+3. Upload a screenshot, set Application Context, Privacy Preference, Historical Protection Level
+4. Click Analyze — expected: results populate all five panels including "Pixel Redaction"
+5. If protection_action ≠ MONITOR and entities were detected: the "Redacted Image" section should appear with the blurred PNG
+6. Submit feedback — expected: feedback count increments
+7. Submit with missing fields — expected: Analyze button disabled (client-side guard)
+8. Start backend on wrong port / stop it — expected: "Backend unavailable" error, no success state
+
+Frontend does not display `ner_summary` or `visual_features` (new backend fields) — these are returned in the API response but not rendered in the UI
 
 ---
 
