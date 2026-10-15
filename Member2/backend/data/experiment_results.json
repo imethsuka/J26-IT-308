@@ -1,0 +1,558 @@
+[
+  {
+    "run_at": "2026-10-15T11:43:55Z",
+    "dataset_path": "C:\\Users\\ASUS\\OneDrive\\Desktop\\J26-IT-308\\Member2\\backend\\data\\CAPRLM_annotation_50.csv",
+    "model_path": "C:\\Users\\ASUS\\OneDrive\\Desktop\\J26-IT-308\\Member2\\backend\\data\\caprlm_model.joblib",
+    "model_version": "1.0.0",
+    "random_state": 42,
+    "test_size": 0.2,
+    "dataset_rows": 50,
+    "train_rows": 40,
+    "test_rows": 10,
+    "label_distribution": {
+      "LOW": 38,
+      "MEDIUM": 10,
+      "HIGH": 2
+    },
+    "all_classes": [
+      "HIGH",
+      "LOW",
+      "MEDIUM"
+    ],
+    "baseline_comparison": {
+      "majority_baseline": {
+        "macro_f1": 0.4444,
+        "accuracy": 0.8,
+        "classification_report": {
+          "HIGH": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 0.0
+          },
+          "LOW": {
+            "precision": 0.8,
+            "recall": 1.0,
+            "f1-score": 0.8888888888888888,
+            "support": 8.0
+          },
+          "MEDIUM": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 2.0
+          },
+          "accuracy": 0.8,
+          "macro avg": {
+            "precision": 0.26666666666666666,
+            "recall": 0.3333333333333333,
+            "f1-score": 0.2962962962962963,
+            "support": 10.0
+          },
+          "weighted avg": {
+            "precision": 0.64,
+            "recall": 0.8,
+            "f1-score": 0.711111111111111,
+            "support": 10.0
+          }
+        },
+        "confusion_matrix": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            8,
+            0
+          ],
+          [
+            0,
+            2,
+            0
+          ]
+        ],
+        "confusion_matrix_labels": [
+          "HIGH",
+          "LOW",
+          "MEDIUM"
+        ]
+      },
+      "majority_class": "LOW",
+      "rule_baseline": {
+        "macro_f1": 0.4444,
+        "accuracy": 0.8,
+        "classification_report": {
+          "HIGH": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 0.0
+          },
+          "LOW": {
+            "precision": 0.8,
+            "recall": 1.0,
+            "f1-score": 0.8888888888888888,
+            "support": 8.0
+          },
+          "MEDIUM": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 2.0
+          },
+          "accuracy": 0.8,
+          "macro avg": {
+            "precision": 0.26666666666666666,
+            "recall": 0.3333333333333333,
+            "f1-score": 0.2962962962962963,
+            "support": 10.0
+          },
+          "weighted avg": {
+            "precision": 0.64,
+            "recall": 0.8,
+            "f1-score": 0.711111111111111,
+            "support": 10.0
+          }
+        },
+        "confusion_matrix": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            8,
+            0
+          ],
+          [
+            0,
+            2,
+            0
+          ]
+        ],
+        "confusion_matrix_labels": [
+          "HIGH",
+          "LOW",
+          "MEDIUM"
+        ]
+      },
+      "ml_model": {
+        "macro_f1": 0.4444,
+        "accuracy": 0.8,
+        "classification_report": {
+          "HIGH": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 0.0
+          },
+          "LOW": {
+            "precision": 0.8,
+            "recall": 1.0,
+            "f1-score": 0.8888888888888888,
+            "support": 8.0
+          },
+          "MEDIUM": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 2.0
+          },
+          "accuracy": 0.8,
+          "macro avg": {
+            "precision": 0.26666666666666666,
+            "recall": 0.3333333333333333,
+            "f1-score": 0.2962962962962963,
+            "support": 10.0
+          },
+          "weighted avg": {
+            "precision": 0.64,
+            "recall": 0.8,
+            "f1-score": 0.711111111111111,
+            "support": 10.0
+          }
+        },
+        "confusion_matrix": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            8,
+            0
+          ],
+          [
+            0,
+            2,
+            0
+          ]
+        ],
+        "confusion_matrix_labels": [
+          "HIGH",
+          "LOW",
+          "MEDIUM"
+        ]
+      }
+    },
+    "default_threshold_results": {
+      "macro_f1": 0.4444,
+      "accuracy": 0.8,
+      "confusion_matrix": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          8,
+          0
+        ],
+        [
+          0,
+          2,
+          0
+        ]
+      ],
+      "confusion_matrix_labels": [
+        "HIGH",
+        "LOW",
+        "MEDIUM"
+      ],
+      "per_class_report": {
+        "HIGH": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1-score": 0.0,
+          "support": 0.0
+        },
+        "LOW": {
+          "precision": 0.8,
+          "recall": 1.0,
+          "f1-score": 0.8888888888888888,
+          "support": 8.0
+        },
+        "MEDIUM": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1-score": 0.0,
+          "support": 2.0
+        },
+        "accuracy": 0.8,
+        "macro avg": {
+          "precision": 0.26666666666666666,
+          "recall": 0.3333333333333333,
+          "f1-score": 0.2962962962962963,
+          "support": 10.0
+        },
+        "weighted avg": {
+          "precision": 0.64,
+          "recall": 0.8,
+          "f1-score": 0.711111111111111,
+          "support": 10.0
+        }
+      }
+    },
+    "threshold_sensitivity": [
+      {
+        "medium_threshold": 0.5,
+        "high_threshold": 0.3,
+        "macro_f1": 0.2929,
+        "accuracy": 0.3,
+        "confusion_matrix": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            1,
+            7
+          ],
+          [
+            0,
+            0,
+            2
+          ]
+        ],
+        "confusion_matrix_labels": [
+          "HIGH",
+          "LOW",
+          "MEDIUM"
+        ]
+      },
+      {
+        "medium_threshold": 0.55,
+        "high_threshold": 0.33,
+        "macro_f1": 0.2929,
+        "accuracy": 0.3,
+        "confusion_matrix": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            1,
+            7
+          ],
+          [
+            0,
+            0,
+            2
+          ]
+        ],
+        "confusion_matrix_labels": [
+          "HIGH",
+          "LOW",
+          "MEDIUM"
+        ]
+      },
+      {
+        "medium_threshold": 0.6,
+        "high_threshold": 0.36,
+        "macro_f1": 0.4444,
+        "accuracy": 0.8,
+        "confusion_matrix": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            8,
+            0
+          ],
+          [
+            0,
+            2,
+            0
+          ]
+        ],
+        "confusion_matrix_labels": [
+          "HIGH",
+          "LOW",
+          "MEDIUM"
+        ]
+      },
+      {
+        "medium_threshold": 0.65,
+        "high_threshold": 0.39,
+        "macro_f1": 0.4444,
+        "accuracy": 0.8,
+        "confusion_matrix": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            8,
+            0
+          ],
+          [
+            0,
+            2,
+            0
+          ]
+        ],
+        "confusion_matrix_labels": [
+          "HIGH",
+          "LOW",
+          "MEDIUM"
+        ]
+      },
+      {
+        "medium_threshold": 0.7,
+        "high_threshold": 0.42,
+        "macro_f1": 0.4444,
+        "accuracy": 0.8,
+        "confusion_matrix": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            8,
+            0
+          ],
+          [
+            0,
+            2,
+            0
+          ]
+        ],
+        "confusion_matrix_labels": [
+          "HIGH",
+          "LOW",
+          "MEDIUM"
+        ]
+      },
+      {
+        "medium_threshold": 0.75,
+        "high_threshold": 0.45,
+        "macro_f1": 0.4444,
+        "accuracy": 0.8,
+        "confusion_matrix": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            8,
+            0
+          ],
+          [
+            0,
+            2,
+            0
+          ]
+        ],
+        "confusion_matrix_labels": [
+          "HIGH",
+          "LOW",
+          "MEDIUM"
+        ]
+      },
+      {
+        "medium_threshold": 0.8,
+        "high_threshold": 0.48,
+        "macro_f1": 0.4444,
+        "accuracy": 0.8,
+        "confusion_matrix": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            8,
+            0
+          ],
+          [
+            0,
+            2,
+            0
+          ]
+        ],
+        "confusion_matrix_labels": [
+          "HIGH",
+          "LOW",
+          "MEDIUM"
+        ]
+      },
+      {
+        "medium_threshold": 0.85,
+        "high_threshold": 0.51,
+        "macro_f1": 0.4444,
+        "accuracy": 0.8,
+        "confusion_matrix": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            8,
+            0
+          ],
+          [
+            0,
+            2,
+            0
+          ]
+        ],
+        "confusion_matrix_labels": [
+          "HIGH",
+          "LOW",
+          "MEDIUM"
+        ]
+      },
+      {
+        "medium_threshold": 0.9,
+        "high_threshold": 0.54,
+        "macro_f1": 0.4444,
+        "accuracy": 0.8,
+        "confusion_matrix": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            8,
+            0
+          ],
+          [
+            0,
+            2,
+            0
+          ]
+        ],
+        "confusion_matrix_labels": [
+          "HIGH",
+          "LOW",
+          "MEDIUM"
+        ]
+      },
+      {
+        "medium_threshold": 0.95,
+        "high_threshold": 0.57,
+        "macro_f1": 0.4444,
+        "accuracy": 0.8,
+        "confusion_matrix": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            8,
+            0
+          ],
+          [
+            0,
+            2,
+            0
+          ]
+        ],
+        "confusion_matrix_labels": [
+          "HIGH",
+          "LOW",
+          "MEDIUM"
+        ]
+      }
+    ],
+    "limitations": [
+      "n=50 dataset is insufficient for statistically reliable evaluation; a 10-row test set means each misclassification shifts macro F1 by \u22480.1.",
+      "Class imbalance (LOW\u224876 %) means accuracy is dominated by the majority class; macro F1 is the preferred metric.",
+      "Several MEDIUM and HIGH rows have all-zero entity flags; neither classifier can explain or predict these from the available features.",
+      "The ML model here uses raw model.predict() with no personalisation layer; production behaviour (with preference-based threshold adjustment) may differ.",
+      "No statistical significance testing is applied; results should not be interpreted as a definitive performance comparison.",
+      "CRITICAL class has zero annotated examples; no classifier can learn or be evaluated on it."
+    ],
+    "notes": [
+      "Threshold sensitivity uses MEDIUM threshold varied from 0.5 to 0.95; HIGH threshold = MEDIUM * 0.6 (heuristic).",
+      "Model was NOT retrained. All predictions use the loaded bundle.",
+      "Test fold is the same deterministic split as train_model.py.",
+      "HIGH class has 0 test examples; HIGH F1 cannot be evaluated."
+    ]
+  }
+]

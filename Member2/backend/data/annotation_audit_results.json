@@ -1,0 +1,830 @@
+{
+  "audited_at": "2026-10-15T13:49:55Z",
+  "annotation_csv": "C:\\Users\\ASUS\\OneDrive\\Desktop\\J26-IT-308\\Member2\\backend\\data\\CAPRLM_annotation_50.csv",
+  "candidates_csv": "C:\\Users\\ASUS\\OneDrive\\Desktop\\J26-IT-308\\Member2\\backend\\data\\processing_output\\candidates.csv",
+  "candidates_csv_found": true,
+  "screenshots_dir": "C:\\Users\\ASUS\\AppData\\Local\\DesktopResearchCollector\\screenshots",
+  "screenshots_dir_exists": true,
+  "total_flagged": 16,
+  "summary": {
+    "screenshot_files_found": 16,
+    "pipeline_rows_found": 16,
+    "entity_flags_agree": 2,
+    "label_consistent_yes": 2,
+    "label_consistent_no": 3,
+    "label_conditional": 11
+  },
+  "group_summary": {
+    "G1": {
+      "total": 1,
+      "screenshot_exists": 1,
+      "flags_agree": 0
+    },
+    "G2": {
+      "total": 1,
+      "screenshot_exists": 1,
+      "flags_agree": 1
+    },
+    "G3": {
+      "total": 1,
+      "screenshot_exists": 1,
+      "flags_agree": 0
+    },
+    "G4": {
+      "total": 1,
+      "screenshot_exists": 1,
+      "flags_agree": 0
+    },
+    "G5": {
+      "total": 6,
+      "screenshot_exists": 6,
+      "flags_agree": 0
+    },
+    "G6": {
+      "total": 1,
+      "screenshot_exists": 1,
+      "flags_agree": 1
+    },
+    "G7": {
+      "total": 3,
+      "screenshot_exists": 3,
+      "flags_agree": 0
+    },
+    "G8": {
+      "total": 2,
+      "screenshot_exists": 2,
+      "flags_agree": 0
+    }
+  },
+  "audit_records": [
+    {
+      "screenshot_id": "02f39c8f-ce99-49ba-a2a3-aeea8504ae3a.jpg",
+      "group": "G1",
+      "issue": "HIGH label with all-zero annotation entity flags",
+      "reviewer_status": "NEEDS_VISUAL_REVIEW",
+      "screenshot_file_exists": true,
+      "screenshot_path": "C:\\Users\\ASUS\\AppData\\Local\\DesktopResearchCollector\\screenshots\\02f39c8f-ce99-49ba-a2a3-aeea8504ae3a.jpg",
+      "annotation": {
+        "found": true,
+        "application_context": "nan",
+        "label": "HIGH",
+        "entity_flags": {
+          "EMAIL": 0,
+          "PHONE": 0,
+          "URL": 0,
+          "IP_ADDRESS": 0,
+          "DATE": 0,
+          "WINDOWS_PATH": 0
+        },
+        "sensitive_entity_present": 0
+      },
+      "pipeline": {
+        "found": true,
+        "application_context": "Unknown",
+        "entity_flags": {
+          "EMAIL": 0,
+          "PHONE": 0,
+          "URL": 0,
+          "IP_ADDRESS": 0,
+          "DATE": 1,
+          "WINDOWS_PATH": 0
+        },
+        "auto_label_from_flags": "LOW_OR_MEDIUM",
+        "ocr_text_length": 617
+      },
+      "comparison": {
+        "flag_agreement": false,
+        "flags_differ": {
+          "DATE": {
+            "annotation": 0,
+            "pipeline": 1
+          }
+        },
+        "label_consistent_with_annotation_flags": "CONDITIONAL",
+        "recommendation": "Human visual review required"
+      }
+    },
+    {
+      "screenshot_id": "02e86b37-426a-46c0-8adf-00fe16ff2f2d.jpg",
+      "group": "G2",
+      "issue": "MEDIUM label with EMAIL=1 (should be HIGH per guidelines \u00a73.1)",
+      "reviewer_status": "NEEDS_VISUAL_REVIEW",
+      "screenshot_file_exists": true,
+      "screenshot_path": "C:\\Users\\ASUS\\AppData\\Local\\DesktopResearchCollector\\screenshots\\02e86b37-426a-46c0-8adf-00fe16ff2f2d.jpg",
+      "annotation": {
+        "found": true,
+        "application_context": "nan",
+        "label": "MEDIUM",
+        "entity_flags": {
+          "EMAIL": 1,
+          "PHONE": 0,
+          "URL": 0,
+          "IP_ADDRESS": 0,
+          "DATE": 1,
+          "WINDOWS_PATH": 0
+        },
+        "sensitive_entity_present": 1
+      },
+      "pipeline": {
+        "found": true,
+        "application_context": "Unknown",
+        "entity_flags": {
+          "EMAIL": 1,
+          "PHONE": 0,
+          "URL": 0,
+          "IP_ADDRESS": 0,
+          "DATE": 1,
+          "WINDOWS_PATH": 0
+        },
+        "auto_label_from_flags": "HIGH",
+        "ocr_text_length": 531
+      },
+      "comparison": {
+        "flag_agreement": true,
+        "flags_differ": {},
+        "label_consistent_with_annotation_flags": "NO",
+        "recommendation": "Human visual review required"
+      }
+    },
+    {
+      "screenshot_id": "00c019f8-0be1-426d-ace4-b8e3c6fa8d35.jpg",
+      "group": "G3",
+      "issue": "HIGH label where annotation flags support only MEDIUM (URL=1 only)",
+      "reviewer_status": "NEEDS_VISUAL_REVIEW",
+      "screenshot_file_exists": true,
+      "screenshot_path": "C:\\Users\\ASUS\\AppData\\Local\\DesktopResearchCollector\\screenshots\\00c019f8-0be1-426d-ace4-b8e3c6fa8d35.jpg",
+      "annotation": {
+        "found": true,
+        "application_context": "YouTube",
+        "label": "HIGH",
+        "entity_flags": {
+          "EMAIL": 0,
+          "PHONE": 0,
+          "URL": 1,
+          "IP_ADDRESS": 0,
+          "DATE": 1,
+          "WINDOWS_PATH": 0
+        },
+        "sensitive_entity_present": 1
+      },
+      "pipeline": {
+        "found": true,
+        "application_context": "Unknown",
+        "entity_flags": {
+          "EMAIL": 0,
+          "PHONE": 0,
+          "URL": 0,
+          "IP_ADDRESS": 0,
+          "DATE": 1,
+          "WINDOWS_PATH": 0
+        },
+        "auto_label_from_flags": "LOW_OR_MEDIUM",
+        "ocr_text_length": 1008
+      },
+      "comparison": {
+        "flag_agreement": false,
+        "flags_differ": {
+          "URL": {
+            "annotation": 1,
+            "pipeline": 0
+          }
+        },
+        "label_consistent_with_annotation_flags": "NO",
+        "recommendation": "Human visual review required"
+      }
+    },
+    {
+      "screenshot_id": "01bf28e2-c70b-4c32-82b4-31d786589ec3.jpg",
+      "group": "G4",
+      "issue": "LOW label with URL=1 (should be >= MEDIUM); pipeline also detects PHONE+IP",
+      "reviewer_status": "NEEDS_VISUAL_REVIEW",
+      "screenshot_file_exists": true,
+      "screenshot_path": "C:\\Users\\ASUS\\AppData\\Local\\DesktopResearchCollector\\screenshots\\01bf28e2-c70b-4c32-82b4-31d786589ec3.jpg",
+      "annotation": {
+        "found": true,
+        "application_context": "Google Chrome + YouTube",
+        "label": "LOW",
+        "entity_flags": {
+          "EMAIL": 0,
+          "PHONE": 0,
+          "URL": 1,
+          "IP_ADDRESS": 0,
+          "DATE": 1,
+          "WINDOWS_PATH": 0
+        },
+        "sensitive_entity_present": 1
+      },
+      "pipeline": {
+        "found": true,
+        "application_context": "Unknown",
+        "entity_flags": {
+          "EMAIL": 0,
+          "PHONE": 1,
+          "URL": 0,
+          "IP_ADDRESS": 1,
+          "DATE": 1,
+          "WINDOWS_PATH": 0
+        },
+        "auto_label_from_flags": "HIGH",
+        "ocr_text_length": 1995
+      },
+      "comparison": {
+        "flag_agreement": false,
+        "flags_differ": {
+          "PHONE": {
+            "annotation": 0,
+            "pipeline": 1
+          },
+          "URL": {
+            "annotation": 1,
+            "pipeline": 0
+          },
+          "IP_ADDRESS": {
+            "annotation": 0,
+            "pipeline": 1
+          }
+        },
+        "label_consistent_with_annotation_flags": "NO",
+        "recommendation": "Human visual review required"
+      }
+    },
+    {
+      "screenshot_id": "00fa95dd-5a9e-458b-a071-fc2f8913e888.jpg",
+      "group": "G5",
+      "issue": "MEDIUM label with all-zero annotation entity flags (no notes column)",
+      "reviewer_status": "NEEDS_VISUAL_REVIEW",
+      "screenshot_file_exists": true,
+      "screenshot_path": "C:\\Users\\ASUS\\AppData\\Local\\DesktopResearchCollector\\screenshots\\00fa95dd-5a9e-458b-a071-fc2f8913e888.jpg",
+      "annotation": {
+        "found": true,
+        "application_context": "nan",
+        "label": "MEDIUM",
+        "entity_flags": {
+          "EMAIL": 0,
+          "PHONE": 0,
+          "URL": 0,
+          "IP_ADDRESS": 0,
+          "DATE": 0,
+          "WINDOWS_PATH": 0
+        },
+        "sensitive_entity_present": 0
+      },
+      "pipeline": {
+        "found": true,
+        "application_context": "Unknown",
+        "entity_flags": {
+          "EMAIL": 0,
+          "PHONE": 0,
+          "URL": 0,
+          "IP_ADDRESS": 0,
+          "DATE": 1,
+          "WINDOWS_PATH": 0
+        },
+        "auto_label_from_flags": "LOW_OR_MEDIUM",
+        "ocr_text_length": 686
+      },
+      "comparison": {
+        "flag_agreement": false,
+        "flags_differ": {
+          "DATE": {
+            "annotation": 0,
+            "pipeline": 1
+          }
+        },
+        "label_consistent_with_annotation_flags": "CONDITIONAL",
+        "recommendation": "Human visual review required"
+      }
+    },
+    {
+      "screenshot_id": "01583a1d-7ccf-49d9-99c8-7ebf3b94cf01.jpg",
+      "group": "G5",
+      "issue": "MEDIUM label with all-zero annotation entity flags (no notes column)",
+      "reviewer_status": "NEEDS_VISUAL_REVIEW",
+      "screenshot_file_exists": true,
+      "screenshot_path": "C:\\Users\\ASUS\\AppData\\Local\\DesktopResearchCollector\\screenshots\\01583a1d-7ccf-49d9-99c8-7ebf3b94cf01.jpg",
+      "annotation": {
+        "found": true,
+        "application_context": "nan",
+        "label": "MEDIUM",
+        "entity_flags": {
+          "EMAIL": 0,
+          "PHONE": 0,
+          "URL": 0,
+          "IP_ADDRESS": 0,
+          "DATE": 0,
+          "WINDOWS_PATH": 0
+        },
+        "sensitive_entity_present": 0
+      },
+      "pipeline": {
+        "found": true,
+        "application_context": "Unknown",
+        "entity_flags": {
+          "EMAIL": 0,
+          "PHONE": 0,
+          "URL": 0,
+          "IP_ADDRESS": 0,
+          "DATE": 1,
+          "WINDOWS_PATH": 0
+        },
+        "auto_label_from_flags": "LOW_OR_MEDIUM",
+        "ocr_text_length": 1256
+      },
+      "comparison": {
+        "flag_agreement": false,
+        "flags_differ": {
+          "DATE": {
+            "annotation": 0,
+            "pipeline": 1
+          }
+        },
+        "label_consistent_with_annotation_flags": "CONDITIONAL",
+        "recommendation": "Human visual review required"
+      }
+    },
+    {
+      "screenshot_id": "01a758f4-84ee-400c-a583-b7b70573c076.jpg",
+      "group": "G5",
+      "issue": "MEDIUM label with all-zero annotation entity flags (no notes column)",
+      "reviewer_status": "NEEDS_VISUAL_REVIEW",
+      "screenshot_file_exists": true,
+      "screenshot_path": "C:\\Users\\ASUS\\AppData\\Local\\DesktopResearchCollector\\screenshots\\01a758f4-84ee-400c-a583-b7b70573c076.jpg",
+      "annotation": {
+        "found": true,
+        "application_context": "nan",
+        "label": "MEDIUM",
+        "entity_flags": {
+          "EMAIL": 0,
+          "PHONE": 0,
+          "URL": 0,
+          "IP_ADDRESS": 0,
+          "DATE": 0,
+          "WINDOWS_PATH": 0
+        },
+        "sensitive_entity_present": 0
+      },
+      "pipeline": {
+        "found": true,
+        "application_context": "Unknown",
+        "entity_flags": {
+          "EMAIL": 0,
+          "PHONE": 0,
+          "URL": 0,
+          "IP_ADDRESS": 0,
+          "DATE": 1,
+          "WINDOWS_PATH": 0
+        },
+        "auto_label_from_flags": "LOW_OR_MEDIUM",
+        "ocr_text_length": 857
+      },
+      "comparison": {
+        "flag_agreement": false,
+        "flags_differ": {
+          "DATE": {
+            "annotation": 0,
+            "pipeline": 1
+          }
+        },
+        "label_consistent_with_annotation_flags": "CONDITIONAL",
+        "recommendation": "Human visual review required"
+      }
+    },
+    {
+      "screenshot_id": "024fd28f-aeb8-42dc-8484-9a8e2cd3ecf5.jpg",
+      "group": "G5",
+      "issue": "MEDIUM label with all-zero annotation entity flags (no notes column)",
+      "reviewer_status": "NEEDS_VISUAL_REVIEW",
+      "screenshot_file_exists": true,
+      "screenshot_path": "C:\\Users\\ASUS\\AppData\\Local\\DesktopResearchCollector\\screenshots\\024fd28f-aeb8-42dc-8484-9a8e2cd3ecf5.jpg",
+      "annotation": {
+        "found": true,
+        "application_context": "nan",
+        "label": "MEDIUM",
+        "entity_flags": {
+          "EMAIL": 0,
+          "PHONE": 0,
+          "URL": 0,
+          "IP_ADDRESS": 0,
+          "DATE": 0,
+          "WINDOWS_PATH": 0
+        },
+        "sensitive_entity_present": 0
+      },
+      "pipeline": {
+        "found": true,
+        "application_context": "Unknown",
+        "entity_flags": {
+          "EMAIL": 0,
+          "PHONE": 0,
+          "URL": 0,
+          "IP_ADDRESS": 0,
+          "DATE": 1,
+          "WINDOWS_PATH": 0
+        },
+        "auto_label_from_flags": "LOW_OR_MEDIUM",
+        "ocr_text_length": 478
+      },
+      "comparison": {
+        "flag_agreement": false,
+        "flags_differ": {
+          "DATE": {
+            "annotation": 0,
+            "pipeline": 1
+          }
+        },
+        "label_consistent_with_annotation_flags": "CONDITIONAL",
+        "recommendation": "Human visual review required"
+      }
+    },
+    {
+      "screenshot_id": "033abfbe-b7f6-4c58-a769-8ffe082b38e4.jpg",
+      "group": "G5",
+      "issue": "MEDIUM label with all-zero annotation entity flags (no notes column)",
+      "reviewer_status": "NEEDS_VISUAL_REVIEW",
+      "screenshot_file_exists": true,
+      "screenshot_path": "C:\\Users\\ASUS\\AppData\\Local\\DesktopResearchCollector\\screenshots\\033abfbe-b7f6-4c58-a769-8ffe082b38e4.jpg",
+      "annotation": {
+        "found": true,
+        "application_context": "nan",
+        "label": "MEDIUM",
+        "entity_flags": {
+          "EMAIL": 0,
+          "PHONE": 0,
+          "URL": 0,
+          "IP_ADDRESS": 0,
+          "DATE": 0,
+          "WINDOWS_PATH": 0
+        },
+        "sensitive_entity_present": 0
+      },
+      "pipeline": {
+        "found": true,
+        "application_context": "Unknown",
+        "entity_flags": {
+          "EMAIL": 0,
+          "PHONE": 0,
+          "URL": 0,
+          "IP_ADDRESS": 0,
+          "DATE": 1,
+          "WINDOWS_PATH": 0
+        },
+        "auto_label_from_flags": "LOW_OR_MEDIUM",
+        "ocr_text_length": 792
+      },
+      "comparison": {
+        "flag_agreement": false,
+        "flags_differ": {
+          "DATE": {
+            "annotation": 0,
+            "pipeline": 1
+          }
+        },
+        "label_consistent_with_annotation_flags": "CONDITIONAL",
+        "recommendation": "Human visual review required"
+      }
+    },
+    {
+      "screenshot_id": "034e7035-d661-417e-8cab-6e3131d7a671.jpg",
+      "group": "G5",
+      "issue": "MEDIUM label with all-zero annotation entity flags (no notes column)",
+      "reviewer_status": "NEEDS_VISUAL_REVIEW",
+      "screenshot_file_exists": true,
+      "screenshot_path": "C:\\Users\\ASUS\\AppData\\Local\\DesktopResearchCollector\\screenshots\\034e7035-d661-417e-8cab-6e3131d7a671.jpg",
+      "annotation": {
+        "found": true,
+        "application_context": "nan",
+        "label": "MEDIUM",
+        "entity_flags": {
+          "EMAIL": 0,
+          "PHONE": 0,
+          "URL": 0,
+          "IP_ADDRESS": 0,
+          "DATE": 0,
+          "WINDOWS_PATH": 0
+        },
+        "sensitive_entity_present": 0
+      },
+      "pipeline": {
+        "found": true,
+        "application_context": "Unknown",
+        "entity_flags": {
+          "EMAIL": 0,
+          "PHONE": 0,
+          "URL": 0,
+          "IP_ADDRESS": 0,
+          "DATE": 1,
+          "WINDOWS_PATH": 0
+        },
+        "auto_label_from_flags": "LOW_OR_MEDIUM",
+        "ocr_text_length": 248
+      },
+      "comparison": {
+        "flag_agreement": false,
+        "flags_differ": {
+          "DATE": {
+            "annotation": 0,
+            "pipeline": 1
+          }
+        },
+        "label_consistent_with_annotation_flags": "CONDITIONAL",
+        "recommendation": "Human visual review required"
+      }
+    },
+    {
+      "screenshot_id": "00a3b7cb-0490-4a19-8f11-e37dad461566.jpg",
+      "group": "G6",
+      "issue": "MEDIUM label with DATE=1 only in non-browser context (Policy 2 dependency)",
+      "reviewer_status": "NEEDS_POLICY_DECISION",
+      "screenshot_file_exists": true,
+      "screenshot_path": "C:\\Users\\ASUS\\AppData\\Local\\DesktopResearchCollector\\screenshots\\00a3b7cb-0490-4a19-8f11-e37dad461566.jpg",
+      "annotation": {
+        "found": true,
+        "application_context": "Desktop",
+        "label": "MEDIUM",
+        "entity_flags": {
+          "EMAIL": 0,
+          "PHONE": 0,
+          "URL": 0,
+          "IP_ADDRESS": 0,
+          "DATE": 1,
+          "WINDOWS_PATH": 0
+        },
+        "sensitive_entity_present": 1
+      },
+      "pipeline": {
+        "found": true,
+        "application_context": "Unknown",
+        "entity_flags": {
+          "EMAIL": 0,
+          "PHONE": 0,
+          "URL": 0,
+          "IP_ADDRESS": 0,
+          "DATE": 1,
+          "WINDOWS_PATH": 0
+        },
+        "auto_label_from_flags": "LOW_OR_MEDIUM",
+        "ocr_text_length": 439
+      },
+      "comparison": {
+        "flag_agreement": true,
+        "flags_differ": {},
+        "label_consistent_with_annotation_flags": "CONDITIONAL",
+        "recommendation": "Policy decision required"
+      }
+    },
+    {
+      "screenshot_id": "0024e4cb-aacb-44f7-8fe2-5c633f1ec67f.jpg",
+      "group": "G7",
+      "issue": "LOW label; annotation PHONE=0 but pipeline detects PHONE",
+      "reviewer_status": "NEEDS_VISUAL_REVIEW",
+      "screenshot_file_exists": true,
+      "screenshot_path": "C:\\Users\\ASUS\\AppData\\Local\\DesktopResearchCollector\\screenshots\\0024e4cb-aacb-44f7-8fe2-5c633f1ec67f.jpg",
+      "annotation": {
+        "found": true,
+        "application_context": "VS Code",
+        "label": "LOW",
+        "entity_flags": {
+          "EMAIL": 0,
+          "PHONE": 0,
+          "URL": 0,
+          "IP_ADDRESS": 0,
+          "DATE": 1,
+          "WINDOWS_PATH": 0
+        },
+        "sensitive_entity_present": 1
+      },
+      "pipeline": {
+        "found": true,
+        "application_context": "UNKNOWN",
+        "entity_flags": {
+          "EMAIL": 0,
+          "PHONE": 1,
+          "URL": 0,
+          "IP_ADDRESS": 0,
+          "DATE": 1,
+          "WINDOWS_PATH": 0
+        },
+        "auto_label_from_flags": "HIGH",
+        "ocr_text_length": 1082
+      },
+      "comparison": {
+        "flag_agreement": false,
+        "flags_differ": {
+          "PHONE": {
+            "annotation": 0,
+            "pipeline": 1
+          }
+        },
+        "label_consistent_with_annotation_flags": "CONDITIONAL",
+        "recommendation": "Human visual review required"
+      }
+    },
+    {
+      "screenshot_id": "00c34dc6-612f-43cb-9b9f-297d92b6868a.jpg",
+      "group": "G7",
+      "issue": "LOW label; annotation PHONE=0 but pipeline detects PHONE",
+      "reviewer_status": "NEEDS_VISUAL_REVIEW",
+      "screenshot_file_exists": true,
+      "screenshot_path": "C:\\Users\\ASUS\\AppData\\Local\\DesktopResearchCollector\\screenshots\\00c34dc6-612f-43cb-9b9f-297d92b6868a.jpg",
+      "annotation": {
+        "found": true,
+        "application_context": "VS Code",
+        "label": "LOW",
+        "entity_flags": {
+          "EMAIL": 0,
+          "PHONE": 0,
+          "URL": 0,
+          "IP_ADDRESS": 0,
+          "DATE": 1,
+          "WINDOWS_PATH": 0
+        },
+        "sensitive_entity_present": 1
+      },
+      "pipeline": {
+        "found": true,
+        "application_context": "Unknown",
+        "entity_flags": {
+          "EMAIL": 0,
+          "PHONE": 1,
+          "URL": 0,
+          "IP_ADDRESS": 0,
+          "DATE": 1,
+          "WINDOWS_PATH": 0
+        },
+        "auto_label_from_flags": "HIGH",
+        "ocr_text_length": 1416
+      },
+      "comparison": {
+        "flag_agreement": false,
+        "flags_differ": {
+          "PHONE": {
+            "annotation": 0,
+            "pipeline": 1
+          }
+        },
+        "label_consistent_with_annotation_flags": "CONDITIONAL",
+        "recommendation": "Human visual review required"
+      }
+    },
+    {
+      "screenshot_id": "00e7560f-f51a-4d8a-ad26-f6461fe5d6de.jpg",
+      "group": "G7",
+      "issue": "LOW label; annotation PHONE=0 but pipeline detects PHONE",
+      "reviewer_status": "NEEDS_VISUAL_REVIEW",
+      "screenshot_file_exists": true,
+      "screenshot_path": "C:\\Users\\ASUS\\AppData\\Local\\DesktopResearchCollector\\screenshots\\00e7560f-f51a-4d8a-ad26-f6461fe5d6de.jpg",
+      "annotation": {
+        "found": true,
+        "application_context": "VS Code + ChatGPT",
+        "label": "LOW",
+        "entity_flags": {
+          "EMAIL": 0,
+          "PHONE": 0,
+          "URL": 0,
+          "IP_ADDRESS": 0,
+          "DATE": 1,
+          "WINDOWS_PATH": 0
+        },
+        "sensitive_entity_present": 1
+      },
+      "pipeline": {
+        "found": true,
+        "application_context": "Unknown",
+        "entity_flags": {
+          "EMAIL": 0,
+          "PHONE": 1,
+          "URL": 0,
+          "IP_ADDRESS": 0,
+          "DATE": 1,
+          "WINDOWS_PATH": 0
+        },
+        "auto_label_from_flags": "HIGH",
+        "ocr_text_length": 981
+      },
+      "comparison": {
+        "flag_agreement": false,
+        "flags_differ": {
+          "PHONE": {
+            "annotation": 0,
+            "pipeline": 1
+          }
+        },
+        "label_consistent_with_annotation_flags": "CONDITIONAL",
+        "recommendation": "Human visual review required"
+      }
+    },
+    {
+      "screenshot_id": "014635cf-027c-4bec-a6c2-304828e4e9f9.jpg",
+      "group": "G8",
+      "issue": "LOW label; annotation all-zero but pipeline detects PHONE+IP",
+      "reviewer_status": "NEEDS_VISUAL_REVIEW",
+      "screenshot_file_exists": true,
+      "screenshot_path": "C:\\Users\\ASUS\\AppData\\Local\\DesktopResearchCollector\\screenshots\\014635cf-027c-4bec-a6c2-304828e4e9f9.jpg",
+      "annotation": {
+        "found": true,
+        "application_context": "nan",
+        "label": "LOW",
+        "entity_flags": {
+          "EMAIL": 0,
+          "PHONE": 0,
+          "URL": 0,
+          "IP_ADDRESS": 0,
+          "DATE": 0,
+          "WINDOWS_PATH": 0
+        },
+        "sensitive_entity_present": 0
+      },
+      "pipeline": {
+        "found": true,
+        "application_context": "Unknown",
+        "entity_flags": {
+          "EMAIL": 0,
+          "PHONE": 1,
+          "URL": 0,
+          "IP_ADDRESS": 0,
+          "DATE": 1,
+          "WINDOWS_PATH": 0
+        },
+        "auto_label_from_flags": "HIGH",
+        "ocr_text_length": 664
+      },
+      "comparison": {
+        "flag_agreement": false,
+        "flags_differ": {
+          "PHONE": {
+            "annotation": 0,
+            "pipeline": 1
+          },
+          "DATE": {
+            "annotation": 0,
+            "pipeline": 1
+          }
+        },
+        "label_consistent_with_annotation_flags": "YES",
+        "recommendation": "Human visual review required"
+      }
+    },
+    {
+      "screenshot_id": "02488e7f-132f-4e80-b164-d34cf38424ff.jpg",
+      "group": "G8",
+      "issue": "LOW label; annotation all-zero but pipeline detects PHONE+IP",
+      "reviewer_status": "NEEDS_VISUAL_REVIEW",
+      "screenshot_file_exists": true,
+      "screenshot_path": "C:\\Users\\ASUS\\AppData\\Local\\DesktopResearchCollector\\screenshots\\02488e7f-132f-4e80-b164-d34cf38424ff.jpg",
+      "annotation": {
+        "found": true,
+        "application_context": "nan",
+        "label": "LOW",
+        "entity_flags": {
+          "EMAIL": 0,
+          "PHONE": 0,
+          "URL": 0,
+          "IP_ADDRESS": 0,
+          "DATE": 0,
+          "WINDOWS_PATH": 0
+        },
+        "sensitive_entity_present": 0
+      },
+      "pipeline": {
+        "found": true,
+        "application_context": "Unknown",
+        "entity_flags": {
+          "EMAIL": 0,
+          "PHONE": 1,
+          "URL": 0,
+          "IP_ADDRESS": 1,
+          "DATE": 1,
+          "WINDOWS_PATH": 0
+        },
+        "auto_label_from_flags": "HIGH",
+        "ocr_text_length": 1327
+      },
+      "comparison": {
+        "flag_agreement": false,
+        "flags_differ": {
+          "PHONE": {
+            "annotation": 0,
+            "pipeline": 1
+          },
+          "IP_ADDRESS": {
+            "annotation": 0,
+            "pipeline": 1
+          },
+          "DATE": {
+            "annotation": 0,
+            "pipeline": 1
+          }
+        },
+        "label_consistent_with_annotation_flags": "YES",
+        "recommendation": "Human visual review required"
+      }
+    }
+  ],
+  "notes": [
+    "All 16 rows require human visual review of the screenshot file.",
+    "This tool only compares structured metadata; it cannot assess visual content.",
+    "Label consistency is checked against annotation entity flags only (\u00a73 of guidelines).",
+    "CONDITIONAL = all-zero flags with non-LOW label, valid per \u00a76 only if annotation_notes column exists.",
+    "NEEDS_POLICY_DECISION rows (Group G6) depend on Policy 2 resolution by supervisor."
+  ]
+}

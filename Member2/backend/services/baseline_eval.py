@@ -22,6 +22,7 @@ Documented limitations
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 import numpy as np
@@ -29,6 +30,7 @@ import pandas as pd
 from sklearn.metrics import (
     accuracy_score,
     classification_report,
+    confusion_matrix,
     f1_score,
 )
 from sklearn.model_selection import train_test_split
@@ -138,8 +140,16 @@ def evaluate_baseline_comparison(
         result = predict_rule_based(feats)
         rule_preds.append(result["risk_level"])
 
-    all_classes = sorted(set(y) | set(rule_preds))
+    # -----------------------------------------------------------------------
+    # Majority-class baseline (always predicts most frequent training class)
+    # If the rule baseline and ML model cannot beat this trivial classifier,
+    # their added complexity is unjustified by these results alone.
+    # -----------------------------------------------------------------------
+    majority_preds, majority_class = _majority_baseline_predictions(y_train, y_test)
+
+    all_classes = sorted(set(y) | set(rule_preds) | set(majority_preds))
     rule_metrics = _compute_metrics(y_test, rule_preds, all_classes)
+    majority_metrics = _compute_metrics(y_test, majority_preds, all_classes)
 
     # -----------------------------------------------------------------------
     # ML model predictions on test fold (no personalisation)
@@ -166,7 +176,7 @@ def evaluate_baseline_comparison(
             X_test, _ = build_features(df_test, context_encoder=bundle["context_encoder"])
 
             ml_preds: list[str] = list(model.predict(X_test))
-            all_classes = sorted(set(y) | set(ml_preds) | set(rule_preds))
+            all_classes = sorted(set(y) | set(ml_preds) | set(rule_preds) | set(majority_preds))
             ml_metrics = _compute_metrics(y_test, ml_preds, all_classes)
         except Exception as exc:
             ml_warning = f"ML evaluation failed: {exc}"
@@ -177,6 +187,8 @@ def evaluate_baseline_comparison(
         "test_rows": int(len(df_test)),
         "label_distribution": label_dist,
         "all_classes": all_classes,
+        "majority_baseline": majority_metrics,
+        "majority_class": majority_class,
         "rule_baseline": rule_metrics,
         "ml_model": ml_metrics,
         "ml_warning": ml_warning,
@@ -205,11 +217,30 @@ def _compute_metrics(y_true, y_pred, classes: list[str]) -> dict[str, Any]:
     report = classification_report(
         y_true, y_pred, labels=classes, output_dict=True, zero_division=0
     )
+    cm = confusion_matrix(y_true, y_pred, labels=classes)
     return {
         "macro_f1": round(macro_f1, 4),
         "accuracy": round(accuracy, 4),
         "classification_report": report,
+        "confusion_matrix": cm.tolist(),
+        "confusion_matrix_labels": classes,
     }
+
+
+def _majority_baseline_predictions(
+    y_train: np.ndarray, y_test: np.ndarray
+) -> tuple[list[str], str]:
+    """
+    Return predictions and majority class for a trivial classifier that always
+    predicts the most frequent class in the training fold.
+
+    This is the minimal non-trivial baseline: if neither the rule classifier nor
+    the ML model beats the majority-class baseline, their added complexity is
+    unjustified.
+    """
+    from collections import Counter
+    majority_class: str = Counter(y_train).most_common(1)[0][0]
+    return [majority_class] * len(y_test), majority_class
 
 
 # ---------------------------------------------------------------------------
@@ -236,27 +267,107 @@ _LIMITATIONS: list[str] = [
 # CLI entry point (read-only; does not train)
 # ---------------------------------------------------------------------------
 
-if __name__ == "__main__":
-    import json
+EVAL_LOG_PATH = DATASET_PATH.parent / "baseline_eval_log.json"
 
-    result = evaluate_baseline_comparison()
 
-    # Strip the full classification_report for terminal readability
-    def _summary(metrics: dict | None) -> dict | None:
+def persist_eval_result(result: dict[str, Any]) -> None:
+    """Append a baseline evaluation result to the append-only log file."""
+    import time
+
+    def _summary(metrics: dict | None, majority_class: str | None = None) -> dict | None:
         if metrics is None:
             return None
-        return {
+        d = {
             "macro_f1": metrics["macro_f1"],
             "accuracy": metrics["accuracy"],
         }
+        if majority_class is not None:
+            d["majority_class"] = majority_class
+        return d
 
-    print(json.dumps({
+    entry = {
+        "evaluated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "dataset_rows": result["dataset_rows"],
         "train_rows": result["train_rows"],
         "test_rows": result["test_rows"],
         "label_distribution": result["label_distribution"],
-        "rule_baseline": _summary(result["rule_baseline"]),
-        "ml_model": _summary(result["ml_model"]),
+        "all_classes": result.get("all_classes"),
+        "majority_baseline": _summary(
+            result.get("majority_baseline"),
+            result.get("majority_class"),
+        ),
+        "rule_baseline": _summary(result.get("rule_baseline")),
+        "ml_model": _summary(result.get("ml_model")),
+        "ml_warning": result.get("ml_warning"),
+        "limitations": result.get("limitations"),
+    }
+
+    history: list = []
+    if EVAL_LOG_PATH.exists():
+        try:
+            with EVAL_LOG_PATH.open(encoding="utf-8") as fh:
+                history = json.load(fh)
+        except (json.JSONDecodeError, ValueError):
+            history = []
+
+    history.append(entry)
+    EVAL_LOG_PATH.write_text(json.dumps(history, indent=2), encoding="utf-8")
+
+
+def _per_class_table(metrics: dict | None, label: str) -> str:
+    """Format per-class precision/recall/F1 as a compact text table."""
+    if metrics is None:
+        return f"  {label}: not available\n"
+    report = metrics.get("classification_report", {})
+    classes = metrics.get("confusion_matrix_labels", [])
+    lines = [f"  {label}  (accuracy={metrics['accuracy']:.4f}  macro_f1={metrics['macro_f1']:.4f})"]
+    lines.append(f"  {'Class':<14} {'Precision':>10} {'Recall':>8} {'F1':>8} {'Support':>8}")
+    for cls in classes:
+        row = report.get(cls, {})
+        lines.append(
+            f"  {cls:<14} {row.get('precision', 0.0):>10.4f}"
+            f" {row.get('recall', 0.0):>8.4f}"
+            f" {row.get('f1-score', 0.0):>8.4f}"
+            f" {int(row.get('support', 0)):>8}"
+        )
+    cm = metrics.get("confusion_matrix")
+    if cm and classes:
+        lines.append(f"  Confusion matrix (rows=actual, cols=predicted, labels={classes}):")
+        for i, row in enumerate(cm):
+            lines.append(f"    {classes[i]:<12}: {row}")
+    return "\n".join(lines)
+
+
+if __name__ == "__main__":
+    result = evaluate_baseline_comparison()
+
+    # Summary table (concise)
+    def _brief(metrics: dict | None, name: str | None = None) -> dict | None:
+        if metrics is None:
+            return None
+        d: dict = {"macro_f1": metrics["macro_f1"], "accuracy": metrics["accuracy"]}
+        if name:
+            d["majority_class"] = name
+        return d
+
+    output = {
+        "dataset_rows": result["dataset_rows"],
+        "train_rows": result["train_rows"],
+        "test_rows": result["test_rows"],
+        "label_distribution": result["label_distribution"],
+        "majority_baseline": _brief(result.get("majority_baseline"), result.get("majority_class")),
+        "rule_baseline": _brief(result["rule_baseline"]),
+        "ml_model": _brief(result["ml_model"]),
         "ml_warning": result["ml_warning"],
         "limitations": result["limitations"],
-    }, indent=2))
+    }
+    print(json.dumps(output, indent=2))
+
+    # Per-class detail block
+    print("\n--- Per-class metrics ---")
+    print(_per_class_table(result.get("majority_baseline"), "majority_baseline"))
+    print(_per_class_table(result["rule_baseline"], "rule_baseline"))
+    print(_per_class_table(result["ml_model"], "ml_model"))
+
+    persist_eval_result(result)
+    print(f"\nEvaluation result appended → {EVAL_LOG_PATH}", flush=True)
