@@ -233,19 +233,22 @@ class AlwaysSaveScorer(ImportanceScorer):
 
 def load_labelled_from_db(conn) -> list[EvalRecord]:
     """Load labelled context records as EvalRecords, with real per-record storage size."""
+    from features import surfaces
+    from features.feature_assembly import refresh_revisit_features
     from storage.context_store import list_context_records
 
-    records = []
-    for r in list_context_records(conn):
-        if r.label is None:
-            continue
-        embedding_bytes = int(r.embedding.nbytes) if r.embedding is not None else 0
-        features_bytes = len(json.dumps(r.features, separators=(",", ":")))
-        records.append(EvalRecord(
-            features=r.features, label=int(r.label),
-            size_bytes=embedding_bytes + features_bytes, ts=r.ts,
-        ))
-    return records
+    # Same view of the data as the scheduled retrain (adaptation.scheduled_job.run_cycle).
+    stored = [r for r in list_context_records(conn) if not surfaces.is_non_context(r.app, r.title)]
+    # Size is what is on disk, so measure it before the revisit features are recomputed.
+    sizes = {
+        r.id: (int(r.embedding.nbytes) if r.embedding is not None else 0) + len(json.dumps(r.features, separators=(",", ":")))
+        for r in stored
+    }
+    refresh_revisit_features(stored)
+    return [
+        EvalRecord(features=r.features, label=int(r.label), size_bytes=sizes[r.id], ts=r.ts)
+        for r in stored if r.label is not None
+    ]
 
 
 def _temporal_split(
