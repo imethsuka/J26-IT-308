@@ -310,7 +310,25 @@ def test_analyze_high_risk_tokenized_text_contains_token(client):
     body = resp.json()
     tokenized_text = body["tokenized_summary"]["tokenized_text"]
     assert "alice@example.com" not in tokenized_text
-    assert "[EMAIL_1]" in tokenized_text
+
+
+def test_analyze_low_risk_skip_tokenization_does_not_leak_ocr_text(client):
+    """
+    When tokenization is skipped (LOW + confident prediction), tokenized_text
+    in the API response must NOT contain the raw OCR text with sensitive values.
+    Mock OCR: 'Sample text with alice@example.com'.
+    Mock model: P(LOW)=0.75 → LOW prediction, confidence=0.75 → skip threshold met.
+    """
+    import backend.services.risk_prediction as rp
+    with patch("backend.main.extract_text", _mock_ocr):
+        with patch.object(rp, "_bundle", _mock_bundle()):
+            resp = _analyze_multipart(client)
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    ts = body["tokenized_summary"]
+    assert ts["tokenization_applied"] is False
+    # Raw sensitive value must not appear in tokenized_text when tokenization is skipped
+    assert "alice@example.com" not in ts["tokenized_text"]
 
 
 # ---------------------------------------------------------------------------

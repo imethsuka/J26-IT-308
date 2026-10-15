@@ -1,0 +1,601 @@
+{
+  "evaluated_at": "2026-10-15T11:44:03Z",
+  "skip_threshold": 0.75,
+  "entity_types_tested": [
+    "EMAIL",
+    "PHONE",
+    "URL",
+    "IP_ADDRESS",
+    "DATE",
+    "WINDOWS_PATH"
+  ],
+  "entity_type_coverage_fraction": 1.0,
+  "entity_level_tests": {
+    "total": 26,
+    "passed": 26,
+    "failed": 0,
+    "details": [
+      {
+        "entity_type": "EMAIL",
+        "risk_level": "HIGH",
+        "confidence": 0.95,
+        "skip_threshold": 0.75,
+        "entities_detected": 1,
+        "pii_values_detected": [
+          "alice@example.com"
+        ],
+        "tokenization_applied": true,
+        "token_count": 1,
+        "leaked_in_tokenized_text": [],
+        "leaked_in_detection_matches": [],
+        "passed": true,
+        "failure_reason": null
+      },
+      {
+        "entity_type": "PHONE",
+        "risk_level": "HIGH",
+        "confidence": 0.95,
+        "skip_threshold": 0.75,
+        "entities_detected": 1,
+        "pii_values_detected": [
+          "555-123-4567"
+        ],
+        "tokenization_applied": true,
+        "token_count": 1,
+        "leaked_in_tokenized_text": [],
+        "leaked_in_detection_matches": [],
+        "passed": true,
+        "failure_reason": null
+      },
+      {
+        "entity_type": "URL",
+        "risk_level": "HIGH",
+        "confidence": 0.95,
+        "skip_threshold": 0.75,
+        "entities_detected": 1,
+        "pii_values_detected": [
+          "https://www.example.com/login"
+        ],
+        "tokenization_applied": true,
+        "token_count": 1,
+        "leaked_in_tokenized_text": [],
+        "leaked_in_detection_matches": [],
+        "passed": true,
+        "failure_reason": null
+      },
+      {
+        "entity_type": "IP_ADDRESS",
+        "risk_level": "HIGH",
+        "confidence": 0.95,
+        "skip_threshold": 0.75,
+        "entities_detected": 1,
+        "pii_values_detected": [
+          "192.168.100.200"
+        ],
+        "tokenization_applied": true,
+        "token_count": 1,
+        "leaked_in_tokenized_text": [],
+        "leaked_in_detection_matches": [],
+        "passed": true,
+        "failure_reason": null
+      },
+      {
+        "entity_type": "DATE",
+        "risk_level": "HIGH",
+        "confidence": 0.95,
+        "skip_threshold": 0.75,
+        "entities_detected": 1,
+        "pii_values_detected": [
+          "12/25/2023"
+        ],
+        "tokenization_applied": true,
+        "token_count": 1,
+        "leaked_in_tokenized_text": [],
+        "leaked_in_detection_matches": [],
+        "passed": true,
+        "failure_reason": null
+      },
+      {
+        "entity_type": "WINDOWS_PATH",
+        "risk_level": "HIGH",
+        "confidence": 0.95,
+        "skip_threshold": 0.75,
+        "entities_detected": 1,
+        "pii_values_detected": [
+          "C:\\Users\\admin\\Documents\\report.docx"
+        ],
+        "tokenization_applied": true,
+        "token_count": 1,
+        "leaked_in_tokenized_text": [],
+        "leaked_in_detection_matches": [],
+        "passed": true,
+        "failure_reason": null
+      },
+      {
+        "entity_type": "EMAIL",
+        "risk_level": "MEDIUM",
+        "confidence": 0.8,
+        "skip_threshold": 0.75,
+        "entities_detected": 1,
+        "pii_values_detected": [
+          "alice@example.com"
+        ],
+        "tokenization_applied": true,
+        "token_count": 1,
+        "leaked_in_tokenized_text": [],
+        "leaked_in_detection_matches": [],
+        "passed": true,
+        "failure_reason": null
+      },
+      {
+        "entity_type": "PHONE",
+        "risk_level": "MEDIUM",
+        "confidence": 0.8,
+        "skip_threshold": 0.75,
+        "entities_detected": 1,
+        "pii_values_detected": [
+          "555-123-4567"
+        ],
+        "tokenization_applied": true,
+        "token_count": 1,
+        "leaked_in_tokenized_text": [],
+        "leaked_in_detection_matches": [],
+        "passed": true,
+        "failure_reason": null
+      },
+      {
+        "entity_type": "URL",
+        "risk_level": "MEDIUM",
+        "confidence": 0.8,
+        "skip_threshold": 0.75,
+        "entities_detected": 1,
+        "pii_values_detected": [
+          "https://www.example.com/login"
+        ],
+        "tokenization_applied": true,
+        "token_count": 1,
+        "leaked_in_tokenized_text": [],
+        "leaked_in_detection_matches": [],
+        "passed": true,
+        "failure_reason": null
+      },
+      {
+        "entity_type": "IP_ADDRESS",
+        "risk_level": "MEDIUM",
+        "confidence": 0.8,
+        "skip_threshold": 0.75,
+        "entities_detected": 1,
+        "pii_values_detected": [
+          "192.168.100.200"
+        ],
+        "tokenization_applied": true,
+        "token_count": 1,
+        "leaked_in_tokenized_text": [],
+        "leaked_in_detection_matches": [],
+        "passed": true,
+        "failure_reason": null
+      },
+      {
+        "entity_type": "DATE",
+        "risk_level": "MEDIUM",
+        "confidence": 0.8,
+        "skip_threshold": 0.75,
+        "entities_detected": 1,
+        "pii_values_detected": [
+          "12/25/2023"
+        ],
+        "tokenization_applied": true,
+        "token_count": 1,
+        "leaked_in_tokenized_text": [],
+        "leaked_in_detection_matches": [],
+        "passed": true,
+        "failure_reason": null
+      },
+      {
+        "entity_type": "WINDOWS_PATH",
+        "risk_level": "MEDIUM",
+        "confidence": 0.8,
+        "skip_threshold": 0.75,
+        "entities_detected": 1,
+        "pii_values_detected": [
+          "C:\\Users\\admin\\Documents\\report.docx"
+        ],
+        "tokenization_applied": true,
+        "token_count": 1,
+        "leaked_in_tokenized_text": [],
+        "leaked_in_detection_matches": [],
+        "passed": true,
+        "failure_reason": null
+      },
+      {
+        "entity_type": "EMAIL",
+        "risk_level": "LOW",
+        "confidence": 0.5,
+        "skip_threshold": 0.75,
+        "entities_detected": 1,
+        "pii_values_detected": [
+          "alice@example.com"
+        ],
+        "tokenization_applied": true,
+        "token_count": 1,
+        "leaked_in_tokenized_text": [],
+        "leaked_in_detection_matches": [],
+        "passed": true,
+        "failure_reason": null
+      },
+      {
+        "entity_type": "PHONE",
+        "risk_level": "LOW",
+        "confidence": 0.5,
+        "skip_threshold": 0.75,
+        "entities_detected": 1,
+        "pii_values_detected": [
+          "555-123-4567"
+        ],
+        "tokenization_applied": true,
+        "token_count": 1,
+        "leaked_in_tokenized_text": [],
+        "leaked_in_detection_matches": [],
+        "passed": true,
+        "failure_reason": null
+      },
+      {
+        "entity_type": "URL",
+        "risk_level": "LOW",
+        "confidence": 0.5,
+        "skip_threshold": 0.75,
+        "entities_detected": 1,
+        "pii_values_detected": [
+          "https://www.example.com/login"
+        ],
+        "tokenization_applied": true,
+        "token_count": 1,
+        "leaked_in_tokenized_text": [],
+        "leaked_in_detection_matches": [],
+        "passed": true,
+        "failure_reason": null
+      },
+      {
+        "entity_type": "IP_ADDRESS",
+        "risk_level": "LOW",
+        "confidence": 0.5,
+        "skip_threshold": 0.75,
+        "entities_detected": 1,
+        "pii_values_detected": [
+          "192.168.100.200"
+        ],
+        "tokenization_applied": true,
+        "token_count": 1,
+        "leaked_in_tokenized_text": [],
+        "leaked_in_detection_matches": [],
+        "passed": true,
+        "failure_reason": null
+      },
+      {
+        "entity_type": "DATE",
+        "risk_level": "LOW",
+        "confidence": 0.5,
+        "skip_threshold": 0.75,
+        "entities_detected": 1,
+        "pii_values_detected": [
+          "12/25/2023"
+        ],
+        "tokenization_applied": true,
+        "token_count": 1,
+        "leaked_in_tokenized_text": [],
+        "leaked_in_detection_matches": [],
+        "passed": true,
+        "failure_reason": null
+      },
+      {
+        "entity_type": "WINDOWS_PATH",
+        "risk_level": "LOW",
+        "confidence": 0.5,
+        "skip_threshold": 0.75,
+        "entities_detected": 1,
+        "pii_values_detected": [
+          "C:\\Users\\admin\\Documents\\report.docx"
+        ],
+        "tokenization_applied": true,
+        "token_count": 1,
+        "leaked_in_tokenized_text": [],
+        "leaked_in_detection_matches": [],
+        "passed": true,
+        "failure_reason": null
+      },
+      {
+        "entity_type": "EMAIL",
+        "risk_level": "UNAVAILABLE",
+        "confidence": null,
+        "skip_threshold": 0.75,
+        "entities_detected": 1,
+        "pii_values_detected": [
+          "alice@example.com"
+        ],
+        "tokenization_applied": true,
+        "token_count": 1,
+        "leaked_in_tokenized_text": [],
+        "leaked_in_detection_matches": [],
+        "passed": true,
+        "failure_reason": null
+      },
+      {
+        "entity_type": "PHONE",
+        "risk_level": "UNAVAILABLE",
+        "confidence": null,
+        "skip_threshold": 0.75,
+        "entities_detected": 1,
+        "pii_values_detected": [
+          "555-123-4567"
+        ],
+        "tokenization_applied": true,
+        "token_count": 1,
+        "leaked_in_tokenized_text": [],
+        "leaked_in_detection_matches": [],
+        "passed": true,
+        "failure_reason": null
+      },
+      {
+        "entity_type": "URL",
+        "risk_level": "UNAVAILABLE",
+        "confidence": null,
+        "skip_threshold": 0.75,
+        "entities_detected": 1,
+        "pii_values_detected": [
+          "https://www.example.com/login"
+        ],
+        "tokenization_applied": true,
+        "token_count": 1,
+        "leaked_in_tokenized_text": [],
+        "leaked_in_detection_matches": [],
+        "passed": true,
+        "failure_reason": null
+      },
+      {
+        "entity_type": "IP_ADDRESS",
+        "risk_level": "UNAVAILABLE",
+        "confidence": null,
+        "skip_threshold": 0.75,
+        "entities_detected": 1,
+        "pii_values_detected": [
+          "192.168.100.200"
+        ],
+        "tokenization_applied": true,
+        "token_count": 1,
+        "leaked_in_tokenized_text": [],
+        "leaked_in_detection_matches": [],
+        "passed": true,
+        "failure_reason": null
+      },
+      {
+        "entity_type": "DATE",
+        "risk_level": "UNAVAILABLE",
+        "confidence": null,
+        "skip_threshold": 0.75,
+        "entities_detected": 1,
+        "pii_values_detected": [
+          "12/25/2023"
+        ],
+        "tokenization_applied": true,
+        "token_count": 1,
+        "leaked_in_tokenized_text": [],
+        "leaked_in_detection_matches": [],
+        "passed": true,
+        "failure_reason": null
+      },
+      {
+        "entity_type": "WINDOWS_PATH",
+        "risk_level": "UNAVAILABLE",
+        "confidence": null,
+        "skip_threshold": 0.75,
+        "entities_detected": 1,
+        "pii_values_detected": [
+          "C:\\Users\\admin\\Documents\\report.docx"
+        ],
+        "tokenization_applied": true,
+        "token_count": 1,
+        "leaked_in_tokenized_text": [],
+        "leaked_in_detection_matches": [],
+        "passed": true,
+        "failure_reason": null
+      },
+      {
+        "entity_type": "MULTI",
+        "risk_level": "HIGH",
+        "confidence": 0.95,
+        "skip_threshold": 0.75,
+        "entities_detected": 6,
+        "pii_values_detected": [
+          "alice@example.com",
+          "555-123-4567",
+          "https://example.com",
+          "10.0.0.1",
+          "01/01/2024",
+          "C:\\Users\\test\\file.txt, Date"
+        ],
+        "tokenization_applied": true,
+        "token_count": 6,
+        "leaked_in_tokenized_text": [],
+        "leaked_in_detection_matches": [],
+        "passed": true,
+        "failure_reason": null
+      },
+      {
+        "entity_type": "MULTI",
+        "risk_level": "MEDIUM",
+        "confidence": 0.8,
+        "skip_threshold": 0.75,
+        "entities_detected": 6,
+        "pii_values_detected": [
+          "alice@example.com",
+          "555-123-4567",
+          "https://example.com",
+          "10.0.0.1",
+          "01/01/2024",
+          "C:\\Users\\test\\file.txt, Date"
+        ],
+        "tokenization_applied": true,
+        "token_count": 6,
+        "leaked_in_tokenized_text": [],
+        "leaked_in_detection_matches": [],
+        "passed": true,
+        "failure_reason": null
+      }
+    ]
+  },
+  "low_gap_documentation": {
+    "description": "LOW + confidence >= 0.75 skips tokenization. tokenize() returns original text (the gap at the function level). main.py returns '[redacted...]' placeholder to prevent API exposure. Matches are stripped by _strip_matches() in all cases.",
+    "gap_confirmed_for_all_types": true,
+    "matches_stripped_for_all_types": true,
+    "per_type": [
+      {
+        "test": "low_gap_documented",
+        "entity_type": "EMAIL",
+        "risk_level": "LOW",
+        "confidence": 0.9,
+        "entities_detected": 1,
+        "token_map_empty": true,
+        "tokenized_text_equals_original": true,
+        "gap_confirmed": true,
+        "matches_stripped_by_strip_matches": true,
+        "leaked_in_detection_matches_before_strip": [],
+        "note": "KNOWN GAP: tokenize() returns original text at LOW+high-conf. The API layer (main.py) returns '[redacted...]' instead of the original text to prevent exposure via tokenized_summary.tokenized_text. This gap is documented in PROJECT_CONTROL_CENTER.md \u00a710."
+      },
+      {
+        "test": "low_gap_documented",
+        "entity_type": "PHONE",
+        "risk_level": "LOW",
+        "confidence": 0.9,
+        "entities_detected": 1,
+        "token_map_empty": true,
+        "tokenized_text_equals_original": true,
+        "gap_confirmed": true,
+        "matches_stripped_by_strip_matches": true,
+        "leaked_in_detection_matches_before_strip": [],
+        "note": "KNOWN GAP: tokenize() returns original text at LOW+high-conf. The API layer (main.py) returns '[redacted...]' instead of the original text to prevent exposure via tokenized_summary.tokenized_text. This gap is documented in PROJECT_CONTROL_CENTER.md \u00a710."
+      },
+      {
+        "test": "low_gap_documented",
+        "entity_type": "URL",
+        "risk_level": "LOW",
+        "confidence": 0.9,
+        "entities_detected": 1,
+        "token_map_empty": true,
+        "tokenized_text_equals_original": true,
+        "gap_confirmed": true,
+        "matches_stripped_by_strip_matches": true,
+        "leaked_in_detection_matches_before_strip": [],
+        "note": "KNOWN GAP: tokenize() returns original text at LOW+high-conf. The API layer (main.py) returns '[redacted...]' instead of the original text to prevent exposure via tokenized_summary.tokenized_text. This gap is documented in PROJECT_CONTROL_CENTER.md \u00a710."
+      },
+      {
+        "test": "low_gap_documented",
+        "entity_type": "IP_ADDRESS",
+        "risk_level": "LOW",
+        "confidence": 0.9,
+        "entities_detected": 1,
+        "token_map_empty": true,
+        "tokenized_text_equals_original": true,
+        "gap_confirmed": true,
+        "matches_stripped_by_strip_matches": true,
+        "leaked_in_detection_matches_before_strip": [],
+        "note": "KNOWN GAP: tokenize() returns original text at LOW+high-conf. The API layer (main.py) returns '[redacted...]' instead of the original text to prevent exposure via tokenized_summary.tokenized_text. This gap is documented in PROJECT_CONTROL_CENTER.md \u00a710."
+      },
+      {
+        "test": "low_gap_documented",
+        "entity_type": "DATE",
+        "risk_level": "LOW",
+        "confidence": 0.9,
+        "entities_detected": 1,
+        "token_map_empty": true,
+        "tokenized_text_equals_original": true,
+        "gap_confirmed": true,
+        "matches_stripped_by_strip_matches": true,
+        "leaked_in_detection_matches_before_strip": [],
+        "note": "KNOWN GAP: tokenize() returns original text at LOW+high-conf. The API layer (main.py) returns '[redacted...]' instead of the original text to prevent exposure via tokenized_summary.tokenized_text. This gap is documented in PROJECT_CONTROL_CENTER.md \u00a710."
+      },
+      {
+        "test": "low_gap_documented",
+        "entity_type": "WINDOWS_PATH",
+        "risk_level": "LOW",
+        "confidence": 0.9,
+        "entities_detected": 1,
+        "token_map_empty": true,
+        "tokenized_text_equals_original": true,
+        "gap_confirmed": true,
+        "matches_stripped_by_strip_matches": true,
+        "leaked_in_detection_matches_before_strip": [],
+        "note": "KNOWN GAP: tokenize() returns original text at LOW+high-conf. The API layer (main.py) returns '[redacted...]' instead of the original text to prevent exposure via tokenized_summary.tokenized_text. This gap is documented in PROJECT_CONTROL_CENTER.md \u00a710."
+      }
+    ]
+  },
+  "token_collision": {
+    "test": "token_collision",
+    "input": "[EMAIL_1] is shown here already but alice@example.com is the real address.",
+    "tokenized_text": "[EMAIL_1] is shown here already but [EMAIL_1] is the real address.",
+    "token_map": {
+      "[EMAIL_1]": "alice@example.com"
+    },
+    "real_email_tokenized": true,
+    "collision_detected": true,
+    "restored_text": "alice@example.com is shown here already but alice@example.com is the real address.",
+    "note": "KNOWN LIMITATION: If OCR text contains a literal matching token format ('[EMAIL_1]'), tokenization and restoration are ambiguous. Documented in tokenizer.py docstring. Probability: very low in typical desktop screenshots."
+  },
+  "multi_value_same_type": {
+    "test": "multi_value_same_type",
+    "entity_type": "EMAIL",
+    "emails_detected": 3,
+    "unique_email_tokens_assigned": 3,
+    "all_emails_tokenized": true,
+    "passed": true
+  },
+  "restoration_round_trip": {
+    "test": "restoration_round_trip",
+    "per_type": [
+      {
+        "entity_type": "EMAIL",
+        "original": "Please contact alice@example.com for support.",
+        "tokenized": "Please contact [EMAIL_1] for support.",
+        "restored": "Please contact alice@example.com for support.",
+        "exact_match": true
+      },
+      {
+        "entity_type": "PHONE",
+        "original": "Call us on 555-123-4567 during business hours.",
+        "tokenized": "Call us on [PHONE_1] during business hours.",
+        "restored": "Call us on 555-123-4567 during business hours.",
+        "exact_match": true
+      },
+      {
+        "entity_type": "URL",
+        "original": "Visit https://www.example.com/login for access.",
+        "tokenized": "Visit [URL_1] for access.",
+        "restored": "Visit https://www.example.com/login for access.",
+        "exact_match": true
+      },
+      {
+        "entity_type": "IP_ADDRESS",
+        "original": "Server located at 192.168.100.200 in the datacenter.",
+        "tokenized": "Server located at [IP_ADDRESS_1] in the datacenter.",
+        "restored": "Server located at 192.168.100.200 in the datacenter.",
+        "exact_match": true
+      },
+      {
+        "entity_type": "DATE",
+        "original": "The incident occurred on 12/25/2023.",
+        "tokenized": "The incident occurred on [DATE_1].",
+        "restored": "The incident occurred on 12/25/2023.",
+        "exact_match": true
+      },
+      {
+        "entity_type": "WINDOWS_PATH",
+        "original": "File saved at C:\\Users\\admin\\Documents\\report.docx",
+        "tokenized": "File saved at [WINDOWS_PATH_1]",
+        "restored": "File saved at C:\\Users\\admin\\Documents\\report.docx",
+        "exact_match": true
+      }
+    ],
+    "all_passed": true
+  },
+  "failed_tests": [],
+  "overall_passed": true
+}

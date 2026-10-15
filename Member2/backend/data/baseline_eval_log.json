@@ -1,0 +1,144 @@
+[
+  {
+    "evaluated_at": "2026-10-15T11:23:07Z",
+    "dataset_rows": 50,
+    "train_rows": 40,
+    "test_rows": 10,
+    "label_distribution": {
+      "HIGH": 2,
+      "LOW": 38,
+      "MEDIUM": 10
+    },
+    "all_classes": [
+      "HIGH",
+      "LOW",
+      "MEDIUM"
+    ],
+    "rule_baseline": {
+      "macro_f1": 0.4444,
+      "accuracy": 0.8
+    },
+    "ml_model": {
+      "macro_f1": 0.4444,
+      "accuracy": 0.8
+    },
+    "ml_warning": null,
+    "limitations": [
+      "n=50 dataset is insufficient for statistically reliable evaluation; a 10-row test set means each misclassification shifts macro F1 by \u22480.1.",
+      "Class imbalance (LOW\u224876 %) means accuracy is dominated by the majority class; macro F1 is the preferred metric.",
+      "Several MEDIUM and HIGH rows have all-zero entity flags; neither classifier can explain or predict these from the available features.",
+      "The ML model here uses raw model.predict() with no personalisation layer; production behaviour (with preference-based threshold adjustment) may differ.",
+      "No statistical significance testing is applied; results should not be interpreted as a definitive performance comparison.",
+      "CRITICAL class has zero annotated examples; no classifier can learn or be evaluated on it."
+    ]
+  },
+  {
+    "evaluated_at": "2026-10-15T11:34:09Z",
+    "dataset_rows": 50,
+    "train_rows": 40,
+    "test_rows": 10,
+    "label_distribution": {
+      "HIGH": 2,
+      "LOW": 38,
+      "MEDIUM": 10
+    },
+    "all_classes": [
+      "HIGH",
+      "LOW",
+      "MEDIUM"
+    ],
+    "rule_baseline": {
+      "macro_f1": 0.4444,
+      "accuracy": 0.8
+    },
+    "ml_model": {
+      "macro_f1": 0.4444,
+      "accuracy": 0.8
+    },
+    "ml_warning": null,
+    "limitations": [
+      "n=50 dataset is insufficient for statistically reliable evaluation; a 10-row test set means each misclassification shifts macro F1 by \u22480.1.",
+      "Class imbalance (LOW\u224876 %) means accuracy is dominated by the majority class; macro F1 is the preferred metric.",
+      "Several MEDIUM and HIGH rows have all-zero entity flags; neither classifier can explain or predict these from the available features.",
+      "The ML model here uses raw model.predict() with no personalisation layer; production behaviour (with preference-based threshold adjustment) may differ.",
+      "No statistical significance testing is applied; results should not be interpreted as a definitive performance comparison.",
+      "CRITICAL class has zero annotated examples; no classifier can learn or be evaluated on it."
+    ]
+  },
+  {
+    "evaluated_at": "2026-10-15T11:37:32Z",
+    "dataset_rows": 50,
+    "train_rows": 40,
+    "test_rows": 10,
+    "label_distribution": {
+      "HIGH": 2,
+      "LOW": 38,
+      "MEDIUM": 10
+    },
+    "all_classes": [
+      "HIGH",
+      "LOW",
+      "MEDIUM"
+    ],
+    "majority_baseline": {
+      "macro_f1": 0.4444,
+      "accuracy": 0.8,
+      "majority_class": "LOW"
+    },
+    "rule_baseline": {
+      "macro_f1": 0.4444,
+      "accuracy": 0.8
+    },
+    "ml_model": {
+      "macro_f1": 0.4444,
+      "accuracy": 0.8
+    },
+    "ml_warning": null,
+    "limitations": [
+      "n=50 dataset is insufficient for statistically reliable evaluation; a 10-row test set means each misclassification shifts macro F1 by \u22480.1.",
+      "Class imbalance (LOW\u224876 %) means accuracy is dominated by the majority class; macro F1 is the preferred metric.",
+      "Several MEDIUM and HIGH rows have all-zero entity flags; neither classifier can explain or predict these from the available features.",
+      "The ML model here uses raw model.predict() with no personalisation layer; production behaviour (with preference-based threshold adjustment) may differ.",
+      "No statistical significance testing is applied; results should not be interpreted as a definitive performance comparison.",
+      "CRITICAL class has zero annotated examples; no classifier can learn or be evaluated on it."
+    ]
+  },
+  {
+    "evaluated_at": "2026-10-15T11:37:37Z",
+    "dataset_rows": 50,
+    "train_rows": 40,
+    "test_rows": 10,
+    "label_distribution": {
+      "HIGH": 2,
+      "LOW": 38,
+      "MEDIUM": 10
+    },
+    "all_classes": [
+      "HIGH",
+      "LOW",
+      "MEDIUM"
+    ],
+    "majority_baseline": {
+      "macro_f1": 0.4444,
+      "accuracy": 0.8,
+      "majority_class": "LOW"
+    },
+    "rule_baseline": {
+      "macro_f1": 0.4444,
+      "accuracy": 0.8
+    },
+    "ml_model": {
+      "macro_f1": 0.4444,
+      "accuracy": 0.8
+    },
+    "ml_warning": null,
+    "limitations": [
+      "n=50 dataset is insufficient for statistically reliable evaluation; a 10-row test set means each misclassification shifts macro F1 by \u22480.1.",
+      "Class imbalance (LOW\u224876 %) means accuracy is dominated by the majority class; macro F1 is the preferred metric.",
+      "Several MEDIUM and HIGH rows have all-zero entity flags; neither classifier can explain or predict these from the available features.",
+      "The ML model here uses raw model.predict() with no personalisation layer; production behaviour (with preference-based threshold adjustment) may differ.",
+      "No statistical significance testing is applied; results should not be interpreted as a definitive performance comparison.",
+      "CRITICAL class has zero annotated examples; no classifier can learn or be evaluated on it."
+    ]
+  }
+]

@@ -1,0 +1,555 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Annotation Contact Sheet</title>
+<style>
+:root {
+  --bg: #f0f2f5;
+  --card: #ffffff;
+  --border: #d1d5db;
+  --text: #111827;
+  --sub: #6b7280;
+  --HIGH: #dc2626;
+  --MEDIUM: #d97706;
+  --LOW: #16a34a;
+  --badge-HIGH: #fee2e2;
+  --badge-MEDIUM: #fef3c7;
+  --badge-LOW: #dcfce7;
+  --tag-bg: #e5e7eb;
+  --tag-text: #374151;
+  --warn: #f59e0b;
+  --warn-bg: #fffbeb;
+  --action: #3b82f6;
+  --action-bg: #eff6ff;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111827;
+    --card: #1f2937;
+    --border: #374151;
+    --text: #f9fafb;
+    --sub: #9ca3af;
+    --badge-HIGH: #450a0a;
+    --badge-MEDIUM: #451a03;
+    --badge-LOW: #052e16;
+    --tag-bg: #374151;
+    --tag-text: #d1d5db;
+    --warn-bg: #451a03;
+    --action-bg: #1e3a5f;
+  }
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  padding: 16px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+header {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+}
+header h1 { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+header p { color: var(--sub); font-size: 13px; }
+.controls {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.controls label { font-size: 13px; color: var(--sub); }
+.filter-btn {
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.filter-btn.active-HIGH { background: var(--badge-HIGH); color: var(--HIGH); border-color: var(--HIGH); }
+.filter-btn.active-MEDIUM { background: var(--badge-MEDIUM); color: var(--MEDIUM); border-color: var(--MEDIUM); }
+.filter-btn.active-LOW { background: var(--badge-LOW); color: var(--LOW); border-color: var(--LOW); }
+.filter-btn.active-all { background: var(--action-bg); color: var(--action); border-color: var(--action); }
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+}
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.card.hidden { display: none; }
+.img-wrap {
+  width: 100%;
+  aspect-ratio: 16/9;
+  background: #000;
+  overflow: hidden;
+  position: relative;
+  cursor: pointer;
+}
+.img-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+  display: block;
+}
+.img-wrap .expand-hint {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.img-wrap:hover .expand-hint { opacity: 1; }
+.card-body { padding: 12px; flex: 1; }
+.card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; gap: 8px; }
+.screenshot-id {
+  font-family: monospace;
+  font-size: 11px;
+  color: var(--sub);
+  word-break: break-all;
+  flex: 1;
+}
+.label-badge {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 4px;
+  padding: 2px 8px;
+  letter-spacing: 0.05em;
+}
+.label-HIGH { background: var(--badge-HIGH); color: var(--HIGH); }
+.label-MEDIUM { background: var(--badge-MEDIUM); color: var(--MEDIUM); }
+.label-LOW { background: var(--badge-LOW); color: var(--LOW); }
+.group-tag {
+  display: inline-block;
+  background: var(--tag-bg);
+  color: var(--tag-text);
+  font-size: 11px;
+  border-radius: 4px;
+  padding: 1px 6px;
+  margin-right: 4px;
+  margin-bottom: 6px;
+}
+.issue { font-size: 12px; color: var(--sub); margin-bottom: 8px; }
+.visual-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.visual-label { font-size: 12px; color: var(--sub); }
+.visual-badge {
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 4px;
+  padding: 2px 8px;
+}
+.action-box {
+  margin-top: 8px;
+  background: var(--action-bg);
+  border-left: 3px solid var(--action);
+  border-radius: 0 4px 4px 0;
+  padding: 6px 8px;
+  font-size: 12px;
+  color: var(--action);
+}
+.warn-box {
+  margin-top: 8px;
+  background: var(--warn-bg);
+  border-left: 3px solid var(--warn);
+  border-radius: 0 4px 4px 0;
+  padding: 6px 8px;
+  font-size: 12px;
+  color: #92400e;
+}
+.flags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px; }
+.flag {
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: var(--tag-bg);
+  color: var(--tag-text);
+}
+.flag.set { background: #fecaca; color: #991b1b; }
+
+/* Modal */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.modal-overlay.open { display: flex; }
+.modal-inner { position: relative; max-width: 90vw; max-height: 90vh; }
+.modal-inner img { max-width: 90vw; max-height: 85vh; object-fit: contain; border-radius: 4px; display: block; }
+.modal-close {
+  position: absolute;
+  top: -12px;
+  right: -12px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #fff;
+  color: #111;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+footer {
+  margin-top: 24px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--sub);
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>CAPRLM — Annotation Review Contact Sheet</h1>
+  <p>16 flagged screenshots · J26-IT-308 · Member 2 · Generated 2026-10-15 · DRAFT — no labels changed · For human reviewer only</p>
+</header>
+
+<div class="controls">
+  <label>Filter by annotated label:</label>
+  <button class="filter-btn active-all" onclick="filterCards('all')">All (16)</button>
+  <button class="filter-btn" onclick="filterCards('HIGH')">HIGH (2)</button>
+  <button class="filter-btn" onclick="filterCards('MEDIUM')">MEDIUM (8)</button>
+  <button class="filter-btn" onclick="filterCards('LOW')">LOW (6)</button>
+</div>
+
+<div class="grid" id="grid"></div>
+
+<div class="modal-overlay" id="modal" onclick="closeModal()">
+  <div class="modal-inner" onclick="event.stopPropagation()">
+    <button class="modal-close" onclick="closeModal()">&#x2715;</button>
+    <img id="modal-img" src="" alt="">
+  </div>
+</div>
+
+<footer>DRAFT · Provisional visual assessments only · Supervisor sign-off required before any label corrections · OCR processes not interrupted · No annotation CSV modified</footer>
+
+<script>
+const SCREENSHOTS_DIR = "C:\\\\Users\\\\ASUS\\\\AppData\\\\Local\\\\DesktopResearchCollector\\\\screenshots\\\\";
+
+const records = [
+  {
+    id: "02f39c8f-ce99-49ba-a2a3-aeea8504ae3a.jpg",
+    group: "G1", ann_label: "HIGH", ann_flags: [0,0,0,0,0,0],
+    pipe_flags: [0,0,0,0,1,0], pipe_label: "LOW",
+    issue: "HIGH label with all-zero annotation entity flags (50% of HIGH class)",
+    visual_label: "LOW",
+    visual_conf: "High",
+    visual_note: "YouTube Sri Lankan drama. No PII visible. Date in video title only.",
+    action: "Correct HIGH→LOW (supervisor required)",
+    ocr_miss: false,
+    priority: "P1"
+  },
+  {
+    id: "02e86b37-426a-46c0-8adf-00fe16ff2f2d.jpg",
+    group: "G2", ann_label: "MEDIUM", ann_flags: [1,0,0,0,1,0],
+    pipe_flags: [1,0,0,0,1,0], pipe_label: "HIGH",
+    issue: "EMAIL=1 confirmed but label MEDIUM instead of HIGH (§3.1)",
+    visual_label: "POLICY DECISION",
+    visual_conf: "Medium",
+    visual_note: "CourseWeb login. Email visible is generic template IT21000090@my.sliit.lk shown to all users. Student ID I23252936 in username field (not captured by regex).",
+    action: "Policy: does template email trigger HIGH?",
+    ocr_miss: false,
+    priority: "P3"
+  },
+  {
+    id: "00c019f8-0be1-426d-ace4-b8e3c6fa8d35.jpg",
+    group: "G3", ann_label: "HIGH", ann_flags: [0,0,1,0,1,0],
+    pipe_flags: [0,0,0,0,1,0], pipe_label: "LOW",
+    issue: "HIGH label where annotation flags support only MEDIUM (URL=1, no EMAIL/PHONE/IP)",
+    visual_label: "MEDIUM",
+    visual_conf: "High",
+    visual_note: "YouTube DSA lecture. Navigation URL youtube.com/... confirmed visible. No personal identifier URL. Per §3.2 URL=1 + browser → MEDIUM.",
+    action: "Correct HIGH→MEDIUM; fix pipeline URL miss; Policy 8 on navigation URLs",
+    ocr_miss: true,
+    priority: "P1"
+  },
+  {
+    id: "01bf28e2-c70b-4c32-82b4-31d786589ec3.jpg",
+    group: "G4", ann_label: "LOW", ann_flags: [0,0,1,0,1,0],
+    pipe_flags: [0,1,0,1,1,0], pipe_label: "HIGH",
+    issue: "LOW label contradicts annotation flags (URL=1, browser context → §3.2 MEDIUM); pipeline found PHONE+IP not in annotation",
+    visual_label: "MEDIUM–HIGH",
+    visual_conf: "High",
+    visual_note: "YouTube + AWS VPC form. Student ID IT23152700 visible in VPC name tag field. Personal search history exposed. CIDR 10.0.0.0/16 (pipeline IP FP). LOW is clearly wrong.",
+    action: "Correct LOW→MEDIUM (min). Pipeline IP=1 is false positive on CIDR block.",
+    ocr_miss: true,
+    priority: "P2"
+  },
+  {
+    id: "00fa95dd-5a9e-458b-a071-fc2f8913e888.jpg",
+    group: "G5", ann_label: "MEDIUM", ann_flags: [0,0,0,0,0,0],
+    pipe_flags: [0,0,0,0,1,0], pipe_label: "LOW",
+    issue: "MEDIUM with all-zero flags; visual inspection finds TWO real email addresses + Windows path",
+    visual_label: "HIGH",
+    visual_conf: "Very high",
+    visual_note: "Word Save As dialog. OneDrive panel shows it23252936@my.sliit.lk (institutional) AND sashiniwijesingha83@gmail.c... (personal Gmail). Windows path to WhatsApp session dir visible. OCR missed sidebar email text.",
+    action: "CRITICAL: Correct EMAIL=0→1, WINDOWS_PATH=0→1, MEDIUM→HIGH",
+    ocr_miss: true,
+    priority: "P1"
+  },
+  {
+    id: "01583a1d-7ccf-49d9-99c8-7ebf3b94cf01.jpg",
+    group: "G5", ann_label: "MEDIUM", ann_flags: [0,0,0,0,0,0],
+    pipe_flags: [0,0,0,0,1,0], pipe_label: "LOW",
+    issue: "MEDIUM with all-zero flags; policy-dependent (§6 requires annotation_notes)",
+    visual_label: "LOW–MEDIUM",
+    visual_conf: "Medium",
+    visual_note: "CourseWeb + ChatGPT overlay. Personal ChatGPT conversation list visible (Imeth, Tania, health topics). No direct PII entities. MEDIUM defensible by context sensitivity.",
+    action: "Awaits Policy 1 & 6 decisions",
+    ocr_miss: false,
+    priority: "P3"
+  },
+  {
+    id: "01a758f4-84ee-400c-a583-b7b70573c076.jpg",
+    group: "G5", ann_label: "MEDIUM", ann_flags: [0,0,0,0,0,0],
+    pipe_flags: [0,0,0,0,1,0], pipe_label: "LOW",
+    issue: "MEDIUM with all-zero flags; duplicate of G1 context",
+    visual_label: "LOW",
+    visual_conf: "High",
+    visual_note: "Same YouTube drama as Record 1, same tab set, later timestamp. No PII visible in frame.",
+    action: "Correct MEDIUM→LOW (consistent with Record 1 determination)",
+    ocr_miss: false,
+    priority: "P1"
+  },
+  {
+    id: "024fd28f-aeb8-42dc-8484-9a8e2cd3ecf5.jpg",
+    group: "G5", ann_label: "MEDIUM", ann_flags: [0,0,0,0,0,0],
+    pipe_flags: [0,0,0,0,1,0], pipe_label: "LOW",
+    issue: "MEDIUM with all-zero flags; visual inspection finds full name + student ID",
+    visual_label: "HIGH",
+    visual_conf: "Very high",
+    visual_note: "CourseWeb search. Authenticated header shows IT23252936 WIJESINGHA W L S A (full name + student ID). OCR missed authenticated nav bar.",
+    action: "CRITICAL: Correct all-zero flags, MEDIUM→HIGH. Name+ID plainly visible.",
+    ocr_miss: true,
+    priority: "P1"
+  },
+  {
+    id: "033abfbe-b7f6-4c58-a769-8ffe082b38e4.jpg",
+    group: "G5", ann_label: "MEDIUM", ann_flags: [0,0,0,0,0,0],
+    pipe_flags: [0,0,0,0,1,0], pipe_label: "LOW",
+    issue: "MEDIUM with all-zero flags; policy-dependent (§6)",
+    visual_label: "LOW–MEDIUM",
+    visual_conf: "Medium",
+    visual_note: "ChatGPT DSA study session. Personal health-topic chat history visible (Medicine, Pediatrics, Psychiatry). Personal contacts Imeth, Tania. Educational content only.",
+    action: "Awaits Policy 1 & 6 decisions",
+    ocr_miss: false,
+    priority: "P3"
+  },
+  {
+    id: "034e7035-d661-417e-8cab-6e3131d7a671.jpg",
+    group: "G5", ann_label: "MEDIUM", ann_flags: [0,0,0,0,0,0],
+    pipe_flags: [0,0,0,0,1,0], pipe_label: "LOW",
+    issue: "MEDIUM with all-zero flags; partial email in tab title",
+    visual_label: "MEDIUM",
+    visual_conf: "Medium",
+    visual_note: "YouTube buffering. Tab bar shows Inbox (598) - sashiniwijesingha... (partial Gmail address). Very short OCR capture (248 chars) — tab title may not have been extracted.",
+    action: "Confirm whether full Gmail address was in OCR output. Policy 1/6.",
+    ocr_miss: true,
+    priority: "P3"
+  },
+  {
+    id: "00a3b7cb-0490-4a19-8f11-e37dad461566.jpg",
+    group: "G6", ann_label: "MEDIUM", ann_flags: [0,0,0,0,1,0],
+    pipe_flags: [0,0,0,0,1,0], pipe_label: "LOW",
+    issue: "MEDIUM with DATE=1 only; Desktop context not in browser-context rule",
+    visual_label: "LOW–MEDIUM",
+    visual_conf: "Medium",
+    visual_note: "Windows desktop. Student ID IT23252936 visible in two folder names. CV, personal project files visible. DATE=1 (clock). Policy 2: does Desktop context elevate DATE-only to MEDIUM?",
+    action: "Awaits Policy 2 decision on Desktop context",
+    ocr_miss: false,
+    priority: "P3"
+  },
+  {
+    id: "0024e4cb-aacb-44f7-8fe2-5c633f1ec67f.jpg",
+    group: "G7", ann_label: "LOW", ann_flags: [0,0,0,0,1,0],
+    pipe_flags: [0,1,0,0,1,0], pipe_label: "HIGH",
+    issue: "Pipeline PHONE=1 not confirmed by annotation; annotation_context wrong (says VS Code)",
+    visual_label: "LOW",
+    visual_conf: "High",
+    visual_note: "IntelliJ IDEA + ChatGPT. Java Queue code. No phone number visible. Pipeline PHONE=1 is false positive (student ID digit sequence). annotation_context should be IntelliJ IDEA.",
+    action: "Confirm pipeline FP. Correct application_context to IntelliJ IDEA.",
+    ocr_miss: false,
+    priority: "P3"
+  },
+  {
+    id: "00c34dc6-612f-43cb-9b9f-297d92b6868a.jpg",
+    group: "G7", ann_label: "LOW", ann_flags: [0,0,0,0,1,0],
+    pipe_flags: [0,1,0,0,1,0], pipe_label: "HIGH",
+    issue: "Pipeline PHONE=1 (×3); annotation misses WINDOWS_PATH and student ID in file",
+    visual_label: "HIGH",
+    visual_conf: "High",
+    visual_note: "VS Code CloudFormation YAML. Student ID IT23252936 in filename, full Windows breadcrumb path, lines 4 and 12 of YAML. Pipeline PHONE=1 (×3) is FP on student ID digits 23252936.",
+    action: "Correct WINDOWS_PATH=0→1, LOW→HIGH. Pipeline phone FP on student ID.",
+    ocr_miss: true,
+    priority: "P2"
+  },
+  {
+    id: "00e7560f-f51a-4d8a-ad26-f6461fe5d6de.jpg",
+    group: "G7", ann_label: "LOW", ann_flags: [0,0,0,0,1,0],
+    pipe_flags: [0,1,0,0,1,0], pipe_label: "HIGH",
+    issue: "Pipeline PHONE=1; annotation_context wrong (says VS Code + ChatGPT)",
+    visual_label: "LOW",
+    visual_conf: "High",
+    visual_note: "IntelliJ IDEA + ChatGPT. Same session as Record 12, 6 min earlier. No phone visible. Pipeline FP on student ID digits. Correct context to IntelliJ IDEA + ChatGPT.",
+    action: "Confirm pipeline FP. Correct application_context.",
+    ocr_miss: false,
+    priority: "P3"
+  },
+  {
+    id: "014635cf-027c-4bec-a6c2-304828e4e9f9.jpg",
+    group: "G8", ann_label: "LOW", ann_flags: [0,0,0,0,0,0],
+    pipe_flags: [0,1,0,0,1,0], pipe_label: "HIGH",
+    issue: "Pipeline PHONE=1; sensitive health content not captured by any entity flag",
+    visual_label: "POLICY GAP",
+    visual_conf: "High",
+    visual_note: "ChatGPT Medicine chat. Conversation about Yasmin contraceptive pill — personal reproductive health information. No regex-detectable PII. Pipeline PHONE=1 likely FP. CRITICAL: guidelines cannot capture health content sensitivity.",
+    action: "Policy gap: add SENSITIVE_CONTENT flag. LOW per guidelines, HIGH real-world.",
+    ocr_miss: false,
+    priority: "P3"
+  },
+  {
+    id: "02488e7f-132f-4e80-b164-d34cf38424ff.jpg",
+    group: "G8", ann_label: "LOW", ann_flags: [0,0,0,0,0,0],
+    pipe_flags: [0,1,0,1,1,0], pipe_label: "HIGH",
+    issue: "Pipeline PHONE=1 (×3), IP=1 (×2); annotation misses WINDOWS_PATH",
+    visual_label: "HIGH",
+    visual_conf: "High",
+    visual_note: "VS Code CloudFormation YAML (same file as Record 13, scrolled). Same Windows path with IT23252936 in breadcrumb. CIDR 0.0.0.0/0 triggers pipeline IP FP. Student ID digits trigger PHONE FP.",
+    action: "Correct WINDOWS_PATH=0→1, LOW→HIGH. Pipeline IP+PHONE FPs on CIDR/student ID.",
+    ocr_miss: true,
+    priority: "P2"
+  }
+];
+
+const flagNames = ["EMAIL","PHONE","URL","IP","DATE","PATH"];
+
+function makeFlagsHtml(flags, label) {
+  return flagNames.map((name, i) =>
+    `<span class="flag ${flags[i] ? 'set' : ''}">${name}=${flags[i]}</span>`
+  ).join('');
+}
+
+function renderCards(filter) {
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  records.forEach((r, idx) => {
+    const hidden = filter !== 'all' && r.ann_label !== filter;
+    const imgPath = SCREENSHOTS_DIR.replace(/\\\\/g, '\\') + r.id;
+    const fileUrl = 'file:///' + imgPath.replace(/\\/g, '/');
+
+    const isWarn = r.visual_label === "HIGH" && r.ann_label !== "HIGH";
+    const isAction = r.priority === "P1" || r.priority === "P2";
+
+    const card = document.createElement('div');
+    card.className = 'card' + (hidden ? ' hidden' : '');
+    card.dataset.label = r.ann_label;
+
+    card.innerHTML = `
+      <div class="img-wrap" onclick="openModal('${fileUrl}')">
+        <img src="${fileUrl}" alt="${r.id}" loading="lazy" onerror="this.style.display='none';this.parentNode.style.background='#1f2937'">
+        <span class="expand-hint">click to expand</span>
+      </div>
+      <div class="card-body">
+        <div class="card-header">
+          <span class="screenshot-id">#${idx+1} · ${r.id.slice(0,8)}…</span>
+          <span class="label-badge label-${r.ann_label}">${r.ann_label}</span>
+        </div>
+        <div>
+          <span class="group-tag">${r.group}</span>
+          <span class="group-tag">${r.priority}</span>
+        </div>
+        <div class="issue">${r.issue}</div>
+        <div class="visual-row">
+          <span class="visual-label">Visual suggests:</span>
+          <span class="visual-badge label-${['HIGH','MEDIUM','LOW'].includes(r.visual_label)?r.visual_label:'MEDIUM'}">${r.visual_label}</span>
+        </div>
+        <div class="visual-row">
+          <span class="visual-label">Confidence:</span>
+          <span class="visual-label"><strong>${r.visual_conf}</strong></span>
+        </div>
+        <div class="visual-row">
+          <span class="visual-label">OCR miss:</span>
+          <span class="visual-label">${r.ocr_miss ? '⚠ Yes' : 'No'}</span>
+        </div>
+        <div class="flags">
+          <span style="font-size:10px;color:var(--sub);width:100%">Ann flags: </span>
+          ${makeFlagsHtml(r.ann_flags, r.ann_label)}
+        </div>
+        <div class="flags">
+          <span style="font-size:10px;color:var(--sub);width:100%">Pipe flags: </span>
+          ${makeFlagsHtml(r.pipe_flags, r.ann_label)}
+        </div>
+        <p style="font-size:12px;color:var(--sub);margin-top:8px">${r.visual_note}</p>
+        ${isAction ? `<div class="action-box">${r.action}</div>` : `<div class="warn-box">${r.action}</div>`}
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function filterCards(label) {
+  document.querySelectorAll('.filter-btn').forEach(b => {
+    b.className = 'filter-btn';
+    if (b.textContent.startsWith(label === 'all' ? 'All' : label)) {
+      b.className = 'filter-btn active-' + label;
+    }
+  });
+  document.querySelectorAll('.card').forEach(c => {
+    c.classList.toggle('hidden', label !== 'all' && c.dataset.label !== label);
+  });
+}
+
+function openModal(src) {
+  document.getElementById('modal-img').src = src;
+  document.getElementById('modal').classList.add('open');
+}
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+  document.getElementById('modal-img').src = '';
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+renderCards('all');
+</script>
+</body>
+</html>

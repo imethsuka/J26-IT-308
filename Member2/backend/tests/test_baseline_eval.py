@@ -31,6 +31,7 @@ from sklearn.preprocessing import LabelEncoder
 from backend.services.baseline_eval import (
     _compute_metrics,
     _csv_row_to_features,
+    _majority_baseline_predictions,
     evaluate_baseline_comparison,
 )
 
@@ -136,6 +137,33 @@ class TestCsvRowToFeatures:
 # Section 2 — _compute_metrics helper
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Section 1b — _majority_baseline_predictions helper
+# ---------------------------------------------------------------------------
+
+class TestMajorityBaselinePredictions:
+    def test_returns_majority_class_from_training(self):
+        y_train = np.array(["LOW"] * 30 + ["MEDIUM"] * 8 + ["HIGH"] * 2)
+        y_test = np.array(["LOW"] * 8 + ["MEDIUM"] * 2)
+        preds, majority = _majority_baseline_predictions(y_train, y_test)
+        assert majority == "LOW"
+        assert all(p == "LOW" for p in preds)
+
+    def test_prediction_length_matches_test_set(self):
+        y_train = np.array(["LOW"] * 10 + ["MEDIUM"] * 5)
+        y_test = np.array(["LOW", "MEDIUM", "HIGH"])
+        preds, _ = _majority_baseline_predictions(y_train, y_test)
+        assert len(preds) == len(y_test)
+
+    def test_majority_class_ties_broken_consistently(self):
+        y_train = np.array(["LOW"] * 5 + ["MEDIUM"] * 5)
+        y_test = np.array(["LOW", "MEDIUM"])
+        preds, majority = _majority_baseline_predictions(y_train, y_test)
+        # Result should be stable across calls
+        _, majority2 = _majority_baseline_predictions(y_train, y_test)
+        assert majority == majority2
+
+
 class TestComputeMetrics:
     def test_perfect_predictions_macro_f1_one(self):
         y_true = ["LOW", "MEDIUM", "HIGH"]
@@ -169,6 +197,26 @@ class TestComputeMetrics:
         m = _compute_metrics(y_true, y_pred, ["LOW", "MEDIUM"])
         assert m["macro_f1"] == pytest.approx(0.444, abs=0.01)
 
+    def test_confusion_matrix_present(self):
+        y_true = ["LOW", "LOW", "MEDIUM"]
+        y_pred = ["LOW", "MEDIUM", "LOW"]
+        m = _compute_metrics(y_true, y_pred, ["LOW", "MEDIUM"])
+        assert "confusion_matrix" in m
+        assert "confusion_matrix_labels" in m
+        assert isinstance(m["confusion_matrix"], list)
+        assert m["confusion_matrix_labels"] == ["LOW", "MEDIUM"]
+
+    def test_confusion_matrix_correct_values(self):
+        # 3 LOW correct, 1 MEDIUM predicted as LOW (FN for MEDIUM)
+        y_true = ["LOW", "LOW", "LOW", "MEDIUM"]
+        y_pred = ["LOW", "LOW", "LOW", "LOW"]
+        m = _compute_metrics(y_true, y_pred, ["LOW", "MEDIUM"])
+        cm = m["confusion_matrix"]
+        # Row 0 = actual LOW: [3 correct, 0 wrong] → [3, 0]
+        assert cm[0] == [3, 0]
+        # Row 1 = actual MEDIUM: [1 predicted as LOW, 0 correct] → [1, 0]
+        assert cm[1] == [1, 0]
+
     def test_returns_rounded_values(self):
         y_true = ["LOW", "LOW", "MEDIUM"]
         y_pred = ["LOW", "MEDIUM", "LOW"]
@@ -191,8 +239,31 @@ class TestEvaluateRuleBaselineOnly:
         )
         for key in ("dataset_rows", "train_rows", "test_rows",
                     "label_distribution", "all_classes",
+                    "majority_baseline", "majority_class",
                     "rule_baseline", "ml_model", "ml_warning", "limitations"):
             assert key in result, f"Missing key: {key}"
+
+    def test_majority_baseline_present_and_valid(self, tmp_path):
+        csv_path = _make_csv(_synthetic_dataset(), tmp_path)
+        result = evaluate_baseline_comparison(
+            dataset_path=csv_path,
+            model_path=tmp_path / "no_model.joblib",
+        )
+        mb = result["majority_baseline"]
+        assert mb is not None
+        assert "macro_f1" in mb
+        assert "accuracy" in mb
+        assert "confusion_matrix" in mb
+        assert 0.0 <= mb["macro_f1"] <= 1.0
+
+    def test_majority_class_is_most_frequent(self, tmp_path):
+        rows = _synthetic_dataset(n_low=14, n_medium=4, n_high=2)
+        csv_path = _make_csv(rows, tmp_path)
+        result = evaluate_baseline_comparison(
+            dataset_path=csv_path,
+            model_path=tmp_path / "no_model.joblib",
+        )
+        assert result["majority_class"] == "LOW"
 
     def test_dataset_rows_matches_csv(self, tmp_path):
         rows = _synthetic_dataset(n_low=14, n_medium=4, n_high=2)

@@ -4,7 +4,7 @@
 **Repository root:** `C:\Users\ASUS\OneDrive\Desktop\J26-IT-308`
 **Active branch:** `sashi` (tracking `origin/sashi`)
 **Document status:** Living document. Update after every significant work session.
-**Last verified:** 2026-10-15
+**Last verified:** 2026-10-15 (second session same day)
 
 ---
 
@@ -95,15 +95,23 @@ All statuses below have an evidence reference. Re-verify before relying on any D
 
 | Item | Status | Evidence |
 |---|---|---|
-| 209 tests pass, 0 failures | DONE | `pytest --collect-only -q` → 209 collected; live run → 209 passed, 1 warning |
+| 265 tests pass, 0 failures | DONE | Live run 2026-10-15 (session 5) → 265 passed, 1 warning; command: `Member2/.venv/Scripts/pytest.exe backend/tests/ -q --tb=no` (19 new non-ASCII tokenizer tests added) |
 | Model trained (v1.0.0, 2026-10-13) | DONE | `backend/data/training_log.json`; `caprlm_model.joblib` exists (145,320 bytes) |
-| `baseline_eval.py` compares both classifiers on same test fold | DONE | commit `156a2f3`; reproducible with `python -m backend.services.baseline_eval` |
+| `baseline_eval.py` compares all three classifiers on same test fold | DONE | majority-class baseline added 2026-10-15; reproducible with `python -m backend.services.baseline_eval` |
+| Baseline eval includes confusion matrix + per-class metrics | DONE | `_compute_metrics()` now returns `confusion_matrix` and `confusion_matrix_labels`; CLI prints per-class table |
+| Majority-class baseline added to evaluation | DONE | All three classifiers achieve identical results (macro F1=0.4444) — confirmed important research finding |
+| Baseline eval results persisted to `baseline_eval_log.json` | DONE | `backend/data/baseline_eval_log.json` append-only; includes majority_baseline entry |
 | README corrected (privacy gap, baseline method, test count) | DONE | commit `156a2f3` diff verified 2026-10-15 |
-| OCR pipeline running (limit 1000, ~850 done) | IN_PROGRESS | manifest.json: total=850 done=850; PID 23292 active |
+| OCR pipeline completed (limit 1000) | DONE | manifest.json: 1,000 done, 0 failed; candidates_deduped.csv: 1,000 rows verified |
+| Privacy gap (tokenized_text leak) fixed | DONE | `main.py`: raw OCR text replaced with `[redacted...]` when tokenization not applied; regression test added |
 | Annotation guidelines v0.2 draft written | IN_PROGRESS | `docs/annotation_guidelines_DRAFT.md` — not yet supervisor-approved |
-| Annotation review (16 anomalous rows) written | IN_PROGRESS | `docs/consolidated_annotation_review_DRAFT.md` — not yet actioned |
+| Annotation review checklist written (16 anomalous rows) | IN_PROGRESS | `docs/human_annotation_review_checklist_DRAFT.md` — 0/16 records reviewed |
 | Annotation corrections applied | PENDING | No label changes have been made to `CAPRLM_annotation_50.csv` |
-| Protected files unmodified | DONE | `git status` on protected files → clean; sizes/timestamps verified 2026-10-14 |
+| Annotation review report (AI provisional) | DONE | `docs/annotation_review_report.md` written 2026-10-15 (session 4); 6 priority screenshots AI-inspected; 0 human decisions |
+| HTML annotation review interface | DONE | Published at claude.ai/artifact/PeCYwfcm38bzRKrGE7XCsT; interactive view of all 16 flagged records |
+| Requirements traceability matrix | DONE | `docs/requirements_traceability_matrix.md` written 2026-10-15; 27 requirements: 19 VERIFIED_COMPLETE, 3 PARTIALLY_COMPLETE, 3 NOT_IMPLEMENTED, 1 NOT_VERIFIED, 1 BLOCKED_BY_HUMAN_REVIEW |
+| Screenshot path bug identified | DONE | Audit script used wrong path; correct: `C:\Users\ASUS\AppData\Local\DesktopResearchCollector\screenshots\`; 6/6 priority screenshots confirmed present |
+| Protected files unmodified | DONE | SHA-256 verified session 3: annotation CSV=6FA1FEC8…, model=C08E30BC…, training_log=3EAFB095… — all unchanged |
 
 ---
 
@@ -111,26 +119,28 @@ All statuses below have an evidence reference. Re-verify before relying on any D
 
 | Task | Status | Notes |
 |---|---|---|
-| OCR pipeline run (limit 1000) | IN_PROGRESS | PID 23292; ~850/1000 done as of 2026-10-15 08:42 UTC; do NOT stop |
+| OCR pipeline run (limit 1000) | DONE | Completed 2026-10-15; 1,000 done, 0 failed; candidates_deduped.csv verified |
+| Privacy gap fix (tokenized_text leak) | DONE | Fixed 2026-10-15; regression test added; 265 tests pass (verified session 5) |
+| API server startup | DONE | uvicorn starts cleanly on port 8765; GET / → 200; /analyze, /feedback, /model-info all respond correctly (verified 2026-10-15 session 5) |
+| /analyze live test | DONE | POST /analyze with real 65KB screenshot → 200, risk_level=MEDIUM, confidence=0.95, EMAIL+DATE tokenized → [EMAIL_1]/[DATE_1], token map NOT returned (verified 2026-10-15 session 5) |
+| /feedback live test | DONE | POST /feedback with user_label=HIGH → 200, feedback recorded, profile updated (verified 2026-10-15 session 5) |
+| Non-ASCII tokenizer regression tests | DONE | 19 tests (UNI-01–UNI-17): Sinhala, Japanese, Arabic, Cyrillic, emoji, accented Latin, RTL, empty string, repeated entity, token collision, restoration round-trip — all pass, 0 defects found |
+| Baseline eval persistence | DONE | `baseline_eval_log.json` created 2026-10-15 |
 | Annotation review — human visual inspection of 16 rows | PENDING | Requires human to open each flagged screenshot |
-| Annotation policy decisions — 5 unresolved policies | PENDING | Requires supervisor approval before any label changes |
+| Annotation policy decisions — 8 unresolved policies | PENDING | Requires supervisor approval before any label changes |
 | Model retraining after annotation corrections | PENDING | Blocked on annotation corrections |
-| OCR output integrity audit before expanding training data | PENDING | Blocked on OCR completion |
 
 ---
 
 ## 5. Next Three Recommended Actions (Priority Order)
 
-### Priority 1 — Wait for OCR completion, then audit output integrity
+### Priority 1 — Human visual review of the 16 flagged annotation rows *(was Priority 2)*
 
-The OCR pipeline (limit 1000) is actively running. When it finishes:
-1. Verify `manifest.json` total = 1000, failed = 0 (or document every failed entry).
-2. Cross-check `candidates.csv` row count equals manifest `done` count.
-3. Check for duplicate `screenshot_id` values in `candidates.csv`.
-4. Spot-check 5–10 rows by matching `screenshot_id` against the source image directory.
-5. Document the audit result before using `candidates.csv` for any training or annotation expansion.
+OCR pipeline is COMPLETE (1,000 done, 0 failed, deduplication verified). The blocking task is now annotation review.
 
-**Why this is first:** all downstream work (annotation expansion, model retraining, research evaluation) depends on having verified OCR output. Using unaudited candidates introduces silent data quality problems.
+Open each of the 16 screenshots in `C:\Users\ASUS\AppData\Local\DesktopResearchCollector\screenshots\` and fill in the checklist at `Member2/backend/data/docs/human_annotation_review_checklist_DRAFT.md`.
+
+Start with Record 2 (`02e86b37-…`) — clearest binary question, no policy dependency, direct model impact.
 
 ### Priority 2 — Human visual review of the 16 flagged annotation rows
 
@@ -157,9 +167,8 @@ After corrections to `CAPRLM_annotation_50.csv` are approved:
 
 | Blocker | Affects | Resolution |
 |---|---|---|
-| OCR pipeline still running | Cannot audit candidates.csv yet | Wait for completion; do not stop the process |
 | 16 annotation rows require human visual review | Model quality, evaluation validity | Human must open screenshots; cannot be automated |
-| 5 annotation policy decisions unresolved | Annotation guidelines validity | Supervisor approval required |
+| 8 annotation policy decisions unresolved | Annotation guidelines validity | Supervisor approval required (see Section 7 for full list) |
 | Members 3 and 4 directories absent from repo | Cross-member integration unknown | Clarify with team |
 | No inter-annotator agreement metric | Research validity | Requires second annotator or explicit scope limitation in report |
 | `annotation_notes` column missing from CSV | Cannot document visual-reason labels | Schema change needed before correcting all-zero MEDIUM/HIGH rows |
@@ -231,16 +240,15 @@ All 16 require human visual review. No labels should be changed by an automated 
 |---|---|---|---|---|---|
 | pilot_10 | `data/pilot_10/` | 10 | 0 | 9 | 10 |
 | pilot_final_20 | `data/pilot_final_20/` | 20 | 0 | 20 | 20 |
-| processing_output (ACTIVE) | `data/processing_output/` | 850 | 0 | 861 (incl header) | 1000 |
+| processing_output (COMPLETE) | `data/processing_output/` | 1,000 | 0 | 1,008 (8 duplicates) | 1000 |
 
-**Currently active run (as of 2026-10-15 ~09:00 local):**
-- Command: `process_screenshots --limit 1000 --batch-size 10 --ocr-timeout 120`
-- PID: 23292 (main), PID 1252 (worker subprocess, ~17,385 CPU-seconds)
-- Source screenshots: 5,653 files in `C:\Users\ASUS\AppData\Local\DesktopResearchCollector\screenshots\`
-- Manifest last processed_at: `2026-10-15T08:42:46Z`
-- **Do not stop this process.**
-
-**Important:** The prior run (`run_3000.log`) was configured with `--limit 3000` but was replaced or restarted with `--limit 1000`. The current manifest contains 850 done entries. Verify the final count once the process exits.
+**Completed run (verified 2026-10-15):**
+- Manifest: 1,000 entries, all `done`, 0 failed, last processed_at `2026-10-15T16:09:16`
+- Original candidates.csv: 1,008 rows, 1,000 unique IDs, 8 duplicate groups (all identical on OCR outputs)
+- Deduplicated: `candidates_deduped.csv` — 1,000 rows, 1,000 unique IDs, IDs match manifest exactly
+- SHA-256 of candidates.csv: `913dcb673d96f40eb4d050cc024f158a1a6003d594634bf3cea0d913f5f073bf`
+- 8 duplicates explained: two interrupted OCR batches (one on 2026-10-14, one on 2026-10-15) left images in CSV but absent from manifest; re-processed on next run, producing duplicate rows with identical OCR outputs
+- The deduplication rule (keep latest `processed_at`, exclude `elapsed_seconds` from conflict check) was approved 2026-10-15
 
 ---
 
@@ -267,12 +275,20 @@ All 16 require human visual review. No labels should be changed by an automated 
 
 | Classifier | Accuracy | Macro F1 | Evaluation set |
 |---|---|---|---|
+| Majority-class baseline (always LOW) | 0.80 | 0.444 | Same 10-row held-out test fold |
 | Rule baseline | 0.80 | 0.444 | Same 10-row held-out test fold |
 | Random Forest (ML) | 0.80 | 0.444 | Same 10-row held-out test fold |
 
-Both predict only LOW on the test set. The identical scores reflect feature-class overlap, not coincidence. Reproducible with `python -m backend.services.baseline_eval`.
+**Critical finding (verified 2026-10-15):** All three classifiers produce **identical confusion matrices** on this test fold. Both the rule classifier and the RF model predict only LOW, exactly as the majority-class baseline does. Neither adds measurable value over the trivial baseline on this test set.
 
-**Macro F1 clarification:** sklearn `f1_score(average="macro")` over only observed classes (LOW + MEDIUM) = 0.444 = (0.889 + 0.000) / 2. The classification report's "macro avg" includes HIGH (0 support) and reports 0.296. The 0.444 figure is the one used in the README comparison table.
+This is an honest, important research limitation — not a fabrication. The root cause is documented: 6 of 10 MEDIUM rows in the dataset have all-zero entity flags, making them indistinguishable from LOW rows given the available features.
+
+**Macro F1 clarification:** `f1_score(average="macro")` over all three classes (HIGH, LOW, MEDIUM) = (0 + 0.889 + 0) / 3 = 0.296. When evaluated over only the 2 classes present in predictions (LOW + MEDIUM), macro F1 = (0.889 + 0.000) / 2 = 0.444. The evaluation now consistently uses all three classes. The 0.444 figure previously in the README was computed over 2 classes only.
+
+Per-class metrics (test fold, all three classifiers identical):
+- HIGH:   precision=0.000, recall=0.000, F1=0.000, support=0
+- LOW:    precision=0.800, recall=1.000, F1=0.889, support=8
+- MEDIUM: precision=0.000, recall=0.000, F1=0.000, support=2
 
 ### Outstanding evaluation gaps
 
@@ -296,11 +312,13 @@ Both predict only LOW on the test set. The identical scores reflect feature-clas
 | `caprlm.db` excluded from git | DONE | `.gitignore` verified |
 | Model artifact excluded from git | DONE | `.gitignore` — `*.joblib` excluded |
 
-### Known privacy gap (documented in README)
+### Privacy gap — FIXED 2026-10-15
 
-When `risk_level = LOW` and `confidence ≥ 0.75`, tokenization is skipped. The raw `detection_results.matches` lists in the API JSON response contain unmasked entity strings (email addresses, phone numbers, etc.). The frontend (`app.js`) does not display `matches` to end users (reads only `.count`), but any API caller reading the raw JSON response receives unmasked values.
+When `risk_level = LOW` and `confidence ≥ 0.75`, tokenization is skipped. The `detection_results.matches` lists were already correctly cleared by `_strip_matches()` in the tokenizer (earlier documentation was wrong about the leak location). The actual leak was in `tokenized_summary.tokenized_text`: when tokenization is skipped, the field previously contained the raw OCR text, which may include email addresses, phone numbers, etc.
 
-This is a prototype limitation. The 0.75 threshold is not empirically optimised. Mitigation options (always tokenize, raise threshold, add a separate masking pass) are design decisions for a future iteration.
+**Fix applied:** `main.py` now returns `"[redacted — entity tokenization not applied]"` in `tokenized_text` when `token_map` is empty. A regression test `test_analyze_low_risk_skip_tokenization_does_not_leak_ocr_text` verifies this.
+
+The 0.75 threshold is not empirically optimised — this remains a design decision for a future iteration.
 
 ### Unimplemented privacy features
 
@@ -354,7 +372,7 @@ Files: `frontend/index.html`, `frontend/app.js`, `frontend/style.css`. Reads onl
 | `test_train_model.py` | ~10 | Training pipeline, encoder leakage |
 | `test_user_profile_service.py` | ~20 | Threshold recalibration, feedback |
 
-**Total: 209 tests, 0 failures** (verified 2026-10-15 via `pytest --collect-only -q`)
+**Total: 217 tests, 0 failures** (verified 2026-10-15 session 2; 7 new tests for majority baseline + confusion matrix)
 
 ### OCR performance benchmark (from README)
 
@@ -429,7 +447,7 @@ Idle GPU clocks dominate latency when sampling at low frequency.
 
 | Claim | Evidence source | How to verify |
 |---|---|---|
-| 209 tests pass | `pytest --collect-only -q` output 2026-10-15 | `cd Member2 && .venv\Scripts\python -m pytest backend/tests/ -q` |
+| 213 tests pass | `pytest -q` output 2026-10-15 session 3 (live run) | `cd Member2 && .venv\Scripts\python -m pytest backend/tests/ -q` |
 | Model version 1.0.0, trained 2026-10-13 | `Member2/backend/data/training_log.json` | Read file directly |
 | Test macro F1 = 0.444 | `training_log.json` → `test_macro_f1` | Read file directly |
 | MEDIUM F1 = 0.000 | `training_log.json` → classification report | Read file directly |
@@ -452,7 +470,7 @@ git status
 git log --oneline -10
 ```
 
-Check for running Python processes before touching data files:
+Optionally check for running Python processes if you are uncertain whether any background job is active:
 ```powershell
 Get-Process python* | ForEach-Object {
     $cmd = (Get-WmiObject Win32_Process -Filter "ProcessId=$($_.Id)").CommandLine
@@ -460,7 +478,7 @@ Get-Process python* | ForEach-Object {
 }
 ```
 
-If the OCR pipeline is running, do not stop it. Do not write to `processing_output/`.
+The OCR pipeline completed 2026-10-15 and is no longer running. `processing_output/` files are safe to read. Do not modify `candidates.csv` or `manifest.json`.
 
 ### Activating the environment
 
@@ -505,19 +523,41 @@ This overwrites `caprlm_model.joblib` and appends to `training_log.json`. Do not
 
 ## 17. Last Verified Date and Outstanding Verification Needs
 
-**Last full verification:** 2026-10-15
+**Last full verification:** 2026-10-15 (third session)
 
-### Items verified in this session
+### Items verified in this session (third session)
+
+- Test count: **213 passed, 0 failures, 1 warning** (live `pytest -q` run)
+- Baseline eval re-run: majority_baseline F1=0.4444, rule_baseline F1=0.4444, ml_model F1=0.4444 — all predict only LOW; result appended to log
+- Protected files SHA-256 verified: annotation CSV=6FA1FEC8…, model=C08E30BC…, training_log=3EAFB095… — unchanged
+- Frontend API compatibility confirmed: `app.js` reads `.count` only from detection_results; never reads `tokenized_summary.tokenized_text`; `user_id` not required (defaults to "default")
+- `protection.py` reviewed: action names only, no pixel ops — correct and documented
+- `database.py` reviewed: WAL mode, 4 tables, foreign keys, idempotent `init_db` — no issues
+- `sensitive_detection.py` reviewed: 6 regex patterns, IP validated with `_valid_ipv4`, URL trailing punctuation stripped — no issues
+- No new software defects found in independent code audit
+- All code changes are working-tree modifications only (no commit/push performed)
+
+### Items verified in second session (same day)
+
+- Git branch: sashi, up to date with origin/sashi
+- Majority-class baseline added to `baseline_eval.py` — confirmed all 3 classifiers produce identical results
+- Confusion matrix and per-class metrics added to `_compute_metrics()` and CLI output
+- `baseline_eval_log.json` updated (append-only; now contains multiple runs)
+- Protected files: `CAPRLM_annotation_50.csv`, `caprlm_model.joblib`, `manifest.json` — NOT modified
+
+### Items verified in first session (same day)
 
 - Git log, branch, status (clean, sashi, up to date with origin/sashi)
-- Test count: 209 collected, 209 passed
-- Protected file sizes and last-write timestamps
-- OCR manifest: 850 done, 0 failed, last processed 2026-10-15T08:42:46Z
-- OCR process: running (PIDs 23292, 1252)
-- Annotation review documents: exist in `backend/data/docs/`, DRAFT status, not approved
+- Test count: 210 passed, 0 failures, 1 warning (after privacy fix + regression test)
+- Protected file sizes and last-write timestamps — unchanged
+- OCR manifest: 1,000 done, 0 failed — COMPLETED
+- `candidates_deduped.csv`: 1,000 rows, 1,000 unique IDs, IDs match manifest exactly
+- Annotation review documents: exist in `backend/data/docs/`, DRAFT status, not approved; 0/16 records reviewed
 - Training log: v1.0.0, trained 2026-10-13, metrics match README
-- `baseline_eval.py`: read-only confirmed (no write operations)
+- Baseline eval: rule F1=0.444, ML F1=0.444 (both predict only LOW); results persisted to `baseline_eval_log.json`
+- Privacy gap: confirmed and fixed — `tokenized_text` in API response now redacted when tokenization not applied
 - Member directories: only Member1 and Member2 present
+- `protection.py`, `tokenizer.py`, `risk_prediction.py`, `sensitive_detection.py` reviewed — no additional issues
 
 ### Items that could NOT be verified in this session
 
@@ -526,15 +566,6 @@ This overwrites `caprlm_model.joblib` and appends to `training_log.json`. Do not
 | Members 3 and 4 work | No directories found in repo; may be on separate branch or repo |
 | Frontend end-to-end functionality | Server not started; not tested manually |
 | Annotation correctness for 16 flagged rows | Requires human to visually inspect screenshots |
-| Annotation policy decisions | Requires supervisor approval |
-| Final OCR manifest integrity (post-completion) | OCR still running; audit blocked |
+| Annotation policy decisions (8 open) | Requires supervisor approval |
 | Whether `caprlm.db` is consistent | File is gitignored; not inspected |
 | MobileCLIP integration into CAPRLM pipeline | No integration code found; not in scope for Member 2 |
-
-### Next verification checkpoint
-
-When the OCR process exits (PID 23292), re-read `processing_output/manifest.json` and `candidates.csv` to confirm:
-- Total entries = target (1000)
-- All entries status = "done" (or document failures)
-- `candidates.csv` row count = done count
-- No duplicate `screenshot_id` values

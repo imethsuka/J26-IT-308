@@ -286,7 +286,14 @@ async def analyze(request: Request):
             "protection_selection": protection_selection,
             "user_profile_summary": ups.profile_summary(profile),
             "tokenized_summary": {
-                "tokenized_text": tokenized_text,
+                # When tokenization was not applied (low-risk confident prediction or
+                # no entities detected), the raw OCR text is not returned — it may
+                # contain sensitive values that should not appear in API responses.
+                "tokenized_text": (
+                    tokenized_text
+                    if token_map
+                    else "[redacted — entity tokenization not applied]"
+                ),
                 "entity_token_count": len(token_map),
                 "tokenization_applied": len(token_map) > 0,
                 "note": (
