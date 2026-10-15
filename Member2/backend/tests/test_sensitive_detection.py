@@ -92,6 +92,43 @@ def test_date_detected():
     assert result["DATE"]["count"] == 1
 
 
+def test_date_detected_slash_format():
+    result = detect_sensitive_entities("Saved on 12/25/2024 at 3pm")
+    assert result["DATE"]["count"] == 1
+
+
+def test_date_ui_timestamp_triggers_detection():
+    """
+    DATE-FP-01 — UI timestamps (e.g. message times, file dates shown in
+    desktop screenshots) trigger the DATE regex.
+
+    This is a KNOWN LIMITATION: screenshots routinely show timestamps like
+    '10/14/2026' as part of UI chrome (file browser, chat apps, etc.).
+    These match the date pattern but are not annotator-defined sensitive entities.
+
+    The detection is technically correct; the false-positive rate arises from
+    a gap between the regex definition and the annotation policy.
+    This test documents the behaviour so it cannot regress silently.
+    """
+    ui_text = "Last modified: 10/14/2026  Size: 45 KB"
+    result = detect_sensitive_entities(ui_text)
+    # Confirm the detection fires (documenting known behaviour)
+    assert result["DATE"]["count"] >= 1, (
+        "DATE regex should match UI-style date timestamps — known false-positive source"
+    )
+
+
+def test_date_version_number_not_detected():
+    """
+    Version numbers like '2.14.1' (only 3 parts, no separator) or
+    '14.1' should NOT match the date regex (requires exactly d/d/d or d-d-d).
+    """
+    result = detect_sensitive_entities("Python 3.14.1 released")
+    assert result["DATE"]["count"] == 0, (
+        "Short version numbers like 3.14.1 must not be detected as dates"
+    )
+
+
 # ---------------------------------------------------------------------------
 # WINDOWS_PATH
 # ---------------------------------------------------------------------------

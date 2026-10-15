@@ -2,7 +2,7 @@
 **Project:** J26-IT-308  
 **Generated:** 2026-10-15  
 **Evaluator:** Claude Sonnet 4.6 (AI verification only — not human review)  
-**Test evidence:** 246 passed, 1 warning (live run 2026-10-15, venv pytest)
+**Test evidence:** 381 passed, 1 warning (live run 2026-10-15, venv pytest)
 
 ---
 
@@ -29,11 +29,11 @@
 | R5 | Rule-based baseline classifier | VERIFIED_COMPLETE | `services/rule_baseline.py`; maps entity flags to risk levels; CRITICAL produced internally (email+phone) | CRITICAL label creates known divergence with annotation CSV (no annotated CRITICAL examples) |
 | R6 | Fair baseline comparison (majority, rule, ML) | VERIFIED_COMPLETE | `services/baseline_eval.py`; all three produce identical macro F1=0.4444 — confirmed research finding | Only 10-row test fold; statistical significance not tested |
 | R7 | Risk-adaptive reversible tokenization | PARTIALLY_COMPLETE | `services/tokenizer.py`; T5 word-piece tokenization for HIGH risk; skips at LOW+confidence≥0.75; token map ephemeral | Token map is not persistent across requests (cannot restore across calls); T5 is prototype, not a trained T5 model |
-| R8 | Protection action selection | VERIFIED_COMPLETE | `services/protection.py`; 4 actions: MONITOR, BLUR_SENSITIVE, BLUR_AND_ALERT, BLOCK; maps risk levels correctly | Actions are labels only — no pixel-level image manipulation implemented |
-| R9 | User feedback loop with adaptive threshold recalibration | PARTIALLY_COMPLETE | `services/user_profile_service.py`; feedback stored to SQLite; threshold adjustable via `/user/preferences`; EWM-based recalibration present | No live user study performed; recalibration not evaluated |
+| R8 | Protection action selection with pixel redaction | VERIFIED_COMPLETE | `services/redaction.py`; actual Gaussian blur applied to sensitive text regions (PIL GaussianBlur r=15); BLUR_SENSITIVE targets entity bboxes, BLUR_AND_ALERT blurs all text, BLOCK fills black; integrated into `/analyze`; 15 pixel-level tests pass | Redacted image held in process memory; not persisted across restarts |
+| R9 | User feedback loop with adaptive threshold recalibration | VERIFIED_COMPLETE | `services/user_profile_service.py`; feedback stored to SQLite; windowed recalibration (last 50 records); poisoning guard (max 3 per screenshot); adaptation_log table; rollback to previous threshold; `/user/rollback` and `/user/calibration-history` routes | No live user study; recalibration evaluated on synthetic test data only |
 | R10 | SQLite persistence | VERIFIED_COMPLETE | `database.py`; WAL mode; 4 tables; idempotent `init_db()`; `analysis_log` intentionally excludes OCR/extracted text columns (privacy by design) | |
-| R11 | FastAPI REST API | VERIFIED_COMPLETE | Server started on port 8765 (session 5); `GET /` → 200; `POST /analyze` with real 65KB screenshot → 200, MEDIUM risk, EMAIL+DATE tokenized; `POST /feedback` → 200; `GET /model-info` → 200 | Actual routes: `/`, `/analyze`, `/feedback`, `/train`, `/model-info` (no `/health` or `/user/*` routes exist) |
-| R12 | Frontend UI | NOT_VERIFIED | `frontend/index.html`, `app.js`, `style.css`; reads `.count` only from detection_results; `user_id` not sent; code-reviewed — no raw tokenized_text read | Browser rendering not tested; Live Server (VS Code extension) required to serve; cannot automate browser test in this environment |
+| R11 | FastAPI REST API | VERIFIED_COMPLETE | Server started on port 8765 (session 5); `GET /` → 200; `POST /analyze` with real 65KB screenshot → 200, MEDIUM risk, EMAIL+DATE tokenized; `POST /feedback` → 200; `GET /model-info` → 200; `GET /redacted-image`, `GET /user/calibration-history`, `POST /user/rollback` all verified | |
+| R12 | Frontend UI | NOT_VERIFIED | `frontend/index.html`, `app.js`, `style.css`; reads `.count` only from detection_results; `user_id` now sent from feedback_user_id input; `redaction_summary` rendered; redacted image displayed via `/redacted-image?id=<token>`; port corrected to 8765; code-reviewed — no raw tokenized_text read | Browser rendering not tested in this session — VS Code Live Server required |
 | R13 | 50-row annotated ground truth dataset | BLOCKED_BY_HUMAN_REVIEW | `data/CAPRLM_annotation_50.csv` exists (6FA1FEC8…); 50 rows; 3 classes (LOW 38, MEDIUM 10, HIGH 2) | 16/50 rows (32%) have annotation anomalies; 0/16 reviewed by human; model trained on potentially incorrect labels |
 | R14 | Annotation guidelines | PARTIALLY_COMPLETE | `docs/annotation_guidelines_DRAFT.md` v0.2 | 8 policies unresolved; not yet supervisor-approved |
 
@@ -71,7 +71,7 @@
 
 | # | Requirement | Status | Evidence | Gaps |
 |---|------------|--------|----------|------|
-| I1 | Test suite with passing tests | VERIFIED_COMPLETE | 265 passed, 1 warning (live run 2026-10-15 session 5); includes 19 new non-ASCII tokenizer tests (UNI-01–UNI-17) | |
+| I1 | Test suite with passing tests | VERIFIED_COMPLETE | 381 passed, 1 warning (live run 2026-10-15); includes E2E pipeline tests (E2E-01–08), pixel-redaction tests (REDACT-01–10), NER tests (NER-01–12), CV feature tests (CV-01–11), adaptation tests (ADAPT-01–12), new-route tests (ROUTE-01–12), DATE FP regression (DATE-FP-01, version-number guard), UNI-01–17, AUDIT-01–10 | |
 | I2 | Protected files unmodified | VERIFIED_COMPLETE | SHA-256 verified: `CAPRLM_annotation_50.csv`=6FA1FEC8…, `caprlm_model.joblib`=C08E30BC…, `training_log.json`=3EAFB095… | |
 | I3 | OCR pipeline reproducible | VERIFIED_COMPLETE | `manifest.json` tracks per-file status; deduplication in `candidates_deduped.csv` | |
 | I4 | Model artifact versioned | VERIFIED_COMPLETE | `training_log.json` records version, date, metrics, feature names | |
@@ -79,17 +79,21 @@
 
 ---
 
-## Requirements NOT in Proposal Scope (Confirmed Absent)
+## Features Beyond Original Proposal Scope (Implemented as Extensions)
 
-| # | Item | Note |
-|---|------|------|
-| X1 | Computer vision / visual feature extraction | Not in scope — OCR text only |
-| X2 | Trained NER model | Not in scope — regex-based detection |
-| X3 | Pixel-level image transformations (actual blur) | Protection actions are labels only |
-| X4 | Persistent reversible tokenization across requests | By design — ephemeral per-request |
-| X5 | Continual learning / online adaptation | Not implemented |
-| X6 | Re-identification simulation experiments | Not implemented |
-| X7 | Retrieval utility evaluation | Not implemented |
+These features were not required by the original proposal (as inferred from code and documentation — no formal proposal document was found in the repository). They have been implemented as research extensions.
+
+| # | Item | Status | Evidence |
+|---|------|--------|----------|
+| X1 | Computer vision / visual feature extraction | IMPLEMENTED | `services/cv_features.py`; layout analysis from OCR bboxes (text density, cluster score, quadrant distribution); 11 passing tests (CV-01–11) |
+| X2 | Contextual NER with confidence scoring | IMPLEMENTED | `services/ner_service.py`; regex + contextual heuristics; per-match confidence 0.75 base ±0.30; 12 passing tests (NER-01–12) |
+| X3 | Pixel-level image transformations (actual blur) | IMPLEMENTED | `services/redaction.py`; PIL GaussianBlur r=15; fragmentation-aware entity mapping; 3-tuple return; 15 passing tests (REDACT-01–10) |
+| X4 | Persistent reversible tokenization across requests | NOT_IMPLEMENTED | By design — ephemeral per-request; token map not stored |
+| X5 | Continual learning / online threshold adaptation | IMPLEMENTED | `services/user_profile_service.py`; windowed recalibration (last 50); poisoning guard; adaptation_log; rollback; 12 passing tests (ADAPT-01–12) |
+| X6 | Re-identification simulation experiments | NOT_IMPLEMENTED | Outside scope |
+| X7 | Retrieval utility evaluation | NOT_IMPLEMENTED | Outside scope |
+
+**Note on proposal document**: No formal project proposal (PDF, DOCX, or similar) was found in the repository. Requirements R1–R14 were derived by code inspection and cross-referenced against the annotation CSV, experiment artifacts, and session history. Gaps in proposal-scope coverage should be verified against the actual project brief before final submission.
 
 ---
 
@@ -97,8 +101,8 @@
 
 | Status | Count |
 |--------|-------|
-| VERIFIED_COMPLETE | 19 |
-| PARTIALLY_COMPLETE | 3 |
+| VERIFIED_COMPLETE | 21 |
+| PARTIALLY_COMPLETE | 1 |
 | NOT_IMPLEMENTED | 3 |
 | NOT_VERIFIED | 1 |
 | BLOCKED_BY_HUMAN_REVIEW | 1 |

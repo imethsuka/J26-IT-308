@@ -139,7 +139,19 @@
               <p class="response-empty">No extracted features are available.</p>
             </div>
           </article>
+          <article class="result-item">
+            <h3>Pixel Redaction</h3>
+            <div id="redaction-output" class="response-output">
+              <p class="response-empty">No redaction information available.</p>
+            </div>
+          </article>
         </div>
+
+        <section id="redacted-image-section" hidden aria-label="Redacted screenshot">
+          <h3 style="margin-top:1.5rem;margin-bottom:0.5rem">Redacted Image</h3>
+          <p class="field-help">The pixel-redacted version of your screenshot (sensitive regions blurred or masked).</p>
+          <img id="redacted-image-output" style="max-width:100%;border:1px solid #ccc;border-radius:4px" alt="Redacted screenshot">
+        </section>
 
         <div id="model-status" class="model-status" role="status" aria-live="polite">
           <span class="status-indicator" aria-hidden="true"></span>

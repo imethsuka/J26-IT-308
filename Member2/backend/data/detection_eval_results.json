@@ -1,0 +1,1025 @@
+{
+  "evaluated_at": "2026-10-15T17:13:28Z",
+  "method": "candidates_csv_entity_flags_only_no_ocr_rerun",
+  "annotation_csv": "C:\\Users\\ASUS\\OneDrive\\Desktop\\J26-IT-308\\Member2\\backend\\data\\CAPRLM_annotation_50.csv",
+  "candidates_csv": "C:\\Users\\ASUS\\OneDrive\\Desktop\\J26-IT-308\\Member2\\backend\\data\\processing_output\\candidates.csv",
+  "evaluation_scope": "LOW_labeled_all_zero_annotation_flags",
+  "summary": {
+    "total_evaluated": 28,
+    "zero_pipeline_detections": 2,
+    "any_pipeline_detection": 26,
+    "by_entity_type": {
+      "EMAIL": 0,
+      "PHONE": 2,
+      "URL": 0,
+      "IP_ADDRESS": 1,
+      "DATE": 26,
+      "WINDOWS_PATH": 0
+    },
+    "date_only_fp_count": 26,
+    "non_date_fp_count": 2,
+    "false_positive_rates": {
+      "EMAIL": {
+        "screenshots_with_fp_detection": 0,
+        "total_evaluated": 28,
+        "rate": 0.0
+      },
+      "PHONE": {
+        "screenshots_with_fp_detection": 2,
+        "total_evaluated": 28,
+        "rate": 0.0714
+      },
+      "URL": {
+        "screenshots_with_fp_detection": 0,
+        "total_evaluated": 28,
+        "rate": 0.0
+      },
+      "IP_ADDRESS": {
+        "screenshots_with_fp_detection": 1,
+        "total_evaluated": 28,
+        "rate": 0.0357
+      },
+      "DATE": {
+        "screenshots_with_fp_detection": 26,
+        "total_evaluated": 28,
+        "rate": 0.9286
+      },
+      "WINDOWS_PATH": {
+        "screenshots_with_fp_detection": 0,
+        "total_evaluated": 28,
+        "rate": 0.0
+      }
+    }
+  },
+  "findings": [
+    {
+      "finding": "DATE detections dominate false positives",
+      "detail": "26 of 28 LOW-labeled all-zero-annotation screenshots have pipeline DATE detections. These are overwhelmingly likely false positives: desktop screenshots routinely contain timestamps, file modification dates, version numbers, and message times that match date regex patterns but are not annotator-defined sensitive entities.",
+      "recommendation": "DATE-only detections on screenshots annotated as LOW with no DATE flag should be reviewed against the annotation guidelines. If DATE entities are routinely benign in certain contexts (VS Code, ChatGPT), a context-aware suppression rule could reduce false positive rate."
+    },
+    {
+      "finding": "Non-DATE entity detections require visual review",
+      "detail": "2 screenshots have non-DATE pipeline detections against a zero-annotation-flag LOW label. These include PHONE, URL, IP_ADDRESS patterns that may be student IDs, documentation links, or CIDR notation.",
+      "recommendation": "Each case should be visually inspected by the annotator to determine whether the annotation is incorrect or the detection is a false positive."
+    }
+  ],
+  "records": [
+    {
+      "screenshot_id": "010c07bc-4c57-432b-bb3c-8222b56fcd41.jpg",
+      "annotation_label": "LOW",
+      "application_context": "",
+      "pipeline_found": true,
+      "ocr_text_length": 1204,
+      "annotation_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 0,
+        "WINDOWS_PATH": 0
+      },
+      "pipeline_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 1,
+        "WINDOWS_PATH": 0
+      },
+      "any_pipeline_detection": true,
+      "detections": [
+        {
+          "entity_type": "DATE",
+          "pipeline_count": 1,
+          "annotation_flag": 0,
+          "fp_assessment": "likely_fp",
+          "description": "Date patterns (YYYY-MM-DD, DD/MM/YYYY, etc.). Screenshots may display timestamps, version numbers (e.g. 2024.1.0), or numeric literals that match date regex."
+        }
+      ],
+      "assessment": "POTENTIAL_FALSE_POSITIVES"
+    },
+    {
+      "screenshot_id": "01115b63-e4d5-4f3c-8ca1-7115a9906715.jpg",
+      "annotation_label": "LOW",
+      "application_context": "",
+      "pipeline_found": true,
+      "ocr_text_length": 1271,
+      "annotation_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 0,
+        "WINDOWS_PATH": 0
+      },
+      "pipeline_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 1,
+        "WINDOWS_PATH": 0
+      },
+      "any_pipeline_detection": true,
+      "detections": [
+        {
+          "entity_type": "DATE",
+          "pipeline_count": 1,
+          "annotation_flag": 0,
+          "fp_assessment": "likely_fp",
+          "description": "Date patterns (YYYY-MM-DD, DD/MM/YYYY, etc.). Screenshots may display timestamps, version numbers (e.g. 2024.1.0), or numeric literals that match date regex."
+        }
+      ],
+      "assessment": "POTENTIAL_FALSE_POSITIVES"
+    },
+    {
+      "screenshot_id": "013df303-0289-4d06-b9d1-d470d5565bc8.jpg",
+      "annotation_label": "LOW",
+      "application_context": "",
+      "pipeline_found": true,
+      "ocr_text_length": 159,
+      "annotation_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 0,
+        "WINDOWS_PATH": 0
+      },
+      "pipeline_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 1,
+        "WINDOWS_PATH": 0
+      },
+      "any_pipeline_detection": true,
+      "detections": [
+        {
+          "entity_type": "DATE",
+          "pipeline_count": 1,
+          "annotation_flag": 0,
+          "fp_assessment": "likely_fp",
+          "description": "Date patterns (YYYY-MM-DD, DD/MM/YYYY, etc.). Screenshots may display timestamps, version numbers (e.g. 2024.1.0), or numeric literals that match date regex."
+        }
+      ],
+      "assessment": "POTENTIAL_FALSE_POSITIVES"
+    },
+    {
+      "screenshot_id": "014635cf-027c-4bec-a6c2-304828e4e9f9.jpg",
+      "annotation_label": "LOW",
+      "application_context": "",
+      "pipeline_found": true,
+      "ocr_text_length": 664,
+      "annotation_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 0,
+        "WINDOWS_PATH": 0
+      },
+      "pipeline_flags": {
+        "EMAIL": 0,
+        "PHONE": 1,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 1,
+        "WINDOWS_PATH": 0
+      },
+      "any_pipeline_detection": true,
+      "detections": [
+        {
+          "entity_type": "PHONE",
+          "pipeline_count": 1,
+          "annotation_flag": 0,
+          "fp_assessment": "uncertain",
+          "description": "Phone patterns (10-digit sequences, +1-xxx etc.). May match student IDs, product serials, numeric sequences in code."
+        },
+        {
+          "entity_type": "DATE",
+          "pipeline_count": 1,
+          "annotation_flag": 0,
+          "fp_assessment": "likely_fp",
+          "description": "Date patterns (YYYY-MM-DD, DD/MM/YYYY, etc.). Screenshots may display timestamps, version numbers (e.g. 2024.1.0), or numeric literals that match date regex."
+        }
+      ],
+      "assessment": "POTENTIAL_FALSE_POSITIVES"
+    },
+    {
+      "screenshot_id": "01604395-c180-47df-9f94-59b000c1695d.jpg",
+      "annotation_label": "LOW",
+      "application_context": "",
+      "pipeline_found": true,
+      "ocr_text_length": 352,
+      "annotation_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 0,
+        "WINDOWS_PATH": 0
+      },
+      "pipeline_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 1,
+        "WINDOWS_PATH": 0
+      },
+      "any_pipeline_detection": true,
+      "detections": [
+        {
+          "entity_type": "DATE",
+          "pipeline_count": 1,
+          "annotation_flag": 0,
+          "fp_assessment": "likely_fp",
+          "description": "Date patterns (YYYY-MM-DD, DD/MM/YYYY, etc.). Screenshots may display timestamps, version numbers (e.g. 2024.1.0), or numeric literals that match date regex."
+        }
+      ],
+      "assessment": "POTENTIAL_FALSE_POSITIVES"
+    },
+    {
+      "screenshot_id": "017fa22c-a3a9-4fec-ab7e-b6e2ff0c0274.jpg",
+      "annotation_label": "LOW",
+      "application_context": "",
+      "pipeline_found": true,
+      "ocr_text_length": 1033,
+      "annotation_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 0,
+        "WINDOWS_PATH": 0
+      },
+      "pipeline_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 1,
+        "WINDOWS_PATH": 0
+      },
+      "any_pipeline_detection": true,
+      "detections": [
+        {
+          "entity_type": "DATE",
+          "pipeline_count": 1,
+          "annotation_flag": 0,
+          "fp_assessment": "likely_fp",
+          "description": "Date patterns (YYYY-MM-DD, DD/MM/YYYY, etc.). Screenshots may display timestamps, version numbers (e.g. 2024.1.0), or numeric literals that match date regex."
+        }
+      ],
+      "assessment": "POTENTIAL_FALSE_POSITIVES"
+    },
+    {
+      "screenshot_id": "0181c10d-ac5a-4a65-8393-d0602df7ab83.jpg",
+      "annotation_label": "LOW",
+      "application_context": "",
+      "pipeline_found": true,
+      "ocr_text_length": 1136,
+      "annotation_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 0,
+        "WINDOWS_PATH": 0
+      },
+      "pipeline_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 1,
+        "WINDOWS_PATH": 0
+      },
+      "any_pipeline_detection": true,
+      "detections": [
+        {
+          "entity_type": "DATE",
+          "pipeline_count": 1,
+          "annotation_flag": 0,
+          "fp_assessment": "likely_fp",
+          "description": "Date patterns (YYYY-MM-DD, DD/MM/YYYY, etc.). Screenshots may display timestamps, version numbers (e.g. 2024.1.0), or numeric literals that match date regex."
+        }
+      ],
+      "assessment": "POTENTIAL_FALSE_POSITIVES"
+    },
+    {
+      "screenshot_id": "0186d91a-a84e-4a22-8ba5-a99e16e8f9fa.jpg",
+      "annotation_label": "LOW",
+      "application_context": "",
+      "pipeline_found": true,
+      "ocr_text_length": 1650,
+      "annotation_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 0,
+        "WINDOWS_PATH": 0
+      },
+      "pipeline_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 1,
+        "WINDOWS_PATH": 0
+      },
+      "any_pipeline_detection": true,
+      "detections": [
+        {
+          "entity_type": "DATE",
+          "pipeline_count": 1,
+          "annotation_flag": 0,
+          "fp_assessment": "likely_fp",
+          "description": "Date patterns (YYYY-MM-DD, DD/MM/YYYY, etc.). Screenshots may display timestamps, version numbers (e.g. 2024.1.0), or numeric literals that match date regex."
+        }
+      ],
+      "assessment": "POTENTIAL_FALSE_POSITIVES"
+    },
+    {
+      "screenshot_id": "0189b2c7-251a-4a66-b6c6-4c3bc12ddf5c.jpg",
+      "annotation_label": "LOW",
+      "application_context": "",
+      "pipeline_found": true,
+      "ocr_text_length": 1524,
+      "annotation_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 0,
+        "WINDOWS_PATH": 0
+      },
+      "pipeline_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 1,
+        "WINDOWS_PATH": 0
+      },
+      "any_pipeline_detection": true,
+      "detections": [
+        {
+          "entity_type": "DATE",
+          "pipeline_count": 1,
+          "annotation_flag": 0,
+          "fp_assessment": "likely_fp",
+          "description": "Date patterns (YYYY-MM-DD, DD/MM/YYYY, etc.). Screenshots may display timestamps, version numbers (e.g. 2024.1.0), or numeric literals that match date regex."
+        }
+      ],
+      "assessment": "POTENTIAL_FALSE_POSITIVES"
+    },
+    {
+      "screenshot_id": "018cbd96-6a05-419e-96c7-6b03b401a789.jpg",
+      "annotation_label": "LOW",
+      "application_context": "",
+      "pipeline_found": true,
+      "ocr_text_length": 639,
+      "annotation_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 0,
+        "WINDOWS_PATH": 0
+      },
+      "pipeline_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 1,
+        "WINDOWS_PATH": 0
+      },
+      "any_pipeline_detection": true,
+      "detections": [
+        {
+          "entity_type": "DATE",
+          "pipeline_count": 1,
+          "annotation_flag": 0,
+          "fp_assessment": "likely_fp",
+          "description": "Date patterns (YYYY-MM-DD, DD/MM/YYYY, etc.). Screenshots may display timestamps, version numbers (e.g. 2024.1.0), or numeric literals that match date regex."
+        }
+      ],
+      "assessment": "POTENTIAL_FALSE_POSITIVES"
+    },
+    {
+      "screenshot_id": "01934b28-9454-4ecc-b334-344450d739b7.jpg",
+      "annotation_label": "LOW",
+      "application_context": "",
+      "pipeline_found": true,
+      "ocr_text_length": 789,
+      "annotation_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 0,
+        "WINDOWS_PATH": 0
+      },
+      "pipeline_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 1,
+        "WINDOWS_PATH": 0
+      },
+      "any_pipeline_detection": true,
+      "detections": [
+        {
+          "entity_type": "DATE",
+          "pipeline_count": 1,
+          "annotation_flag": 0,
+          "fp_assessment": "likely_fp",
+          "description": "Date patterns (YYYY-MM-DD, DD/MM/YYYY, etc.). Screenshots may display timestamps, version numbers (e.g. 2024.1.0), or numeric literals that match date regex."
+        }
+      ],
+      "assessment": "POTENTIAL_FALSE_POSITIVES"
+    },
+    {
+      "screenshot_id": "019e6ab3-6506-4b56-a264-ee144f3ed7c1.jpg",
+      "annotation_label": "LOW",
+      "application_context": "",
+      "pipeline_found": true,
+      "ocr_text_length": 1005,
+      "annotation_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 0,
+        "WINDOWS_PATH": 0
+      },
+      "pipeline_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 1,
+        "WINDOWS_PATH": 0
+      },
+      "any_pipeline_detection": true,
+      "detections": [
+        {
+          "entity_type": "DATE",
+          "pipeline_count": 1,
+          "annotation_flag": 0,
+          "fp_assessment": "likely_fp",
+          "description": "Date patterns (YYYY-MM-DD, DD/MM/YYYY, etc.). Screenshots may display timestamps, version numbers (e.g. 2024.1.0), or numeric literals that match date regex."
+        }
+      ],
+      "assessment": "POTENTIAL_FALSE_POSITIVES"
+    },
+    {
+      "screenshot_id": "01c54e27-a00d-4d14-8f2a-a9d45b4d1768.jpg",
+      "annotation_label": "LOW",
+      "application_context": "",
+      "pipeline_found": true,
+      "ocr_text_length": 1027,
+      "annotation_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 0,
+        "WINDOWS_PATH": 0
+      },
+      "pipeline_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 1,
+        "WINDOWS_PATH": 0
+      },
+      "any_pipeline_detection": true,
+      "detections": [
+        {
+          "entity_type": "DATE",
+          "pipeline_count": 1,
+          "annotation_flag": 0,
+          "fp_assessment": "likely_fp",
+          "description": "Date patterns (YYYY-MM-DD, DD/MM/YYYY, etc.). Screenshots may display timestamps, version numbers (e.g. 2024.1.0), or numeric literals that match date regex."
+        }
+      ],
+      "assessment": "POTENTIAL_FALSE_POSITIVES"
+    },
+    {
+      "screenshot_id": "01e09fd1-5c04-4cf6-98e0-27eeacf2de60.jpg",
+      "annotation_label": "LOW",
+      "application_context": "",
+      "pipeline_found": true,
+      "ocr_text_length": 862,
+      "annotation_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 0,
+        "WINDOWS_PATH": 0
+      },
+      "pipeline_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 1,
+        "WINDOWS_PATH": 0
+      },
+      "any_pipeline_detection": true,
+      "detections": [
+        {
+          "entity_type": "DATE",
+          "pipeline_count": 1,
+          "annotation_flag": 0,
+          "fp_assessment": "likely_fp",
+          "description": "Date patterns (YYYY-MM-DD, DD/MM/YYYY, etc.). Screenshots may display timestamps, version numbers (e.g. 2024.1.0), or numeric literals that match date regex."
+        }
+      ],
+      "assessment": "POTENTIAL_FALSE_POSITIVES"
+    },
+    {
+      "screenshot_id": "01f6a6fd-4485-41c7-8ba1-01d540cf618f.jpg",
+      "annotation_label": "LOW",
+      "application_context": "",
+      "pipeline_found": true,
+      "ocr_text_length": 553,
+      "annotation_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 0,
+        "WINDOWS_PATH": 0
+      },
+      "pipeline_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 1,
+        "WINDOWS_PATH": 0
+      },
+      "any_pipeline_detection": true,
+      "detections": [
+        {
+          "entity_type": "DATE",
+          "pipeline_count": 1,
+          "annotation_flag": 0,
+          "fp_assessment": "likely_fp",
+          "description": "Date patterns (YYYY-MM-DD, DD/MM/YYYY, etc.). Screenshots may display timestamps, version numbers (e.g. 2024.1.0), or numeric literals that match date regex."
+        }
+      ],
+      "assessment": "POTENTIAL_FALSE_POSITIVES"
+    },
+    {
+      "screenshot_id": "0204df57-d859-4686-87e6-d0d584096bc2.jpg",
+      "annotation_label": "LOW",
+      "application_context": "",
+      "pipeline_found": true,
+      "ocr_text_length": 1253,
+      "annotation_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 0,
+        "WINDOWS_PATH": 0
+      },
+      "pipeline_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 1,
+        "WINDOWS_PATH": 0
+      },
+      "any_pipeline_detection": true,
+      "detections": [
+        {
+          "entity_type": "DATE",
+          "pipeline_count": 1,
+          "annotation_flag": 0,
+          "fp_assessment": "likely_fp",
+          "description": "Date patterns (YYYY-MM-DD, DD/MM/YYYY, etc.). Screenshots may display timestamps, version numbers (e.g. 2024.1.0), or numeric literals that match date regex."
+        }
+      ],
+      "assessment": "POTENTIAL_FALSE_POSITIVES"
+    },
+    {
+      "screenshot_id": "02488e7f-132f-4e80-b164-d34cf38424ff.jpg",
+      "annotation_label": "LOW",
+      "application_context": "",
+      "pipeline_found": true,
+      "ocr_text_length": 1327,
+      "annotation_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 0,
+        "WINDOWS_PATH": 0
+      },
+      "pipeline_flags": {
+        "EMAIL": 0,
+        "PHONE": 1,
+        "URL": 0,
+        "IP_ADDRESS": 1,
+        "DATE": 1,
+        "WINDOWS_PATH": 0
+      },
+      "any_pipeline_detection": true,
+      "detections": [
+        {
+          "entity_type": "PHONE",
+          "pipeline_count": 3,
+          "annotation_flag": 0,
+          "fp_assessment": "uncertain",
+          "description": "Phone patterns (10-digit sequences, +1-xxx etc.). May match student IDs, product serials, numeric sequences in code."
+        },
+        {
+          "entity_type": "IP_ADDRESS",
+          "pipeline_count": 2,
+          "annotation_flag": 0,
+          "fp_assessment": "uncertain",
+          "description": "IPv4 patterns. May match version numbers (1.2.3.4), CIDR notation, localhost refs."
+        },
+        {
+          "entity_type": "DATE",
+          "pipeline_count": 1,
+          "annotation_flag": 0,
+          "fp_assessment": "likely_fp",
+          "description": "Date patterns (YYYY-MM-DD, DD/MM/YYYY, etc.). Screenshots may display timestamps, version numbers (e.g. 2024.1.0), or numeric literals that match date regex."
+        }
+      ],
+      "assessment": "POTENTIAL_FALSE_POSITIVES"
+    },
+    {
+      "screenshot_id": "026696df-c131-4362-875b-ed13c6ebd1d5.jpg",
+      "annotation_label": "LOW",
+      "application_context": "",
+      "pipeline_found": true,
+      "ocr_text_length": 1102,
+      "annotation_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 0,
+        "WINDOWS_PATH": 0
+      },
+      "pipeline_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 1,
+        "WINDOWS_PATH": 0
+      },
+      "any_pipeline_detection": true,
+      "detections": [
+        {
+          "entity_type": "DATE",
+          "pipeline_count": 1,
+          "annotation_flag": 0,
+          "fp_assessment": "likely_fp",
+          "description": "Date patterns (YYYY-MM-DD, DD/MM/YYYY, etc.). Screenshots may display timestamps, version numbers (e.g. 2024.1.0), or numeric literals that match date regex."
+        }
+      ],
+      "assessment": "POTENTIAL_FALSE_POSITIVES"
+    },
+    {
+      "screenshot_id": "026b2eb2-b5c3-490f-9e63-322262b99068.jpg",
+      "annotation_label": "LOW",
+      "application_context": "",
+      "pipeline_found": true,
+      "ocr_text_length": 1097,
+      "annotation_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 0,
+        "WINDOWS_PATH": 0
+      },
+      "pipeline_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 1,
+        "WINDOWS_PATH": 0
+      },
+      "any_pipeline_detection": true,
+      "detections": [
+        {
+          "entity_type": "DATE",
+          "pipeline_count": 1,
+          "annotation_flag": 0,
+          "fp_assessment": "likely_fp",
+          "description": "Date patterns (YYYY-MM-DD, DD/MM/YYYY, etc.). Screenshots may display timestamps, version numbers (e.g. 2024.1.0), or numeric literals that match date regex."
+        }
+      ],
+      "assessment": "POTENTIAL_FALSE_POSITIVES"
+    },
+    {
+      "screenshot_id": "0273232a-f504-413f-b64f-6e420fcf3184.jpg",
+      "annotation_label": "LOW",
+      "application_context": "",
+      "pipeline_found": true,
+      "ocr_text_length": 431,
+      "annotation_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 0,
+        "WINDOWS_PATH": 0
+      },
+      "pipeline_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 1,
+        "WINDOWS_PATH": 0
+      },
+      "any_pipeline_detection": true,
+      "detections": [
+        {
+          "entity_type": "DATE",
+          "pipeline_count": 1,
+          "annotation_flag": 0,
+          "fp_assessment": "likely_fp",
+          "description": "Date patterns (YYYY-MM-DD, DD/MM/YYYY, etc.). Screenshots may display timestamps, version numbers (e.g. 2024.1.0), or numeric literals that match date regex."
+        }
+      ],
+      "assessment": "POTENTIAL_FALSE_POSITIVES"
+    },
+    {
+      "screenshot_id": "029eefdf-43d2-4a6d-b19f-e53968f27d45.jpg",
+      "annotation_label": "LOW",
+      "application_context": "",
+      "pipeline_found": true,
+      "ocr_text_length": 575,
+      "annotation_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 0,
+        "WINDOWS_PATH": 0
+      },
+      "pipeline_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 1,
+        "WINDOWS_PATH": 0
+      },
+      "any_pipeline_detection": true,
+      "detections": [
+        {
+          "entity_type": "DATE",
+          "pipeline_count": 1,
+          "annotation_flag": 0,
+          "fp_assessment": "likely_fp",
+          "description": "Date patterns (YYYY-MM-DD, DD/MM/YYYY, etc.). Screenshots may display timestamps, version numbers (e.g. 2024.1.0), or numeric literals that match date regex."
+        }
+      ],
+      "assessment": "POTENTIAL_FALSE_POSITIVES"
+    },
+    {
+      "screenshot_id": "02a21f24-9c87-4c14-bfdc-44fdcbd7aa38.jpg",
+      "annotation_label": "LOW",
+      "application_context": "",
+      "pipeline_found": true,
+      "ocr_text_length": 1055,
+      "annotation_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 0,
+        "WINDOWS_PATH": 0
+      },
+      "pipeline_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 1,
+        "WINDOWS_PATH": 0
+      },
+      "any_pipeline_detection": true,
+      "detections": [
+        {
+          "entity_type": "DATE",
+          "pipeline_count": 1,
+          "annotation_flag": 0,
+          "fp_assessment": "likely_fp",
+          "description": "Date patterns (YYYY-MM-DD, DD/MM/YYYY, etc.). Screenshots may display timestamps, version numbers (e.g. 2024.1.0), or numeric literals that match date regex."
+        }
+      ],
+      "assessment": "POTENTIAL_FALSE_POSITIVES"
+    },
+    {
+      "screenshot_id": "02aedc78-27c3-4fb0-84fa-22b7c8cc2442.jpg",
+      "annotation_label": "LOW",
+      "application_context": "",
+      "pipeline_found": true,
+      "ocr_text_length": 800,
+      "annotation_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 0,
+        "WINDOWS_PATH": 0
+      },
+      "pipeline_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 1,
+        "WINDOWS_PATH": 0
+      },
+      "any_pipeline_detection": true,
+      "detections": [
+        {
+          "entity_type": "DATE",
+          "pipeline_count": 1,
+          "annotation_flag": 0,
+          "fp_assessment": "likely_fp",
+          "description": "Date patterns (YYYY-MM-DD, DD/MM/YYYY, etc.). Screenshots may display timestamps, version numbers (e.g. 2024.1.0), or numeric literals that match date regex."
+        }
+      ],
+      "assessment": "POTENTIAL_FALSE_POSITIVES"
+    },
+    {
+      "screenshot_id": "02b09eb1-6029-4bad-a53a-0651b48f0f3f.jpg",
+      "annotation_label": "LOW",
+      "application_context": "",
+      "pipeline_found": true,
+      "ocr_text_length": 1656,
+      "annotation_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 0,
+        "WINDOWS_PATH": 0
+      },
+      "pipeline_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 1,
+        "WINDOWS_PATH": 0
+      },
+      "any_pipeline_detection": true,
+      "detections": [
+        {
+          "entity_type": "DATE",
+          "pipeline_count": 1,
+          "annotation_flag": 0,
+          "fp_assessment": "likely_fp",
+          "description": "Date patterns (YYYY-MM-DD, DD/MM/YYYY, etc.). Screenshots may display timestamps, version numbers (e.g. 2024.1.0), or numeric literals that match date regex."
+        }
+      ],
+      "assessment": "POTENTIAL_FALSE_POSITIVES"
+    },
+    {
+      "screenshot_id": "030418e4-16d0-49e3-bf6f-29da65d0b6fb.jpg",
+      "annotation_label": "LOW",
+      "application_context": "",
+      "pipeline_found": true,
+      "ocr_text_length": 1178,
+      "annotation_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 0,
+        "WINDOWS_PATH": 0
+      },
+      "pipeline_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 1,
+        "WINDOWS_PATH": 0
+      },
+      "any_pipeline_detection": true,
+      "detections": [
+        {
+          "entity_type": "DATE",
+          "pipeline_count": 1,
+          "annotation_flag": 0,
+          "fp_assessment": "likely_fp",
+          "description": "Date patterns (YYYY-MM-DD, DD/MM/YYYY, etc.). Screenshots may display timestamps, version numbers (e.g. 2024.1.0), or numeric literals that match date regex."
+        }
+      ],
+      "assessment": "POTENTIAL_FALSE_POSITIVES"
+    },
+    {
+      "screenshot_id": "03222282-3dd8-4492-b251-d50bfa03d7e9.jpg",
+      "annotation_label": "LOW",
+      "application_context": "",
+      "pipeline_found": true,
+      "ocr_text_length": 1277,
+      "annotation_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 0,
+        "WINDOWS_PATH": 0
+      },
+      "pipeline_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 1,
+        "WINDOWS_PATH": 0
+      },
+      "any_pipeline_detection": true,
+      "detections": [
+        {
+          "entity_type": "DATE",
+          "pipeline_count": 2,
+          "annotation_flag": 0,
+          "fp_assessment": "likely_fp",
+          "description": "Date patterns (YYYY-MM-DD, DD/MM/YYYY, etc.). Screenshots may display timestamps, version numbers (e.g. 2024.1.0), or numeric literals that match date regex."
+        }
+      ],
+      "assessment": "POTENTIAL_FALSE_POSITIVES"
+    },
+    {
+      "screenshot_id": "02a2b06a-c518-4509-8d0c-e167fd425a73.jpg",
+      "annotation_label": "LOW",
+      "application_context": "",
+      "pipeline_found": true,
+      "ocr_text_length": 27,
+      "annotation_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 0,
+        "WINDOWS_PATH": 0
+      },
+      "pipeline_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 0,
+        "WINDOWS_PATH": 0
+      },
+      "any_pipeline_detection": false,
+      "detections": [],
+      "assessment": "CONSISTENT_WITH_ANNOTATION"
+    },
+    {
+      "screenshot_id": "02fa79ba-a144-4448-a4d3-3b166715ce94.jpg",
+      "annotation_label": "LOW",
+      "application_context": "",
+      "pipeline_found": true,
+      "ocr_text_length": 86,
+      "annotation_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 0,
+        "WINDOWS_PATH": 0
+      },
+      "pipeline_flags": {
+        "EMAIL": 0,
+        "PHONE": 0,
+        "URL": 0,
+        "IP_ADDRESS": 0,
+        "DATE": 0,
+        "WINDOWS_PATH": 0
+      },
+      "any_pipeline_detection": false,
+      "detections": [],
+      "assessment": "CONSISTENT_WITH_ANNOTATION"
+    }
+  ]
+}

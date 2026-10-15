@@ -84,6 +84,20 @@ CREATE TABLE IF NOT EXISTS training_run (
     test_macro_f1       REAL,
     test_accuracy       REAL
 );
+
+CREATE TABLE IF NOT EXISTS adaptation_log (
+    id                     INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id                TEXT    NOT NULL,
+    applied_at             TEXT    NOT NULL,
+    trigger_count          INTEGER NOT NULL,
+    feedback_window_size   INTEGER NOT NULL,
+    old_medium_threshold   REAL,
+    old_high_threshold     REAL,
+    new_medium_threshold   REAL    NOT NULL,
+    new_high_threshold     REAL    NOT NULL,
+    rollback_reason        TEXT,
+    FOREIGN KEY (user_id) REFERENCES user_profile(user_id)
+);
 """
 
 

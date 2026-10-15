@@ -1,22 +1,31 @@
 import re
+import secrets
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, field_validator
 
 from backend.database import get_connection, init_db
 from backend.services.feature_extraction import extract_features
-from backend.services.ocr_service import extract_text
+from backend.services.ocr_service import extract_text_with_boxes
 from backend.services.protection import select_protection
 from backend.services.risk_prediction import predict_privacy_risk, reload_bundle
 from backend.services.rule_baseline import predict_rule_based
 from backend.services.sensitive_detection import detect_sensitive_entities
 from backend.services.tokenizer import tokenize as _tokenize_entities
+from backend.services.ner_service import detect_entities_with_scores, high_confidence_entities
+from backend.services.cv_features import extract_visual_features
+from backend.services.redaction import (
+    redact_image,
+    image_to_png_bytes,
+    load_image,
+    compute_redaction_status,
+)
 from backend.services import user_profile_service as ups
 
 
@@ -24,6 +33,19 @@ from backend.services import user_profile_service as ups
 async def _lifespan(app: FastAPI):
     init_db(ups._DB_PATH, ups._PROFILES_DIR)
     yield
+
+
+# In-process store for redacted images keyed by original filename.
+# Max 50 entries to bound memory usage.
+_REDACTED_STORE: dict[str, bytes] = {}
+_REDACTED_STORE_MAX = 50
+
+
+def _get_redacted_store() -> dict[str, bytes]:
+    if len(_REDACTED_STORE) >= _REDACTED_STORE_MAX:
+        oldest_key = next(iter(_REDACTED_STORE))
+        del _REDACTED_STORE[oldest_key]
+    return _REDACTED_STORE
 
 
 app = FastAPI(title="J26-IT-308 CAPRLM Backend", lifespan=_lifespan)
@@ -221,8 +243,12 @@ async def analyze(request: Request):
         temporary_file.write(image_bytes)
         temporary_file.close()
 
-        extracted_text, detections_count = extract_text(temporary_path)
+        extracted_text, detections_count, ocr_detections = extract_text_with_boxes(temporary_path)
         detection_output = detect_sensitive_entities(extracted_text)
+
+        # Contextual NER — confidence-scored entity detection
+        ner_output = detect_entities_with_scores(extracted_text)
+
         extracted_features = extract_features(
             extracted_text, detection_output, application_context
         )
@@ -260,6 +286,47 @@ async def analyze(request: Request):
             confidence=risk_prediction.get("confidence"),
         )
 
+        # Visual features — spatial layout analysis from OCR bounding boxes
+        from PIL import Image as _PIL_Image
+        try:
+            _pil_img = _PIL_Image.open(temporary_path)
+            img_w, img_h = _pil_img.size
+        except Exception:
+            img_w, img_h = 0, 0
+
+        entity_vals = [
+            v for cat, info in detection_output.items()
+            if cat != "total_sensitive_entity_count" and isinstance(info, dict)
+            for v in info.get("matches", [])
+        ]
+        visual_features = extract_visual_features(img_w, img_h, ocr_detections, entity_vals)
+
+        # Pixel-level redaction
+        protection_action = protection_selection.get("protection_action", "MONITOR")
+        redacted_png_bytes: bytes | None = None
+        redacted_regions: list[dict] = []
+        redaction_stats: dict = {}
+        try:
+            from PIL import Image as _PIL_Image2
+            _src_img = _PIL_Image2.open(temporary_path)
+            _redacted_img, redacted_regions, redaction_stats = redact_image(
+                _src_img, ocr_detections, detection_output, protection_action
+            )
+            if redacted_regions:
+                redacted_png_bytes = image_to_png_bytes(_redacted_img)
+        except Exception:
+            redacted_png_bytes = None
+            redacted_regions = []
+            redaction_stats = {}
+
+        # Store redacted image keyed by a random token, NOT the user-supplied
+        # filename.  Using the filename as a key allows any caller who knows
+        # (or guesses) another user's filename to retrieve their redacted image.
+        _redacted_store: dict = _get_redacted_store()
+        _redact_key = secrets.token_hex(16)
+        if redacted_png_bytes is not None:
+            _redacted_store[_redact_key] = redacted_png_bytes
+
         # DB logging uses the original detection_output (original counts are
         # correct; we must not store tokenized values or the token_map).
         _log_analysis(
@@ -280,15 +347,25 @@ async def analyze(request: Request):
                 "detections_count": detections_count,
             },
             "detection_results": tokenized_detection,
+            "ner_summary": {
+                cat: {
+                    "count": info.get("count", 0),
+                    "scored_matches": [
+                        {"confidence": sm["confidence"], "context_trigger": sm["context_trigger"]}
+                        for sm in info.get("scored_matches", [])
+                    ],
+                }
+                for cat, info in ner_output.items()
+                if cat not in ("total_sensitive_entity_count", "ner_method")
+                and isinstance(info, dict)
+            },
             "extracted_features": extracted_features,
+            "visual_features": visual_features,
             "risk_prediction": risk_prediction,
             "rule_baseline": rule_prediction,
             "protection_selection": protection_selection,
             "user_profile_summary": ups.profile_summary(profile),
             "tokenized_summary": {
-                # When tokenization was not applied (low-risk confident prediction or
-                # no entities detected), the raw OCR text is not returned — it may
-                # contain sensitive values that should not appear in API responses.
                 "tokenized_text": (
                     tokenized_text
                     if token_map
@@ -299,6 +376,35 @@ async def analyze(request: Request):
                 "note": (
                     "Token-to-value restoration map is ephemeral and not "
                     "returned. Restoration across requests is not supported."
+                ),
+            },
+            "redaction_summary": {
+                "protection_action":          protection_action,
+                "regions_redacted":           len(redacted_regions),
+                "redacted_image_available":   redacted_png_bytes is not None,
+                "redacted_image_endpoint": (
+                    f"/redacted-image?id={_redact_key}"
+                    if redacted_png_bytes is not None
+                    else None
+                ),
+                "entities_detected":          redaction_stats.get("entities_detected", 0),
+                "entities_mapped":            redaction_stats.get("entities_mapped", 0),
+                "entities_unmapped":          redaction_stats.get("entities_unmapped", 0),
+                "fragmented_matches":         redaction_stats.get("fragmented_matches", 0),
+                "unmapped_entity_categories": redaction_stats.get("unmapped_entity_categories", []),
+                "redaction_status": compute_redaction_status(
+                    protection_action,
+                    redaction_stats.get("entities_detected", 0),
+                    redaction_stats.get("entities_mapped", 0),
+                    redaction_stats.get("entities_unmapped", 0),
+                ),
+                "note": (
+                    "Retrieve the pixel-redacted image via the endpoint above. "
+                    "The original screenshot is not stored or returned."
+                ) if redacted_png_bytes is not None else (
+                    "No pixel redaction applied."
+                    if protection_action == "MONITOR"
+                    else f"No redactable regions identified for action {protection_action}."
                 ),
             },
         }
@@ -403,6 +509,66 @@ async def train(request: Request):
 # ---------------------------------------------------------------------------
 # /model-info — model metadata (no retrain; safe for any caller)
 # ---------------------------------------------------------------------------
+
+@app.get("/redacted-image")
+async def get_redacted_image(id: str):
+    """
+    Return the pixel-redacted PNG produced by the most recent /analyze call
+    for the given screenshot filename.
+
+    The redacted image is held in process memory; it is not persisted to disk.
+    Sensitive source images are never stored by this endpoint.
+    """
+    if not id or not id.strip():
+        raise HTTPException(status_code=400, detail="id parameter is required.")
+    png = _REDACTED_STORE.get(id.strip())
+    if png is None:
+        raise HTTPException(
+            status_code=404,
+            detail="No redacted image found for this id. Run /analyze first.",
+        )
+    return Response(content=png, media_type="image/png")
+
+
+@app.get("/user/calibration-history")
+async def calibration_history(user_id: str, limit: int = 10):
+    """Return adaptation log entries for a user (newest first)."""
+    if not user_id or not user_id.strip():
+        raise HTTPException(status_code=400, detail="user_id is required.")
+    try:
+        history = ups.get_adaptation_history(user_id.strip(), limit=min(limit, 100))
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return {"user_id": user_id.strip(), "adaptation_history": history}
+
+
+class RollbackRequest(BaseModel):
+    user_id: str
+    reason: str = "manual_rollback"
+
+    @field_validator("user_id")
+    @classmethod
+    def _validate_user_id(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("user_id must not be empty.")
+        return v.strip()
+
+
+@app.post("/user/rollback")
+async def rollback_calibration(payload: RollbackRequest):
+    """
+    Roll back a user's threshold calibration to the previous safe state.
+    Writes a rollback event to adaptation_log for reproducibility.
+    """
+    try:
+        updated = ups.rollback_calibration(payload.user_id, reason=payload.reason)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return {
+        "status": "rolled_back",
+        "user_profile_summary": ups.profile_summary(updated),
+    }
+
 
 @app.get("/model-info")
 async def model_info():
