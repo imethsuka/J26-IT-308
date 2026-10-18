@@ -11,6 +11,7 @@ from datetime import datetime, timedelta, timezone
 import numpy as np
 import pytest
 
+from models import registry
 from adaptation.host_state import HostReadiness, check_host_ready
 from adaptation.scheduled_job import (
     CycleConfig,
@@ -147,10 +148,12 @@ def test_full_cycle_runs_all_stages_in_order_and_deploys(conn, tmp_path) -> None
     summary = run_cycle(conn, cfg(tmp_path), now=NOW)
 
     assert summary.error is None
-    # All five stages present.
+    # All stages present, the challengers after the LightGBM gate.
     assert list(summary.stages.keys()) == [
-        "label_construction", "prototype_learning", "retrain", "drift_check", "validation",
+        "label_construction", "prototype_learning", "retrain", "drift_check", "validation", "challengers",
     ]
+    assert set(summary.stages["challengers"]) == set(registry.CHALLENGERS)
+    assert not any("error" in r for r in summary.stages["challengers"].values())
     assert summary.contexts_labelled == N_LABELLABLE   # the tail block is not labelled
     assert summary.stages["label_construction"]["important"] == N_IMPORTANT
     # Of the two tail records, the one at +152h is due but censored; the one at +153h is not yet

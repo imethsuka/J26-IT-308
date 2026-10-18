@@ -39,6 +39,8 @@ from pathlib import Path
 from typing import Any, Callable
 
 from app_paths import default_run_log_path
+from models import registry
+from models.challengers import with_embedding
 from models.lightgbm_model import DEFAULT_VERSIONS_DIR, ImportanceModel
 from models.rule_based import RuleBasedImportanceScorer
 
@@ -86,6 +88,8 @@ class CycleConfig:
     summarizer: Any = None
     # Optional stage 8: a title, tag and TLDR per work session and a recap per day (adaptation.rollups), from stage 7's sentences.
     rollups: Any = None
+    # Stage 5b: train the other models too (models.registry.CHALLENGERS), for shadow mode and the benchmark page.
+    challengers: bool = True
 
 
 @dataclass
@@ -139,11 +143,42 @@ def run_if_ready(
     summary = run_cycle(conn, config, now=now, base_summary=summary, load_incumbent_fn=load_incumbent_fn)
     if config.screen_memory is not None:
         _run_screen_memory_stage(config, summary, now)
-    if config.summarizer is not None:
-        _run_summarizer_stage(config, summary)
-    if config.rollups is not None:
-        _run_rollups_stage(config, summary)
+    if config.summarizer is not None or config.rollups is not None:
+        busy = None if force else _llm_load_check(config)
+        if busy is not None:
+            logger.info("memory model not started: %s", busy)
+            summary.stages["summaries"] = {"skipped": busy}
+        else:
+            try:
+                if config.summarizer is not None:
+                    _run_summarizer_stage(config, summary)
+                if config.rollups is not None:
+                    _run_rollups_stage(config, summary)
+            finally:
+                _close_model(config)  # nothing stays in RAM or VRAM between runs
     return summary
+
+
+def _llm_model(config: CycleConfig) -> Any:
+    stage = config.summarizer or config.rollups
+    return getattr(stage, "model_factory", None)
+
+
+def _llm_load_check(config: CycleConfig) -> str | None:
+    """Why the PC is too busy for the local model right now, or None. A failed measurement does not block the run."""
+    from .host_state import check_light_load
+
+    model = _llm_model(config)
+    try:
+        return check_light_load(getattr(model, "size_bytes", 0))
+    except (OSError, NotImplementedError):
+        return None
+
+
+def _close_model(config: CycleConfig) -> None:
+    close = getattr(_llm_model(config), "close", None)
+    if close is not None:
+        close()
 
 
 def _run_rollups_stage(config: CycleConfig, summary: RunSummary) -> None:
@@ -209,6 +244,9 @@ def run_cycle(
 
     from storage.context_store import list_context_records, list_model_versions
 
+    from features import surfaces
+    from features.feature_assembly import refresh_revisit_features
+
     wall_start = datetime.now(timezone.utc)
     summary = base_summary or RunSummary(started_at=wall_start)
     logical_now = now or summary.started_at
@@ -233,7 +271,10 @@ def run_cycle(
         newly_labelled_ids = [rid for rid, _ in labelled]
         summary.contexts_labelled = len(labelled)
 
-        records = list_context_records(conn)
+        # Older records include shell surfaces and this app's own window, which the worker no longer stores, and
+        # revisit features from the old 200-snapshot history. Train on what the worker serves now.
+        records = [r for r in list_context_records(conn) if not surfaces.is_non_context(r.app, r.title)]
+        refresh_revisit_features(records)
         by_id = {r.id: r for r in records}
         labelled_records = [r for r in records if r.label is not None]
 
@@ -360,11 +401,17 @@ def run_cycle(
         # With no deployed model the worker serves the rule-based baseline (see
         # pipeline.load_active_scorer), so that is what the candidate has to beat.
         current = incumbent if incumbent is not None else RuleBasedImportanceScorer()
-        holdout = [(r.features, r.label) for r in holdout_records]
+        # The embedding rides along in memory for the models that use it (models.challengers.EMBEDDING_KEY).
+        holdout = [(with_embedding(r.features, r.embedding), r.label) for r in holdout_records]
+        # The gate only upgrades the champion within its own family: a champion chosen on the dashboard is never
+        # replaced by another kind of model automatically.
+        champion_algorithm = _champion_algorithm(conn)
         decision = validate_and_maybe_deploy(
             candidate, current, holdout, conn=conn, candidate_version=candidate_version,
             primary_metric=config.primary_metric, threshold=config.threshold, algorithm="lightgbm",
             notes=f"scheduled cycle {logical_now.isoformat()}",
+            deploy_allowed=champion_algorithm == "lightgbm",
+            not_allowed_reason=f"challenger: the champion is {champion_algorithm}",
         )
         summary.stages["validation"] = {
             "deployed": decision.deployed, "reason": decision.reason,
@@ -373,12 +420,83 @@ def run_cycle(
         }
         summary.decision = "deploy" if decision.deployed else "keep"
 
+        # --- Stage 5b: challengers (the other models, for shadow mode and the benchmark) ----------
+        if config.challengers:
+            deployed_challenger = _train_challengers(
+                conn, config, summary, train_records, holdout, current, proto_result,
+                stamp=candidate_version.removeprefix("lightgbm-"), champion_algorithm=champion_algorithm,
+                notes=f"scheduled cycle {logical_now.isoformat()}",
+            )
+            if deployed_challenger:
+                summary.decision = "deploy"
+
     except Exception as exc:  # a scheduled job must not crash the scheduler/loop; record and move on
         logger.exception("adaptation cycle failed")
         summary.error = f"{type(exc).__name__}: {exc}"
         summary.decision = "error"
 
     return summary.finalize(datetime.now(timezone.utc))
+
+
+def _champion_algorithm(conn) -> str:
+    """The champion's family: the active version's algorithm, or LightGBM at cold start (the gate then measures
+    LightGBM against the rule-based baseline, as before challengers)."""
+    from storage.context_store import get_active_model_version
+
+    active = get_active_model_version(conn)
+    return registry.algorithm_of(active.algorithm) if active is not None else registry.LIGHTGBM
+
+
+def _train_challengers(conn, config: CycleConfig, summary: RunSummary, train_records, holdout, current, proto_result,
+                       *, stamp: str, champion_algorithm: str, notes: str) -> bool:
+    """Train, save and grade every challenger on the same split as LightGBM. Each becomes a version (inactive unless it
+    is the champion's family and strictly better than the champion). River continues from its newest version with
+    only the labels it has not seen. One failing challenger never stops the others or the cycle. Returns whether one
+    was deployed."""
+    import pandas as pd
+
+    from storage.context_store import latest_versions_by_algorithm
+
+    frame = pd.DataFrame({
+        "features": [r.features for r in train_records], "embedding": [r.embedding for r in train_records],
+        "label": [r.label for r in train_records], "ts": [r.ts for r in train_records],
+    })
+    report: dict[str, Any] = {}
+    deployed = False
+    for algorithm in registry.CHALLENGERS:
+        started = time.perf_counter()
+        version = f"{algorithm}-{stamp}"
+        try:
+            if algorithm == "river_arf":
+                previous = latest_versions_by_algorithm(conn).get(algorithm)
+                scorer = (registry.load_scorer(algorithm, previous.version, config.versions_dir)
+                          if previous is not None else registry.new_scorer(algorithm))
+                learned = scorer.learn(frame)
+                info = {"continued_from": previous.version if previous else None, "newly_learned": learned}
+            else:
+                scorer, info = registry.train_scorer(algorithm, frame)
+            registry.save_scorer(scorer, algorithm, version, config.versions_dir)
+            if proto_result is not None:  # any model can become champion, so each version carries the prototypes
+                save_prototypes(proto_result, version, versions_dir=config.versions_dir, metadata={"source_model": version})
+            decision = validate_and_maybe_deploy(
+                scorer, current, holdout, conn=conn, candidate_version=version, primary_metric=config.primary_metric,
+                threshold=config.threshold, algorithm=algorithm, notes=notes,
+                deploy_allowed=algorithm == champion_algorithm,
+                not_allowed_reason=f"challenger: the champion is {champion_algorithm}",
+            )
+            deployed = deployed or decision.deployed
+            report[algorithm] = {
+                "version": version, "deployed": decision.deployed, "score": decision.candidate_score,
+                "seconds": round(time.perf_counter() - started, 1),
+                **{k: v for k, v in info.items() if k in ("n_train", "continued_from", "newly_learned")},
+            }
+        except Exception as exc:
+            logger.exception("challenger %s failed", algorithm)
+            report[algorithm] = {"error": f"{type(exc).__name__}: {exc}"}
+    summary.stages["challengers"] = report
+    logger.info("challengers: %s", ", ".join(
+        f"{a} {r['score']:.3f}" if r.get("score") is not None else f"{a} {r.get('error', 'no score')}" for a, r in report.items()))
+    return deployed
 
 
 def _temporal_split(records, holdout_fraction: float, *, horizon: timedelta = DEFAULT_LABEL_HORIZON):
@@ -420,10 +538,10 @@ def _resolve_incumbent(conn, config: CycleConfig, load_incumbent_fn: LoadIncumbe
         return None
     if load_incumbent_fn is not None:
         return load_incumbent_fn(active.version)
-    # Default: load a saved LightGBM artifact for the active version, if one exists.
+    # Default: load the saved artifact of the active version, whatever its algorithm, if one exists.
     try:
-        return ImportanceModel.load(active.version, versions_dir=config.versions_dir)
-    except (FileNotFoundError, ValueError):
+        return registry.load_scorer(active.algorithm, active.version, config.versions_dir)
+    except (FileNotFoundError, ValueError, ImportError):
         return None
 
 
@@ -452,6 +570,7 @@ def _build_config(args: argparse.Namespace) -> CycleConfig:
         idle_seconds=args.idle_seconds,
         require_ac=not args.no_require_ac,
         versions_dir=Path(args.versions_dir) if args.versions_dir else DEFAULT_VERSIONS_DIR,
+        challengers=not args.no_challengers,
         require_new_labels=not args.retrain_without_new_labels,
         screen_memory=_build_screen_memory(args),
         summarizer=summarizer,
@@ -464,21 +583,18 @@ def _build_llm_stages(args: argparse.Namespace):
     if not getattr(args, "summarize", False):
         return None, None
     model_path = Path(args.llm_model) if args.llm_model else None
-    if model_path is None or not model_path.is_file():
+    if model_path is None or not (model_path.is_file() or any(model_path.glob("*.gguf"))):
         logger.warning("--summarize given but the language model file was not found (%s): summaries are skipped", model_path)
         return None, None
     from storage.memory_store import MemoryStore, memory_path_for
 
+    from .llm_runtime import LocalModel
     from .rollups import RollupConfig, RollupJob
-    from .summarizer import LlamaCppModel, SummarizeConfig, SummarizeJob
+    from .summarizer import SummarizeConfig, SummarizeJob
 
     memory = MemoryStore(args.memory_db or memory_path_for(args.db))
-    loaded: list[Any] = []
-
-    def shared_model():
-        if not loaded:
-            loaded.append(LlamaCppModel(model_path))
-        return loaded[0]
+    # Started on first use on a dedicated GPU or the CPU, paused if the user comes back, stopped after each run.
+    shared_model = LocalModel(model_path, background=not args.force)
 
     return (SummarizeJob(memory=memory, model_factory=shared_model, config=SummarizeConfig(max_entries=args.summary_max_entries)),
             RollupJob(memory=memory, model_factory=shared_model, config=RollupConfig()))
@@ -519,7 +635,11 @@ def _build_screen_memory(args: argparse.Namespace):
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="adapt.exe memory-llm --memory-db ... --llm-model ...: only write memory sentences and notes (memory_llm.py). "
+               "adapt.exe champion --db ... set <version>: make a saved model the champion (adaptation/champion.py)",
+    )
     parser.add_argument("--db", required=True, help="path to the SQLite context store")
     parser.add_argument("--summary-log", default=default_run_log_path(), help="JSONL file to append run summaries to")
     parser.add_argument("--force", action="store_true", help="run even if the host is not idle / on battery")
@@ -538,6 +658,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--holdout-fraction", type=float, default=0.2)
     parser.add_argument("--primary-metric", default=DEFAULT_PRIMARY_METRIC, choices=list(PRIMARY_METRICS))
     parser.add_argument("--versions-dir", default=None)
+    parser.add_argument("--no-challengers", action="store_true",
+                        help="train LightGBM only (by default every challenger model is trained too, for shadow mode)")
     parser.add_argument("--retrain-without-new-labels", action="store_true",
                         help="retrain even if nothing was labelled since the last candidate")
     parser.add_argument("--screen-memory", action="store_true",
@@ -550,7 +672,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="DEV ONLY: use no redaction. Without a privacy filter no screen text is stored")
     parser.add_argument("--summarize", action="store_true",
                         help="also write a sentence for each important memory with a local language model (needs --llm-model)")
-    parser.add_argument("--llm-model", default=None, help="path to a GGUF chat model, run locally with llama.cpp")
+    parser.add_argument("--llm-model", default=None,
+                        help="a GGUF chat model, or a folder of them (the GPU gets the largest that fits, the CPU the smallest)")
     parser.add_argument("--summary-max-entries", type=int, default=25, help="most memories to summarise per run")
     parser.add_argument("--sm-high-threshold", type=float, default=0.5, help="episode importance for the high tier")
     parser.add_argument("--sm-medium-threshold", type=float, default=0.2, help="episode importance for the medium tier")

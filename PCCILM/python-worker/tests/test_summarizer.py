@@ -52,6 +52,7 @@ def memory(tmp_path):
 
 
 def job(memory, model, **cfg):
+    cfg.setdefault("min_words", 0)  # the sample pages are a sentence long; the minimum has tests of its own
     return SummarizeJob(memory=memory, model_factory=lambda: model, config=SummarizeConfig(**cfg))
 
 
@@ -158,11 +159,12 @@ def test_long_pages_keep_their_start_and_their_end():
     assert select_text("tiny page", 1000) == "tiny page"
 
 
-def test_prompt_survives_missing_facts_and_notes_repeat_visits():
+def test_prompt_survives_missing_facts_and_leaves_out_visits_and_the_browser():
     _, bare = build_prompt({}, "some text here")
     assert bare == "Page text:\nsome text here"
-    _, again = build_prompt({"title": "Plan", "visit_number": 3}, "x")
-    assert "visit number 3" in again
+    _, again = build_prompt({"title": "Plan - Personal - Microsoft​ Edge", "visit_number": 3}, "x")
+    assert "visit" not in again                        # it was parroted back as "You visited page 3"
+    assert again.startswith("Page title: Plan\n")      # without the browser and profile
 
 
 def test_text_stored_without_a_real_filter_is_never_summarised(memory):

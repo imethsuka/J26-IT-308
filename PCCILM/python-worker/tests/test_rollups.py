@@ -122,7 +122,7 @@ def test_a_closed_session_gets_a_note_and_the_day_gets_a_recap(memory):
     assert note == {"title": "Reviewing the payroll plan", "tag": "finance", "tldr": "You read the payroll plan. You noted the review dates."}
     assert (report["session_notes"], report["day_notes"], report["model"]) == (1, 1, "fake-1b")
     assert "You read the payroll plan." in model.prompts[0][1]            # the entry's own summary is what the model sees
-    assert "“Page 2” in msedge (1 visit, 5 min)" in model.prompts[0][1]   # the entry without one falls back to the facts
+    assert "- “Page 2” in msedge (5 min)" in model.prompts[0][1]          # the entry without one: its title and time
     assert memory.day_note_key("2026-10-20") is not None
 
 
@@ -215,7 +215,7 @@ def test_the_prompt_lists_each_page_once_with_its_totals(memory):
     run_rollups(job(memory, model), now=NOW, tz=UTC)
 
     user = model.prompts[0][1]
-    assert user.count("Budget sheet") == 1 and "6 visits, 30 min" in user
+    assert user.count("Budget sheet") == 1 and "“Budget sheet” in msedge (30 min)" in user
     assert "You wrote up the budget review." in user
 
 
@@ -228,5 +228,5 @@ def test_the_prompt_lists_each_page_once_with_its_totals(memory):
     run_rollups(job(memory, model), now=NOW, tz=UTC)
 
     user = model.prompts[0][1]
-    assert user.count("Budget sheet") == 1 and "6 visits, 30 min" in user
+    assert user.count("Budget sheet") == 1 and "“Budget sheet” in msedge (30 min)" in user
     assert "You wrote up the budget review." in user

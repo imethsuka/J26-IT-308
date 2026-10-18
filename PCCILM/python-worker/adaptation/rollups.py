@@ -1,8 +1,13 @@
 """Stage 8: a title, a tag and a short TLDR for each work session, and a recap for each day.
 
-Input is only what is already in ``memory.db``: the entries' own facts (app, site, page title, time spent) and the sentences
-stage 7 wrote (or, where there is none yet, a sentence built from the facts alone). No page text is read here, so this stage
-never touches anything the privacy filter has not already cleaned.
+Input is what is already in ``memory.db``: the entries' own facts (app, site, page title, time spent), the sentences stage 7
+wrote, and, for the pages the most time went to that have no sentence, a short cleaned excerpt of the stored page. That page
+text went through the privacy filter before it was stored, exactly like the text stage 7 reads.
+
+What the notes are for: a person scanning their day wants *what they worked on*, not which windows were open. Measured on
+the author's notes (2026-10-24), the earlier prompt produced lists of apps and minutes ("You visited Microsoft Edge for 1
+minute, then...") and every day recap was a word-for-word copy of one session note. So pages are ranked by time spent, the
+prompt asks for the subject, and a recap that copies a session note is replaced by one built from the session titles.
 
 A *session* is a run of important (high or medium) entries with no gap longer than 30 minutes and no more than 60 minutes
 from its first entry to the start of its last. The dashboard groups entries the
@@ -22,17 +27,24 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable
 
+from features.titles import display_title
 from storage.memory_store import MemoryStore
 
-from .summarizer import LanguageModel
+from .page_text import readable
+from .summarizer import LanguageModel, ModelPaused, strip_markdown
 
 logger = logging.getLogger(__name__)
 
 GAP = timedelta(minutes=30)
+# Bump when the note prompts or rules change: notes written under an older version are rewritten, a few per run.
+# 2 (2026-10-24): pages ranked by time with excerpts, subject-not-apps prompt, recaps that copy a session are replaced.
+NOTES_VERSION = 2
 MAX_SPAN = timedelta(minutes=60)      # a session is also cut when it has run this long since its first entry
 
 SESSION_SYSTEM = (
-    "You summarise one work session from a list of short notes about what a person did on their computer. "
+    "You summarise one stretch of computer work from notes about the pages a person spent time on, longest first. "
+    "Say what they were working on, reading, learning or watching: the subject and the goal, not the apps, windows or "
+    "minutes (those are shown elsewhere). If they did two or three separate things, name each one. "
     "Reply in exactly this format, with nothing else:\n"
     "TITLE: three to seven words naming the work\n"
     "TAG: one lower-case word for the topic\n"
@@ -42,8 +54,10 @@ SESSION_SYSTEM = (
 )
 
 DAY_SYSTEM = (
-    "You recap one day from a list of work sessions, each with a title and a short summary. Write about \"you\", never \"I\". "
-    "Write three short plain sentences in the past tense, starting with \"You\", covering the main things done that day. "
+    "You recap one day from a list of work sessions, each with a title, the time spent and a short summary. "
+    "Write about \"you\", never \"I\". Write three short plain sentences in the past tense, starting with \"You\", that "
+    "combine the sessions into the main things done that day, the ones with the most time first. Do not copy any one "
+    "session's summary. "
     "Use only the sessions given. Do not invent anything. Words like [PERSON_1] stand for hidden details: never guess them. "
     "No lists, no headings."
 )
@@ -62,6 +76,8 @@ class Item:
     seconds: float
     visit: int
     sentence: str            # the model's summary when there is one, else built from the facts
+    doc_id: str = ""
+    excerpt: str = ""        # a short cleaned piece of the page, for a top page that has no model sentence
 
 
 @dataclass
@@ -88,7 +104,7 @@ def session_key(entry_ids: list[int]) -> str:
 
 def plain_sentence(app: str, domain: str, title: str, seconds: float, visit: int) -> str:
     """The sentence the dashboard shows for an entry with no summary. Mirrors ``MemoryRow.Headline`` in C#."""
-    what = f"“{title.strip()}”" if title and title.strip() else "a page"
+    what = f"“{display_title(title)}”" if display_title(title) else "a page"
     where = app if not domain or domain == "-" else f"{app} ({domain})"
     spent = "under a minute" if seconds < 60 else f"{round(seconds / 60)} min"
     return f"Spent {spent} on {what} in {where}" + (f", visit {visit}" if visit > 1 else "") + "."
@@ -115,7 +131,7 @@ def to_items(rows: list[dict[str, Any]]) -> list[Item]:
         app, domain, title = e.get("app") or "", e.get("domain") or "", e.get("title") or ""
         summary = (r.get("summary") or "").strip()
         items.append(Item(r["id"], start, end, app, domain, title, r["tier"], r["importance"], seconds, visit,
-                          summary or plain_sentence(app, domain, title, seconds, visit)))
+                          summary or plain_sentence(app, domain, title, seconds, visit), doc_id=e.get("doc_id") or ""))
     return sorted(items, key=lambda i: (i.start, i.id))
 
 
@@ -136,28 +152,50 @@ def group_sessions(items: list[Item], gap: timedelta = GAP, max_span: timedelta 
     return sessions
 
 
-def _lines(items: list[Item], tz, limit: int = 14) -> str:
-    """One line per page (app + title), most important first, then back in time order. Repeated visits are counted, not repeated:
-    sixty near-identical lines gave the model nothing to summarise. A model sentence is used where the page has one."""
+def pages_by_time(items: list[Item]) -> list[list[Item]]:
+    """The session's pages (same app and title), the one with the most time first. Repeated visits are one page: sixty
+    near-identical lines gave the model nothing to summarise."""
     pages: dict[tuple[str, str], list[Item]] = {}
     for i in items:
-        pages.setdefault((i.app, i.title.strip()), []).append(i)
-    ranked = sorted(pages.values(), key=lambda g: sum(i.importance or 0 for i in g), reverse=True)[:limit]
-    ranked.sort(key=lambda g: g[0].start)
+        pages.setdefault((i.app, display_title(i.title)), []).append(i)
+    return sorted(pages.values(), key=lambda g: (sum(i.seconds for i in g), sum(i.importance or 0 for i in g)), reverse=True)
+
+
+def _lines(items: list[Item], tz, limit: int = 12) -> str:
+    """One line per page, longest first: its title, the model's sentence when it has one (else a short excerpt of the page),
+    and the time spent."""
     lines = []
-    for g in ranked:
+    for g in pages_by_time(items)[:limit]:
         written = [i.sentence for i in g if i.sentence and not i.sentence.startswith("Spent ")]
+        excerpt = next((i.excerpt for i in g if i.excerpt), "")
+        title = display_title(g[0].title) or "untitled"
         minutes = round(sum(i.seconds for i in g) / 60)
-        if written:
-            text = written[-1]
-        else:
-            what = f"“{g[0].title.strip()}”" if g[0].title.strip() else "a page"
-            text = f"{what} in {g[0].app}"
-        visits = f"{len(g)} visit{'' if len(g) == 1 else 's'}"
         spent = f"{minutes} min" if minutes >= 1 else "under a minute"
-        extra = f" ({visits}, {spent})"
-        lines.append(f"- {g[0].start.astimezone(tz):%H:%M} {text}{extra}")
+        detail = written[-1] if written else (f"page text: {excerpt}" if excerpt else "")
+        lines.append(f"- “{title}” in {g[0].app} ({spent})" + (f": {detail}" if detail else ""))
     return "\n".join(lines)
+
+
+EXCERPT_CHARS = 300
+
+
+def add_excerpts(sessions: list[Session], memory: MemoryStore, *, per_session: int = 4) -> None:
+    """Give the longest pages without a model sentence a short excerpt of their stored (filtered) text, so the note can say
+    what they were about. At most ``per_session`` pages per session, each page read once."""
+    cache: dict[str, str] = {}
+    for session in sessions:
+        for g in pages_by_time(session.items)[:per_session]:
+            if any(i.sentence and not i.sentence.startswith("Spent ") for i in g):
+                continue
+            doc_id = next((i.doc_id for i in g if i.doc_id), "")
+            if not doc_id:
+                continue
+            if doc_id not in cache:
+                stored = memory.load_document(doc_id)
+                text = readable(stored.document.text()) if stored is not None else ""
+                cache[doc_id] = " ".join(text.split())[:EXCERPT_CHARS]
+            for i in g:
+                i.excerpt = cache[doc_id]
 
 
 def session_prompt(session: Session, tz=None) -> tuple[str, str]:
@@ -166,8 +204,34 @@ def session_prompt(session: Session, tz=None) -> tuple[str, str]:
 
 
 def day_prompt(day: str, notes: list[dict[str, str]]) -> tuple[str, str]:
-    body = "\n".join(f"- {n['time']} {n['title']}: {n['tldr']}" for n in notes)
-    return DAY_SYSTEM, f"Day {day}. Sessions:\n{body}"
+    ranked = sorted(notes, key=lambda n: float(n.get("minutes") or 0), reverse=True)
+    body = "\n".join(f"- {n['title']} ({_minutes(n.get('minutes'))}): {n['tldr']}" for n in ranked)
+    return DAY_SYSTEM, f"Day {day}. Sessions, most time first:\n{body}"
+
+
+def _minutes(value: Any) -> str:
+    m = round(float(value or 0))
+    return "under a minute" if m < 1 else f"{m} min" if m < 90 else f"{m / 60:.1f} h"
+
+
+def copies_a_note(recap: str, notes: list[dict[str, str]], *, run: int = 8) -> bool:
+    """True when ``run`` words in a row of the recap come from one session's TLDR: the model copied instead of combining."""
+    words = re.findall(r"\w+", recap.lower())
+    for n in notes:
+        tldr = " " + " ".join(re.findall(r"\w+", (n.get("tldr") or "").lower())) + " "
+        if any(" " + " ".join(words[i:i + run]) + " " in tldr for i in range(0, max(0, len(words) - run + 1))):
+            return True
+    return False
+
+
+def plain_day_recap(notes: list[dict[str, str]]) -> str | None:
+    """A recap built from the facts: the sessions with the most time, by title. Used when the model's recap is unusable."""
+    ranked = [n for n in sorted(notes, key=lambda n: float(n.get("minutes") or 0), reverse=True) if n.get("title")][:3]
+    if not ranked:
+        return None
+    parts = [f"{n['title']} ({_minutes(n.get('minutes'))})" for n in ranked]
+    joined = parts[0] if len(parts) == 1 else ", ".join(parts[:-1]) + " and " + parts[-1]
+    return f"Most of your time went to {joined}."
 
 
 _FIELD = re.compile(r"^\s*(TITLE|TAG|TLDR)\s*:\s*(.+?)\s*$", re.IGNORECASE | re.MULTILINE)
@@ -176,7 +240,7 @@ _FIELD = re.compile(r"^\s*(TITLE|TAG|TLDR)\s*:\s*(.+?)\s*$", re.IGNORECASE | re.
 def parse_session_note(raw: str) -> tuple[str, str, str] | None:
     """(title, tag, tldr), or None if there is no usable title and text. The model sometimes leaves out the ``TLDR:`` label
     and just writes the sentences after the tag line; that is accepted."""
-    text = re.sub(r"[`*#]+", "", raw or "")
+    text = strip_markdown(raw)
     found = {m.group(1).upper(): m.group(2) for m in _FIELD.finditer(text)}
     title = (found.get("TITLE") or "").strip(" .\"'“”")
     tag = re.sub(r"[^a-z0-9-]", "", (found.get("TAG") or "").strip().lower().split(" ")[0]) if found.get("TAG") else ""
@@ -201,7 +265,7 @@ _FIRST_PERSON = re.compile(r"\b(I|me|my|myself|I'm|I've)\b")
 
 
 def clean_text(raw: str, *, sentences: int, max_chars: int) -> str | None:
-    text = re.sub(r"\s+", " ", re.sub(r"[`*#]+", "", raw or "")).strip().strip("\"'“”")
+    text = re.sub(r"\s+", " ", strip_markdown(raw)).strip().strip("\"'“”")
     if len(text) < 15 or re.search(r"\b(as an ai|i cannot|i can't|i'm sorry|unable to)\b", text, re.IGNORECASE):
         return None
     if _FIRST_PERSON.search(text):          # the notes are about "you"; a model that writes "I spent..." has lost the thread
@@ -236,19 +300,23 @@ def run_rollups(job: RollupJob, *, now: datetime | None = None, tz=None) -> dict
     report["sessions_seen"] = len(sessions)
     closed = [s for s in sessions if now - s.last > cfg.gap]            # an open session is still growing: wait
     have = memory.session_note_keys()
-    todo = [s for s in closed if s.key not in have][-cfg.max_sessions:]
+    current = memory.session_note_keys(min_version=NOTES_VERSION)
+    todo = [s for s in closed if s.key not in current]
+    todo = ([s for s in todo if s.key not in have] + [s for s in todo if s.key in have])[-cfg.max_sessions:]  # new ones first
 
     days: dict[str, list[Session]] = {}
     for s in closed:
         days.setdefault(s.day(tz), []).append(s)
     day_jobs = {d: ss for d, ss in days.items()
-                if memory.day_note_key(d) != session_key_of_sessions(ss) and all(x.key in have or x in todo for x in ss)}
+                if memory.day_note_key(d, min_version=NOTES_VERSION) != session_key_of_sessions(ss)
+                and all(x.key in current or x in todo for x in ss)}
     if not todo and not day_jobs:
         memory.prune_notes(before_us=int((now - timedelta(days=90)).timestamp() * 1_000_000))
         return report
 
     llm = job.model_factory()
     report["model"] = llm.name
+    add_excerpts(todo, memory)
     try:
         for s in todo:
             system, user = session_prompt(s, tz)
@@ -256,8 +324,12 @@ def run_rollups(job: RollupJob, *, now: datetime | None = None, tz=None) -> dict
             title, tag, tldr = parsed if parsed else (None, None, None)
             memory.save_session_note(
                 key=s.key, day=s.day(tz), first_ts=int(s.first.timestamp() * 1_000_000), last_ts=int(s.last.timestamp() * 1_000_000),
-                n_entries=len(s.items), title=title or None, tag=tag or None, tldr=tldr, model=llm.name if parsed else None)
+                n_entries=len(s.items), title=title or None, tag=tag or None, tldr=tldr, model=llm.name if parsed else None,
+                version=NOTES_VERSION)
             report["session_notes" if parsed else "unusable"] += 1
+    except ModelPaused as why:     # stopped on purpose: keep what was written, the rest waits for the next run
+        report["paused"] = str(why)
+        return report
     except Exception as exc:       # the model broke: keep what was written, retry the rest next run
         logger.warning("rollup model failed (%s)", type(exc).__name__)
         report["failed"] += 1
@@ -269,14 +341,21 @@ def run_rollups(job: RollupJob, *, now: datetime | None = None, tz=None) -> dict
         for d, ss in sorted(day_jobs.items()):
             notes = memory.get_session_notes([x.key for x in ss])
             usable = [{"time": f"{x.first.astimezone(tz):%H:%M}", "title": notes[x.key]["title"] or _best_title(x),
-                       "tldr": notes[x.key]["tldr"]}
+                       "tldr": notes[x.key]["tldr"], "minutes": sum(i.seconds for i in x.items) / 60}
                       for x in ss if x.key in notes and notes[x.key]["tldr"]]
             if not usable:
                 continue
             system, user = day_prompt(d, usable)
             tldr = clean_text(llm.complete(system, user, max_tokens=200), sentences=3, max_chars=600)
-            memory.save_day_note(day=d, sessions_key=session_key_of_sessions(ss), tldr=tldr, model=llm.name if tldr else None)
+            model = llm.name
+            if tldr is None or (len(usable) > 1 and copies_a_note(tldr, usable)):
+                tldr, model = plain_day_recap(usable), None       # built from the facts, so not labelled as the model's
+                report["day_notes_plain"] = report.get("day_notes_plain", 0) + 1
+            memory.save_day_note(day=d, sessions_key=session_key_of_sessions(ss), tldr=tldr, model=model if tldr else None,
+                                 version=NOTES_VERSION)
             report["day_notes" if tldr else "unusable"] += 1
+    except ModelPaused as why:
+        report["paused"] = str(why)
     except Exception as exc:
         logger.warning("day recap model failed (%s)", type(exc).__name__)
         report["failed"] += 1
@@ -290,6 +369,6 @@ def session_key_of_sessions(sessions: list[Session]) -> str:
 
 
 def _best_title(session: Session) -> str:
-    """The most important page's title: what the dashboard shows when the model gave the session no usable title."""
-    best = max(session.items, key=lambda i: i.importance or 0)
-    return best.title.strip() or f"{best.app} session"
+    """The title of the page the most time went to: what stands in when the model gave the session no usable title."""
+    best = pages_by_time(session.items)[0][0]
+    return display_title(best.title) or f"{best.app} session"

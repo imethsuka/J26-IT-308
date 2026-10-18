@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Callable, Iterable
 
-from features.text_merge import TextDocument
+from features.text_merge import TextDocument, capture_anchors
 from storage.raw_buffer import RawCapture
 
 DEFAULT_GAP = timedelta(minutes=30)
@@ -29,6 +29,17 @@ ACTIVE_GAP_CAP = timedelta(minutes=5)
 def doc_id_for(context_key: str) -> str:
     """Stable id of the document behind a context key (the same page on another day gives the same id)."""
     return hashlib.sha1(context_key.encode("utf-8")).hexdigest()[:16]
+
+
+@dataclass(frozen=True)
+class Moment:
+    """One capture whose text went into the page: when, which context record, and anchors to find it in the page later
+    (``features.text_merge.capture_anchors``). The history slider uses it to highlight what was on screen."""
+
+    ts: datetime
+    context_record_id: int | None
+    anchors: list[tuple[int, str]]
+    n_words: int
 
 
 @dataclass
@@ -52,6 +63,7 @@ class Episode:
     words_added: int = 0      # words that were new to the document
     truncated_captures: int = 0
     revisit: bool = False     # an earlier episode of the same document exists
+    moments: list[Moment] = field(default_factory=list)
 
 
 def split_episodes(captures: Iterable[RawCapture], *, gap: timedelta = DEFAULT_GAP) -> list[list[RawCapture]]:
@@ -111,6 +123,8 @@ def build_episodes(
                 result = document.merge(text)
                 episode.words_seen += result.words
                 episode.words_added += result.new_words
+                anchors, n_words = capture_anchors(text)
+                episode.moments.append(Moment(capture.ts, capture.context_record_id, anchors, n_words))
             previous = capture
         seen_docs.add(doc_id)
         episodes.append(episode)

@@ -20,6 +20,11 @@ Rules that matter:
 * **An episode still in progress is left alone**: it is closed only once its last capture is older than the gap.
 * **Reprocessing is a no-op** (``episodes`` is unique per document and start time), so a crash between the write and
   the delete cannot duplicate an entry.
+* **Task switching is not memory.** Shell surfaces (the Alt+Tab switcher, the desktop, overlays: ``features/surfaces.py``)
+  are dropped. A *glance* (less than ``glance_seconds`` on a window before the next one, and no typing) gets no entry and
+  no text, and when the user glances away and comes straight back (within ``bounce_gap``) the two stretches on the first
+  window are one episode, not "visit 1" and "visit 2". Time on a window runs until the next window starts (up to
+  ``ACTIVE_GAP_CAP``), so a page read without scrolling (one capture) no longer counts as 0 seconds.
 * **Summaries are not written here.** High-tier entries with text are marked ``needs_summary`` for the local-LLM stage.
 
 Tier thresholds are starting guesses, not tuned values.
@@ -32,7 +37,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone, tzinfo
 from typing import Any
 
-from adaptation.episodes import DEFAULT_GAP, Episode, build_episodes, doc_id_for, split_episodes
+from adaptation.episodes import ACTIVE_GAP_CAP, DEFAULT_GAP, Episode, build_episodes, doc_id_for, split_episodes
+from features.surfaces import is_non_context
 from adaptation.privacy import PrivacyContext, PrivacyFilter
 from storage.memory_store import MemoryStore
 from storage.raw_buffer import RawBuffer, RawCapture
@@ -50,6 +56,8 @@ class ScreenMemoryConfig:
     high_threshold: float = 0.5     # the worker's keep threshold
     medium_threshold: float = 0.2   # a guess; nothing here is tuned
     max_captures: int = 5000        # per run, oldest first; the rest wait for the next run
+    glance_seconds: float = 10.0    # less than this on a window (and no typing) is a glance, not a memory; a guess
+    bounce_gap: timedelta = timedelta(minutes=2)  # back on the same window within this after a glance: one episode
     privacy_filter: PrivacyFilter | None = None
     tz: tzinfo | None = None        # time zone for the entry text; local time by default
 
@@ -122,7 +130,8 @@ def run_screen_memory(job: ScreenMemoryJob, *, now: datetime | None = None) -> d
     report: dict[str, Any] = {
         "captures_read": 0, "episodes_processed": 0, "episodes_left_open": 0, "entries_written": 0,
         "tiers": {HIGH: 0, MEDIUM: 0, LOW: 0}, "episodes_with_text": 0, "captures_blocked": 0, "filter_errors": 0,
-        "redactions": 0, "already_saved": 0, "raw_rows_deleted": 0,
+        "redactions": 0, "already_saved": 0, "raw_rows_deleted": 0, "surfaces_dropped": 0, "glances_dropped": 0,
+        "bounces_joined": 0,
         "text_persisted": cfg.privacy_filter is not None,
     }
     if cfg.privacy_filter is None:
@@ -130,23 +139,58 @@ def run_screen_memory(job: ScreenMemoryJob, *, now: datetime | None = None) -> d
 
     captures = list(raw.iter_unprocessed(limit=cfg.max_captures))
     report["captures_read"] = len(captures)
-    runs = split_episodes(captures, gap=cfg.gap)
     batch_full = len(captures) >= cfg.max_captures
+    surface_ids = [c.id for c in captures if is_non_context(c.app, c.title)]
+    if surface_ids:
+        report["surfaces_dropped"] = len(surface_ids)
+        report["raw_rows_deleted"] += raw.delete(surface_ids)
+        dropped = set(surface_ids)
+        captures = [c for c in captures if c.id not in dropped]
+    runs = _without_task_switching(split_episodes(captures, gap=cfg.gap), cfg, raw, report)
 
     for i, run in enumerate(runs):
         still_open = now - run[-1].ts <= cfg.gap or (batch_full and i == len(runs) - 1)
         if still_open:
             report["episodes_left_open"] += 1
             continue
+        next_start = runs[i + 1][0].ts if i + 1 < len(runs) else None
         try:
-            _process_run(run, job, report)
+            _process_run(run, job, report, next_start=next_start)
         except Exception as exc:  # one bad episode must not stop the others; its raw rows stay for the next run
             logger.warning("episode %s not processed (%s)", doc_id_for(run[0].context_key), type(exc).__name__)
             report["errors"] = report.get("errors", 0) + 1
+    from adaptation.memory_tidy import tidy_memories
+
+    report["tidy"] = tidy_memories(memory, glance_seconds=cfg.glance_seconds)  # entries from before this filtering existed
     return report
 
 
-def _process_run(run: list[RawCapture], job: ScreenMemoryJob, report: dict[str, Any]) -> None:
+def _without_task_switching(
+    runs: list[list[RawCapture]], cfg: ScreenMemoryConfig, raw: RawBuffer, report: dict[str, Any],
+) -> list[list[RawCapture]]:
+    """Drop glances (deleting their raw rows) and join the stretches on one window that a glance interrupted.
+
+    A run's time on screen is known only once the next run has started, so the last run is never called a glance."""
+    kept: list[list[RawCapture]] = []
+    glance_ids: list[int] = []
+    for i, run in enumerate(runs):
+        if i + 1 < len(runs):
+            on_screen = (runs[i + 1][0].ts - run[0].ts).total_seconds()
+            if on_screen < cfg.glance_seconds and not any(c.key_presses for c in run):
+                glance_ids.extend(c.id for c in run)
+                report["glances_dropped"] += 1
+                continue
+        if kept and kept[-1][0].context_key == run[0].context_key and run[0].ts - kept[-1][-1].ts <= cfg.bounce_gap:
+            kept[-1] = kept[-1] + run
+            report["bounces_joined"] += 1
+            continue
+        kept.append(run)
+    if glance_ids:
+        report["raw_rows_deleted"] += raw.delete(glance_ids)
+    return kept
+
+
+def _process_run(run: list[RawCapture], job: ScreenMemoryJob, report: dict[str, Any], *, next_start=None) -> None:
     cfg, raw, memory = job.config, job.raw, job.memory
     first = run[0]
     doc_id = doc_id_for(first.context_key)
@@ -185,6 +229,10 @@ def _process_run(run: list[RawCapture], job: ScreenMemoryJob, report: dict[str, 
         return result.text
 
     (episode,), docs = build_episodes(run, gap=cfg.gap, documents=documents, text_transform=transform)
+    # The window stayed on screen after its last capture until the next window started (a page read without scrolling
+    # has one capture): count that too, up to the same cap as a gap between captures, and not after the user went idle.
+    if next_start is not None and not run[-1].is_idle:
+        episode.active_seconds += min(next_start - run[-1].ts, ACTIVE_GAP_CAP).total_seconds()
     document = docs[doc_id]
     text_persisted = keep_text and document.word_count > 0
     visits_before = stored.visits if stored is not None else 0
@@ -205,6 +253,7 @@ def _process_run(run: list[RawCapture], job: ScreenMemoryJob, report: dict[str, 
         },
         entry_text=entry_text, entry_json=entry_json, tier=tier,
         needs_summary=tier == HIGH and text_persisted, text_persisted=text_persisted,
+        moments=episode.moments if keep_text else None,
     )
     report["episodes_processed"] += 1
     report["tiers"][tier] += 1
