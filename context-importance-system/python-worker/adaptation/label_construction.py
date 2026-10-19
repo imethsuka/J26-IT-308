@@ -50,6 +50,12 @@ DEFAULT_SESSION_GAP = timedelta(minutes=30)
 #   v2: bounded horizon + censoring.
 #   v3: a revisit must come from a different visit (consecutive same-context captures are one visit).
 LABEL_RULE_VERSION = 3
+# Opt-in variant: v3 with titles normalized before matching (``LabelConstructor(title_normalizer=...)``,
+# e.g. ``features.titles.normalize_title``), so dynamic title parts such as Edge's "and N more
+# pages" or "(8)" counters don't hide a revisit. Stamped as v4; the default rule stays v3.
+LABEL_RULE_VERSION_NORMALIZED_TITLES = 4
+
+TitleNormalizer = Callable[["str | None"], "str | None"]
 
 
 class Recordable(Protocol):
@@ -166,12 +172,13 @@ def _retrieval_strength(retrieval: bool | float | None) -> float:
 # Signals derived from the activity timeline
 # =============================================================================================
 
-def context_key(record: Recordable) -> tuple[str, str, str]:
+def context_key(record: Recordable, title_normalizer: TitleNormalizer | None = None) -> tuple[str, str, str]:
     """Identity used to match a context across time: normalized (app, domain, title)."""
+    title = title_normalizer(record.title) if title_normalizer is not None else record.title
     return (
         (record.app or "").strip().lower(),
         (record.domain or "").strip().lower(),
-        (record.title or "").strip().lower(),
+        (title or "").strip().lower(),
     )
 
 
@@ -201,10 +208,12 @@ class Timeline:
         *,
         session_gap: timedelta = DEFAULT_SESSION_GAP,
         horizon: timedelta = DEFAULT_LABEL_HORIZON,
+        title_normalizer: TitleNormalizer | None = None,
     ):
         ordered = sorted(records, key=lambda r: _as_utc(r.ts))
         self._session_gap = session_gap
         self._horizon = horizon
+        self._title_normalizer = title_normalizer
         self._by_id: dict[Any, _Occurrence] = {}
         self._by_key: dict[tuple[str, str, str], list[_Occurrence]] = {}
         self.newest_ts: datetime | None = _as_utc(ordered[-1].ts) if ordered else None
@@ -215,7 +224,7 @@ class Timeline:
         previous_key: tuple[str, str, str] | None = None
         for record in ordered:
             ts = _as_utc(record.ts)
-            key = context_key(record)
+            key = context_key(record, self._title_normalizer)
             new_session = previous_ts is not None and (ts - previous_ts) > session_gap
             if new_session:
                 session += 1
@@ -246,7 +255,7 @@ class Timeline:
         cutoff = occ.ts + span
         return any(
             other.visit != occ.visit and occ.ts < other.ts <= cutoff
-            for other in self._by_key.get(context_key(target), ())
+            for other in self._by_key.get(context_key(target, self._title_normalizer), ())
         )
 
     def is_continued(self, target: Recordable) -> bool:
@@ -255,7 +264,7 @@ class Timeline:
         cutoff = occ.ts + self._horizon
         return any(
             other.session > occ.session and occ.ts < other.ts <= cutoff
-            for other in self._by_key.get(context_key(target), ())
+            for other in self._by_key.get(context_key(target, self._title_normalizer), ())
         )
 
     def session_of(self, record: Recordable) -> int:
@@ -279,6 +288,7 @@ class LabelConstructor:
         retrieval_fn: RetrievalFn | None = None,
         weights: LabelWeights = DEFAULT_WEIGHTS,
         threshold: float = 0.5,
+        title_normalizer: TitleNormalizer | None = None,
     ) -> None:
         self.label_delay = label_delay
         self.label_horizon = label_horizon
@@ -289,6 +299,8 @@ class LabelConstructor:
         self.retrieval_fn = retrieval_fn
         self.weights = weights
         self.threshold = threshold
+        # Opt-in v4: match contexts on normalized titles (see LABEL_RULE_VERSION_NORMALIZED_TITLES).
+        self.title_normalizer = title_normalizer
 
     @property
     def label_version(self) -> str:
@@ -299,7 +311,8 @@ class LabelConstructor:
         """
         hours = self.label_horizon.total_seconds() / 3600.0
         hours_text = f"{hours:g}"
-        return f"v{LABEL_RULE_VERSION}/h{hours_text}"
+        rule = LABEL_RULE_VERSION if self.title_normalizer is None else LABEL_RULE_VERSION_NORMALIZED_TITLES
+        return f"v{rule}/h{hours_text}"
 
     def is_due(self, record: Recordable, now: datetime, *, already_labelled: bool = False) -> bool:
         """True if ``record`` is unlabelled and the delay has elapsed on the wall clock."""
@@ -338,7 +351,10 @@ class LabelConstructor:
         all_records = list(records)
         reference = _as_utc(now) if now is not None else datetime.now(timezone.utc)
         already = labelled_ids or set()
-        timeline = Timeline(all_records, session_gap=self.session_gap, horizon=self.label_horizon)
+        timeline = Timeline(
+            all_records, session_gap=self.session_gap, horizon=self.label_horizon,
+            title_normalizer=self.title_normalizer,
+        )
 
         results: list[tuple[Any, LabelResult]] = []
         for record in all_records:

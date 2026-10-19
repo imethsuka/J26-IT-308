@@ -126,11 +126,13 @@ def build_dataset(
     threshold: float = DEFAULT_THRESHOLD,
     history_size: int = DEFAULT_HISTORY_SIZE,
     ring_capacity: int = DEFAULT_SAVE_RING_CAPACITY,
+    title_normalizer=None,
 ) -> pd.DataFrame:
     """One row per capture, in time order, with the feature dict the live worker would have built.
 
     ``scorer`` (default: the rule-based baseline the live worker serves at cold start) makes the
-    save/discard decisions that feed the novelty ring, as it would have live.
+    save/discard decisions that feed the novelty ring, as it would have live. ``title_normalizer``
+    (opt-in, experiments) normalizes titles for the revisit features, matching v4 labels.
     """
     scorer = scorer or RuleBasedImportanceScorer()
     history: deque[ContextHistoryEntry] = deque(maxlen=history_size)
@@ -141,7 +143,7 @@ def build_dataset(
     for index, capture in enumerate(sorted(captures, key=lambda c: c.ts)):
         event = capture.event
         embedding = embeddings.get(capture.screenshot_id)
-        features = assemble_features(event, embedding, history, saved_embeddings=ring)
+        features = assemble_features(event, embedding, history, saved_embeddings=ring, title_normalizer=title_normalizer)
         proba = float(scorer.predict_proba(features))
         decision = "save" if proba >= threshold else "discard"
         if decision == "save":
@@ -188,14 +190,18 @@ def add_labels(
     label_delay: timedelta = DEFAULT_LABEL_DELAY,
     label_horizon: timedelta = DEFAULT_LABEL_HORIZON,
     constructor: LabelConstructor | None = None,
+    title_normalizer=None,
 ) -> pd.DataFrame:
     """Add ``label`` (1/0, or <NA> while censored), ``revisited``, ``continued``, ``label_version``.
 
     The reference time is the newest capture plus ``label_delay``, so the result depends only on the
     data, not on when the notebook is run. Records whose ``label_horizon`` reaches past the newest
-    capture stay unlabelled, exactly as in the scheduled job.
+    capture stay unlabelled, exactly as in the scheduled job. ``title_normalizer`` (opt-in) gives
+    the v4 rule.
     """
-    constructor = constructor or LabelConstructor(label_delay=label_delay, label_horizon=label_horizon)
+    constructor = constructor or LabelConstructor(
+        label_delay=label_delay, label_horizon=label_horizon, title_normalizer=title_normalizer
+    )
     records = [_Rec(r.id, r.ts, _text(r.app), _text(r.domain), _text(r.title)) for r in df.itertuples()]
     out = df.copy()
     if not records:
@@ -263,14 +269,167 @@ def with_prototypes(df: pd.DataFrame, prototypes: np.ndarray | None) -> pd.DataF
 # 6. Train
 # =============================================================================================
 
-def train_model1(train_df: pd.DataFrame, *, params: dict | None = None, num_boost_round: int | None = None):
-    """Fit Model 1 (LightGBM) on ``features`` -> ``label``. Returns ``(model, training_summary)``."""
+def train_model1(
+    train_df: pd.DataFrame,
+    *,
+    params: dict | None = None,
+    num_boost_round: int | None = None,
+    extra_feature_columns: Sequence[str] = (),
+):
+    """Fit Model 1 (LightGBM) on ``features`` -> ``label``. Returns ``(model, training_summary)``.
+
+    ``extra_feature_columns`` adds experimental numeric features (e.g. :func:`category_columns`)
+    after the pinned layout; such a model is for offline experiments only.
+    """
     from models.lightgbm_model import DEFAULT_NUM_BOOST_ROUND, ImportanceModel
 
-    model = ImportanceModel(params=params, num_boost_round=num_boost_round or DEFAULT_NUM_BOOST_ROUND)
+    model = ImportanceModel(
+        params=params, num_boost_round=num_boost_round or DEFAULT_NUM_BOOST_ROUND,
+        extra_feature_columns=extra_feature_columns,
+    )
     frame = pd.DataFrame({"features": list(train_df["features"]), "label": train_df["label"].astype(int).to_numpy()})
     summary = model.train(frame)
     return model, summary
+
+
+# =============================================================================================
+# 6b. Experiments: ablations, MobileCLIP screen categories, rolling evaluation
+# =============================================================================================
+
+def without_vision(df: pd.DataFrame) -> pd.DataFrame:
+    """Copy of ``df`` with every visual feature (``vis_*``, incl. categories) blanked: the "no eyes" ablation."""
+    out = df.copy()
+    out["features"] = [{**f, **{k: 0 for k in f if k.startswith("vis_")}} for f in df["features"]]
+    return out
+
+
+# Zero-shot screen categories: MobileCLIP compares each screenshot with these descriptions.
+# Names become feature columns ``vis_cat_<name>``; edit prompts freely (they're encoded per run).
+SCREEN_CATEGORIES: dict[str, str] = {
+    "shopping": "a screenshot of an online shop product page with a price",
+    "code": "a screenshot of source code in a code editor",
+    "terminal": "a screenshot of a command line terminal",
+    "document": "a screenshot of a text document or PDF",
+    "spreadsheet": "a screenshot of a spreadsheet with rows and columns",
+    "slides": "a screenshot of presentation slides",
+    "chart": "a screenshot of a chart or graph",
+    "diagram": "a screenshot of a diagram or flowchart",
+    "video": "a screenshot of a video player",
+    "chat": "a screenshot of a chat conversation",
+    "email": "a screenshot of an email inbox",
+    "social": "a screenshot of a social media feed",
+    "search": "a screenshot of web search results",
+    "files": "a screenshot of a file explorer window",
+    "settings": "a screenshot of a settings window",
+    "game": "a screenshot of a video game",
+    "learning": "a screenshot of an online course or lecture page",
+    "ai_chat": "a screenshot of a conversation with an AI assistant",
+}
+
+
+def category_columns(names: Sequence[str] = tuple(SCREEN_CATEGORIES)) -> tuple[str, ...]:
+    return tuple(f"vis_cat_{n}" for n in names)
+
+
+def category_features(embedding, text_matrix: np.ndarray, names: Sequence[str], *, temperature: float = 100.0) -> dict[str, float]:
+    """Per-category probability that the screenshot shows that kind of screen (softmax over
+    ``temperature`` x cosine similarity, CLIP's zero-shot recipe). All 0 when there is no embedding."""
+    columns = category_columns(names)
+    if embedding is None:
+        return {c: 0.0 for c in columns}
+    sims = text_matrix @ np.asarray(embedding, dtype=np.float32)
+    logits = temperature * (sims - sims.max())
+    probs = np.exp(logits) / np.exp(logits).sum()
+    return {c: round(float(p), 6) for c, p in zip(columns, probs)}
+
+
+def with_categories(df: pd.DataFrame, text_matrix: np.ndarray, names: Sequence[str] = tuple(SCREEN_CATEGORIES)) -> pd.DataFrame:
+    """Copy of ``df`` with ``vis_cat_*`` features added. Uses no labels, so it can be applied to the
+    whole dataset before splitting without leaking test information."""
+    out = df.copy()
+    out["features"] = [{**f, **category_features(e, text_matrix, names)} for f, e in zip(df["features"], df["embedding"])]
+    return out
+
+
+def rolling_evaluation(
+    dataset: pd.DataFrame,
+    configs: dict[str, Any],
+    *,
+    n_folds: int = 4,
+    test_fraction: float = 0.5,
+    embargo: timedelta = DEFAULT_LABEL_HORIZON,
+    prototype_k: int = 8,
+    threshold: float = DEFAULT_THRESHOLD,
+    min_train: int = 200,
+    keep_budgets: Sequence[float] = (0.3, 0.5),
+) -> pd.DataFrame:
+    """Expanding-window evaluation over several consecutive test periods instead of one split.
+
+    The newest ``test_fraction`` of labelled rows is cut into ``n_folds`` consecutive blocks. For each
+    block, every labelled row older than the block (minus the label-horizon ``embargo``) trains;
+    prototypes are learned from that fold's training rows only. ``configs`` maps a name to
+    ``make(train_df, test_df) -> (scorer, test_df_to_score)``. Returns one row per (fold, config),
+    with the threshold-0.5 metrics plus :func:`ranking_metrics` (AUC, average precision, recall at
+    each storage budget in ``keep_budgets``).
+    """
+    labelled = dataset[dataset["label"].notna()].sort_values("ts").reset_index(drop=True)
+    first_test = len(labelled) - int(len(labelled) * test_fraction)
+    bounds = np.linspace(first_test, len(labelled), n_folds + 1).astype(int)
+    rows = []
+    for fold in range(n_folds):
+        test = labelled.iloc[bounds[fold]:bounds[fold + 1]]
+        if test.empty:
+            continue
+        test_start = test["ts"].iloc[0]
+        train = labelled[labelled["ts"] + embargo <= test_start]
+        if len(train) < min_train or train["label"].nunique() < 2 or test["label"].nunique() < 2:
+            print(f"fold {fold}: skipped ({len(train)} training rows, classes {sorted(train['label'].unique())})")
+            continue
+        proto = learn_prototypes(train, k=prototype_k)
+        centroids = proto.centroids if proto is not None else None
+        train_p, test_p = with_prototypes(train, centroids), with_prototypes(test, centroids)
+        for name, make in configs.items():
+            scorer, scored = make(train_p, test_p)
+            metrics = evaluate_models(scored, {name: scorer}, threshold=threshold).iloc[0].to_dict()
+            rows.append({
+                "fold": fold, "train_rows": len(train), "test_rows": len(test),
+                "test_from": test_start, "test_to": test["ts"].iloc[-1], **metrics,
+                **ranking_metrics(scorer, scored, keep_budgets),
+            })
+    return pd.DataFrame(rows)
+
+
+def ranking_metrics(scorer: ImportanceScorer, df: pd.DataFrame, keep_budgets: Sequence[float] = (0.3, 0.5)) -> dict[str, float]:
+    """Threshold-free comparison: how well the scores *order* contexts, independent of 0.5.
+
+    ``roc_auc`` / ``avg_precision`` summarise the whole ranking; ``recall_at_keep_X`` is the share of
+    important contexts kept when only the top X of contexts may be stored (a storage budget). These
+    are fair between models whose scores are calibrated differently (e.g. rules vs LightGBM).
+    """
+    from sklearn.metrics import average_precision_score, roc_auc_score
+
+    y = df["label"].astype(int).to_numpy()
+    scores = np.array([scorer.predict_proba(f) for f in df["features"]], dtype=float)
+    out = {"roc_auc": float(roc_auc_score(y, scores)), "avg_precision": float(average_precision_score(y, scores))}
+    order = np.argsort(-scores, kind="stable")
+    for budget in keep_budgets:
+        kept = order[: int(round(budget * len(y)))]
+        out[f"recall_at_keep_{int(round(budget * 100))}"] = float(y[kept].sum() / max(1, y.sum()))
+    return out
+
+
+def summarize_folds(
+    results: pd.DataFrame,
+    metrics: Sequence[str] = ("roc_auc", "avg_precision", "recall_at_keep_30", "recall_at_keep_50", "f1", "keep_rate", "latency_mean_ms"),
+    win_metric: str = "avg_precision",
+) -> pd.DataFrame:
+    """Mean and standard deviation of each metric across folds, one row per config, plus how many
+    folds each config was best in on ``win_metric``."""
+    metrics = [m for m in metrics if m in results.columns]
+    summary = results.groupby("name", sort=False)[metrics].agg(["mean", "std"]).round(3)
+    best = results.loc[results.groupby("fold")[win_metric].idxmax(), "name"].value_counts()
+    summary[(win_metric, "folds_won")] = [int(best.get(n, 0)) for n in summary.index]
+    return summary
 
 
 # =============================================================================================
@@ -424,7 +583,9 @@ def _progress(items, enabled: bool, desc: str):
 
 
 __all__: Sequence[str] = [
-    "add_labels", "build_dataset", "embed_captures", "evaluate_models", "export_bundle",
+    "SCREEN_CATEGORIES", "add_labels", "build_dataset", "category_columns", "category_features",
+    "embed_captures", "evaluate_models", "export_bundle", "rolling_evaluation", "summarize_folds",
+    "ranking_metrics", "with_categories", "without_vision",
     "learn_prototypes", "load_bundle", "load_embedding_cache", "new_version_id", "register_version",
     "save_embedding_cache", "save_version", "temporal_split", "threshold_curve", "train_model1",
     "with_prototypes",

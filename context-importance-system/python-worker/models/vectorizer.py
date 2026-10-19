@@ -70,24 +70,30 @@ def category_of(app: str | None, app_categories: Mapping[str, str] = DEFAULT_APP
     return app_categories.get(name, "unknown")
 
 
-def vectorize(features: Mapping[str, Any]) -> np.ndarray:
-    """One feature dict -> 1-D float32 row aligned to :data:`FEATURE_COLUMNS`."""
-    row = np.empty(len(FEATURE_COLUMNS), dtype=np.float32)
+def vectorize(features: Mapping[str, Any], extra_columns: tuple[str, ...] = ()) -> np.ndarray:
+    """One feature dict -> 1-D float32 row aligned to :data:`FEATURE_COLUMNS` + ``extra_columns``.
+
+    ``extra_columns`` are experimental numeric features appended after the pinned layout (missing
+    keys become 0). The default layout is unchanged when none are given.
+    """
+    row = np.empty(len(FEATURE_COLUMNS) + len(extra_columns), dtype=np.float32)
     for i, key in enumerate(NUMERIC_FEATURES):
         row[i] = _as_float(features.get(key))
     category = category_of(features.get("ctx_app"))
     base = len(NUMERIC_FEATURES)
     for j, cat in enumerate(APP_CATEGORIES):
         row[base + j] = 1.0 if cat == category else 0.0
+    for k, key in enumerate(extra_columns):
+        row[len(FEATURE_COLUMNS) + k] = _as_float(features.get(key))
     return row
 
 
-def vectorize_many(feature_dicts) -> np.ndarray:
-    """Stack many feature dicts into an (N, len(FEATURE_COLUMNS)) matrix."""
+def vectorize_many(feature_dicts, extra_columns: tuple[str, ...] = ()) -> np.ndarray:
+    """Stack many feature dicts into an (N, len(FEATURE_COLUMNS) + len(extra_columns)) matrix."""
     dicts = list(feature_dicts)
     if not dicts:
-        return np.empty((0, len(FEATURE_COLUMNS)), dtype=np.float32)
-    return np.vstack([vectorize(d) for d in dicts])
+        return np.empty((0, len(FEATURE_COLUMNS) + len(extra_columns)), dtype=np.float32)
+    return np.vstack([vectorize(d, extra_columns) for d in dicts])
 
 
 def _as_float(value: Any) -> float:
