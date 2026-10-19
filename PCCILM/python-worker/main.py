@@ -9,6 +9,7 @@ Usage:
     python main.py --db context.db [--transport namedpipe|tcp] [--pipe-name NAME] [--tcp-port PORT]
                    [--no-embedding] [--decision-threshold P]
                    [--raw-db PATH] [--raw-ttl-days D] [--raw-max-mb MB] [--no-screen-text]
+                   [--screenshots] [--shots-db PATH] [--shots-ttl-days D] [--shots-max-mb MB] [--shots-quality Q]
 
 Defaults match ``csharp-collector/src/CsharpCollector/collector.config.json``.
 """
@@ -23,11 +24,16 @@ from app_paths import default_db_path
 from models.rule_based import RuleBasedImportanceScorer
 from pipeline import (
     DEFAULT_DECISION_THRESHOLD, DEFAULT_REDUNDANCY_SIMILARITY, DEFAULT_REDUNDANCY_WINDOW_S,
-    SnapshotPipeline, active_decision_threshold, derive_budget_threshold, load_active_scorer,
+    SnapshotPipeline, active_decision_threshold, active_keep_rate, derive_budget_threshold, load_active_scorer,
+    load_shadows,
 )
 from sensing.listener import create_listener
+from storage.context_store import get_active_model_version
 from storage.database import connect, migrate
 from storage.raw_buffer import DEFAULT_MAX_TEXT_MB, DEFAULT_TTL_DAYS, RawBuffer, raw_buffer_path_for
+from storage.screenshot_store import (
+    DEFAULT_MAX_MB, DEFAULT_TTL_DAYS as SHOTS_TTL_DAYS, JPEG_QUALITY, ScreenshotStore, screenshots_path_for,
+)
 
 
 def main() -> None:
@@ -43,8 +49,9 @@ def main() -> None:
     )
     parser.add_argument(
         "--decision-threshold", type=float, default=None,
-        help="predict_proba threshold for the stored save/discard decision (default: the one chosen from the "
-             f"keep-rate budget when the active model was deployed, else {DEFAULT_DECISION_THRESHOLD})",
+        help="fixed predict_proba threshold for the stored save/discard decision (default: a deployed model keeps "
+             "the top keep-rate share of recent live scores; the rule-based baseline uses "
+             f"{DEFAULT_DECISION_THRESHOLD})",
     )
     parser.add_argument(
         "--redundancy-window", type=float, default=DEFAULT_REDUNDANCY_WINDOW_S,
@@ -53,6 +60,11 @@ def main() -> None:
     parser.add_argument(
         "--redundancy-similarity", type=float, default=DEFAULT_REDUNDANCY_SIMILARITY,
         help="cosine similarity of two frames above which they count as the same screen",
+    )
+    parser.add_argument(
+        "--no-shadows", action="store_true",
+        help="score with the champion only (by default the newest version of every other model scores each screen "
+             "too, and what each would have saved is recorded in model_decisions)",
     )
     parser.add_argument(
         "--raw-db", default=None,
@@ -65,6 +77,14 @@ def main() -> None:
         help="when the buffered text passes this size, drop the text of the lowest-importance captures first",
     )
     parser.add_argument("--no-screen-text", action="store_true", help="ignore screen text sent by the collector")
+    parser.add_argument(
+        "--screenshots", action="store_true",
+        help="keep the frame behind each 'save' decision, encrypted, for the history slider (off by default)",
+    )
+    parser.add_argument("--shots-db", default=None, help="screenshot store (default: screenshots.db beside --db)")
+    parser.add_argument("--shots-ttl-days", type=float, default=SHOTS_TTL_DAYS, help="delete screenshots older than this")
+    parser.add_argument("--shots-max-mb", type=float, default=DEFAULT_MAX_MB, help="past this size the oldest screenshots go first")
+    parser.add_argument("--shots-quality", type=int, default=JPEG_QUALITY, help="JPEG quality of kept screenshots, 1 to 95")
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -87,15 +107,36 @@ def main() -> None:
         threshold = derive_budget_threshold(conn, scorer)  # a model deployed before thresholds were stored
     if threshold is None:
         threshold = DEFAULT_DECISION_THRESHOLD
-    logger.info("save threshold %.4f, redundancy window %.0fs", threshold, args.redundancy_window)
+    # A deployed model keeps the top share of recent live scores; a cutoff given on the command line stays fixed.
+    keep_rate = None
+    if args.decision_threshold is None and not isinstance(scorer, RuleBasedImportanceScorer):
+        keep_rate = active_keep_rate(conn)
+    active = get_active_model_version(conn)
+    is_rules = isinstance(scorer, RuleBasedImportanceScorer)
+    model_version_id = active.id if active is not None and not is_rules else None
+    champion_algorithm = "rules" if is_rules else (active.algorithm or "lightgbm")
+    shadows = [] if args.no_shadows else load_shadows(
+        conn, champion_version=None if is_rules else active.version, include_rules=not is_rules)
+    logger.info("shadow models: %s", ", ".join(s.model for s in shadows) or "none")
+    logger.info("save threshold %.4f%s, redundancy window %.0fs", threshold,
+                f" until the rolling top {keep_rate:.0%} takes over" if keep_rate else "", args.redundancy_window)
     raw_buffer = None if args.no_screen_text else RawBuffer(
         args.raw_db or raw_buffer_path_for(args.db), ttl_days=args.raw_ttl_days, max_text_mb=args.raw_max_mb,
     )
+    screenshots = ScreenshotStore(
+        args.shots_db or screenshots_path_for(args.db), ttl_days=args.shots_ttl_days, max_mb=args.shots_max_mb,
+        quality=args.shots_quality,
+    ) if args.screenshots else None
+    if screenshots is not None:
+        logger.info("screenshots on: saved frames are kept in %s", screenshots.path)
     pipeline = SnapshotPipeline(
         conn, scorer, prototypes=prototypes, embed=not args.no_embedding,
-        decision_threshold=threshold, raw_buffer=raw_buffer,
+        decision_threshold=threshold, raw_buffer=raw_buffer, screenshots=screenshots,
         redundancy_window_s=args.redundancy_window, redundancy_similarity=args.redundancy_similarity,
+        keep_rate=keep_rate, model_version_id=model_version_id,
+        shadows=shadows, champion_algorithm=champion_algorithm,
     )
+    pipeline.restore_state()
     if pipeline.embedding_enabled:
         logger.info("loading the MobileCLIP encoder")
         if pipeline.load_encoder():
@@ -119,6 +160,8 @@ def main() -> None:
         pipeline.close()
         if raw_buffer is not None:
             raw_buffer.close()
+        if screenshots is not None:
+            screenshots.close()
         conn.close()
     if not interrupted:
         logger.error("listener stopped unexpectedly (see the error above)")

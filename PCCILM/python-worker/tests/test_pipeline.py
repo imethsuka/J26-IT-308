@@ -5,6 +5,7 @@ entry point that wires it to the listener.
 from __future__ import annotations
 
 import io
+import random
 import socket
 import subprocess
 import sys
@@ -20,7 +21,7 @@ from models.base import ImportanceScorer
 from models.rule_based import RuleBasedImportanceScorer
 from pipeline import SnapshotPipeline
 from sensing.codec import encode_message, read_message
-from storage.context_store import count_context_records, list_context_records
+from storage.context_store import ModelVersion, count_context_records, insert_model_version, list_context_records
 from storage.database import connect, migrate
 from tests.mock_snapshot import mock_header, mock_payload
 
@@ -300,3 +301,74 @@ def test_derive_budget_threshold_uses_the_models_own_scores(conn) -> None:
         pipeline(snapshot(seq, seconds=seq * 100, title=f"page {seq}"))
     t = derive_budget_threshold(conn, Rising(), keep_rate=0.3)
     assert t is not None and sum(i >= t for i in range(240)) == pytest.approx(72, abs=2)
+
+
+# --------------------------------------------------------------------------- rolling cutoff and restart state
+
+
+class Uniform(ImportanceScorer):
+    """Seeded random scores between 0 and 1."""
+    name = "uniform"
+
+    def __init__(self) -> None:
+        self.rng = random.Random(0)
+
+    def predict_proba(self, features) -> float:
+        return self.rng.random()
+
+
+class Broken(ImportanceScorer):
+    name = "broken"
+
+    def predict_proba(self, features) -> float:
+        raise RuntimeError("model file damaged")
+
+
+def test_rolling_cutoff_keeps_the_top_share_of_recent_scores(conn) -> None:
+    pipeline = SnapshotPipeline(conn, Uniform(), embed=False, decision_threshold=0.99, keep_rate=0.3, redundancy_window_s=0)
+    for seq in range(1, 1001):
+        pipeline(snapshot(seq, seconds=seq * 120, title=f"page {seq}"))
+    kept = sum(r.decision == "save" for r in list_context_records(conn)[200:])
+    assert 0.25 < kept / 800 < 0.35  # the fixed 0.99 cutoff alone would keep about 1%
+    assert pipeline.current_threshold == pytest.approx(0.7, abs=0.01)
+
+
+def test_without_a_keep_rate_the_cutoff_stays_fixed(conn) -> None:
+    pipeline = SnapshotPipeline(conn, Uniform(), embed=False, decision_threshold=0.99)
+    for seq in range(1, 301):
+        pipeline(snapshot(seq, seconds=seq * 120, title=f"page {seq}"))
+    assert pipeline.current_threshold == 0.99
+
+
+def test_a_scoring_failure_is_a_discard_even_with_a_rolling_cutoff(conn) -> None:
+    pipeline = SnapshotPipeline(conn, Broken(), embed=False, keep_rate=0.3)
+    for seq in range(1, 301):
+        pipeline(snapshot(seq, seconds=seq * 120, title=f"page {seq}"))
+    assert {r.decision for r in list_context_records(conn)} == {"discard"}
+
+
+def test_records_carry_the_serving_model_version(conn) -> None:
+    version_id = insert_model_version(conn, ModelVersion(version="lightgbm-test", algorithm="lightgbm"))
+    SnapshotPipeline(conn, AlwaysSave(), embed=False, model_version_id=version_id)(snapshot(1))
+    assert list_context_records(conn)[0].model_version_id == version_id
+
+
+def test_a_restart_remembers_visits_saves_and_scores(conn) -> None:
+    now = datetime.now(timezone.utc)
+    stamp = lambda s: (now - timedelta(hours=2) + timedelta(seconds=s)).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+
+    def live(seq, seconds, title):
+        h = header(seq, title=title)
+        h["ts"] = h["frame"]["captured_at"] = stamp(seconds)
+        return read_message(io.BytesIO(encode_message(h, mock_payload())))
+
+    first = SnapshotPipeline(conn, AlwaysSave(), embed=False, redundancy_window_s=0)
+    first(live(1, 0, "Docs - Example"))
+    first(live(2, 60, "Other page"))
+
+    second = SnapshotPipeline(conn, AlwaysSave(), embed=False, keep_rate=0.3, redundancy_window_s=0)
+    restored = second.restore_state(now=now)
+    assert restored == {"visits": 2, "history": 2, "saved_frames": 0, "scores": 2, "shadows": 0}
+    second(live(3, 120, "Docs - Example"))
+    assert list_context_records(conn)[-1].features["ctx_seen_before"] == 1
+    assert list_context_records(conn)[-1].features["tmp_has_prior_save"] == 1
