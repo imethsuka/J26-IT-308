@@ -78,6 +78,8 @@ def _sanitise_user_id(user_id: str) -> str:
     cleaned = re.sub(r"[^A-Za-z0-9_\-]", "", user_id)
     if not cleaned:
         raise ValueError("user_id must contain at least one alphanumeric character.")
+    if len(cleaned) > 128:
+        raise ValueError("user_id must not exceed 128 characters.")
     return cleaned
 
 

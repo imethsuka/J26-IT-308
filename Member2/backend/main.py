@@ -10,7 +10,7 @@ from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from backend.database import get_connection, init_db
 from backend.services.feature_extraction import extract_features
@@ -73,6 +73,29 @@ _VALID_PREFERENCE_VALUES = frozenset({"Low", "Medium", "High"})
 
 # /train is restricted to local connections only
 _TRAIN_ALLOWED_HOSTS = frozenset({"127.0.0.1", "::1", "localhost"})
+
+# Maximum image upload size (20 MB).  Requests exceeding this limit are
+# rejected with 413 before any OCR or redaction processing.
+_MAX_IMAGE_BYTES: int = 20 * 1024 * 1024
+
+# Recognised image file signatures (magic bytes).  Only files whose leading
+# bytes match one of these patterns are accepted; everything else is rejected
+# with 400 before the image is written to a temp file or passed to OCR.
+_VALID_IMAGE_MAGIC: tuple[bytes, ...] = (
+    b"\x89PNG",      # PNG
+    b"\xff\xd8\xff", # JPEG / JFIF / Exif
+    b"GIF8",         # GIF
+    b"BM",           # BMP
+    b"II*\x00",      # TIFF little-endian
+    b"MM\x00*",      # TIFF big-endian
+)
+
+
+def _is_valid_image_bytes(data: bytes) -> bool:
+    """Return True if *data* begins with a recognised image file signature."""
+    if not data:
+        return False
+    return any(data[: len(magic)] == magic for magic in _VALID_IMAGE_MAGIC)
 
 
 # ---------------------------------------------------------------------------
@@ -138,6 +161,21 @@ async def _parse_analyze_request(request: Request) -> tuple[bytes, str, str, str
 
     if image_bytes is None:
         raise HTTPException(status_code=400, detail="Missing image file upload")
+
+    if len(image_bytes) > _MAX_IMAGE_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=(
+                f"Image file exceeds the maximum allowed size of "
+                f"{_MAX_IMAGE_BYTES // (1024 * 1024)} MB."
+            ),
+        )
+
+    if not _is_valid_image_bytes(image_bytes):
+        raise HTTPException(
+            status_code=400,
+            detail="Uploaded file is not a recognised image format (PNG, JPEG, BMP, GIF, or TIFF required).",
+        )
 
     required_fields = (
         "application_context",
@@ -489,8 +527,8 @@ async def analyze(request: Request):
 # ---------------------------------------------------------------------------
 
 class FeedbackRequest(BaseModel):
-    user_id: str
-    screenshot_id: str
+    user_id: str = Field(max_length=128)
+    screenshot_id: str = Field(max_length=512)
     predicted_label: str
     user_label: str
 
@@ -615,7 +653,7 @@ async def calibration_history(user_id: str, limit: int = 10):
 
 
 class RollbackRequest(BaseModel):
-    user_id: str
+    user_id: str = Field(max_length=128)
     reason: str = "manual_rollback"
 
     @field_validator("user_id")

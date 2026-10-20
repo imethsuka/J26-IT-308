@@ -9,6 +9,17 @@ Fragmentation tests (FRAG-01 .. FRAG-16) cover the sliding-window entity
 mapper added to fix the case where EasyOCR splits a sensitive entity across
 multiple bounding boxes.
 
+Stage-3 pixel validation tests (STAGE3-PIX) assert that pixels inside
+intended sensitive regions actually change for BLUR_SENSITIVE, that benign
+regions are preserved even at zero-pixel boundary distances, and that partial
+mapping is distinguishable from complete redaction at the pixel level.
+
+FRAG-PIX confirms that pixels in fragmented-entity regions actually change.
+
+STATS-INVAR verifies the counting invariant
+  entities_detected = entities_mapped + entities_unmapped
+for BLUR_SENSITIVE with distinct entity values.
+
 REDACT-01  MONITOR action returns image copy with no pixel changes.
 REDACT-02  BLUR_SENSITIVE blurs pixels in regions containing entity text.
 REDACT-03  BLUR_SENSITIVE leaves unrelated regions unchanged.
@@ -414,6 +425,207 @@ def test_stage3_benign_neighbor_remains_unchanged():
         _arr(img)[top:bottom, left:right],
         _arr(result)[top:bottom, left:right],
     )
+
+
+# ---------------------------------------------------------------------------
+# STAGE3-PIX-01  BLUR_SENSITIVE actually changes pixels in sensitive region
+# ---------------------------------------------------------------------------
+
+def test_stage3_blur_sensitive_pixels_actually_change_in_sensitive_region():
+    """
+    Stage-3 pixel validation: BLUR_SENSITIVE must change pixels inside the
+    intended sensitive entity region when the source image is nonuniform.
+
+    Uses _grad() (200×100, row values 0–199) so any unchanged region is
+    trivially distinguishable from a Gaussian-blurred one.  The assertion
+    would fail if redact_image returned the original image unchanged.
+    """
+    grad = _grad()
+    entity_box = _box(10, 10, 100, 50)
+    detections = [(entity_box, "alice@example.com", 0.99)]
+    result, regions, stats = redact_image(grad, detections, _detection(), "BLUR_SENSITIVE")
+
+    assert len(regions) == 1, "Expected exactly one redacted region"
+    assert stats["entities_mapped"] == 1
+
+    l, t, r, b = regions[0]["rect"]
+    arr_orig   = _arr(grad)
+    arr_result = _arr(result)
+    assert not np.array_equal(arr_orig[t:b, l:r], arr_result[t:b, l:r]), (
+        "BLUR_SENSITIVE must change pixels inside the sensitive entity region "
+        "(this assertion fails if the image is returned unchanged)"
+    )
+    # Entire image also differs (the redacted region is not trivially empty)
+    assert not np.array_equal(arr_orig, arr_result)
+
+
+# ---------------------------------------------------------------------------
+# STAGE3-PIX-02  Adjacent-boundary benign region not changed
+# ---------------------------------------------------------------------------
+
+def test_stage3_adjacent_boundary_benign_region_not_changed():
+    """
+    Stage-3 benign-region preservation at zero-pixel boundary distance.
+
+    The benign box begins one pixel to the right of where the entity box ends.
+    PIL crops and pastes without spillover, so the adjacent benign pixels must
+    be byte-for-byte identical to the original even at this tight distance.
+    """
+    grad = _grad()
+    entity_box = _box(10, 10, 70, 40)
+    # Starts exactly where entity_box ends — 0-pixel gap
+    adjacent_benign = _box(71, 10, 130, 40)
+    detections = [
+        (entity_box,       "alice@example.com",   0.99),
+        (adjacent_benign,  "adjacent benign text", 0.99),
+    ]
+    result, regions, _ = redact_image(grad, detections, _detection(), "BLUR_SENSITIVE")
+
+    assert len(regions) == 1, "Only the entity box must be redacted"
+    l, t, r, b = _bbox_to_rect(adjacent_benign, *grad.size)
+    assert np.array_equal(_arr(grad)[t:b, l:r], _arr(result)[t:b, l:r]), (
+        "Pixels in the immediately-adjacent benign region must remain unchanged"
+    )
+
+
+# ---------------------------------------------------------------------------
+# STAGE3-PIX-03  Partial mapping — pixel change only in the mapped region
+# ---------------------------------------------------------------------------
+
+def test_stage3_partial_mapping_pixels_only_in_mapped_region():
+    """
+    When one entity is mapped and another is not, the mapped entity region
+    must show pixel changes while a clearly separate benign row must remain
+    unchanged.  compute_redaction_status must return 'partial_redaction',
+    confirming incomplete protection is not reported as complete redaction.
+    """
+    grad = _grad()
+    mapped_box = _box(5, 10, 80, 40)
+    detection_output = {
+        "EMAIL": {
+            "matches": ["alice@example.com", "missing@example.com"],
+            "count": 2,
+        },
+        "total_sensitive_entity_count": 2,
+    }
+    # Only alice@example.com has an OCR box; missing@example.com has none
+    detections = [(mapped_box, "alice@example.com", 0.99)]
+
+    result, regions, stats = redact_image(grad, detections, detection_output, "BLUR_SENSITIVE")
+
+    assert stats["entities_mapped"] == 1
+    assert stats["entities_unmapped"] == 1
+    assert compute_redaction_status(
+        "BLUR_SENSITIVE", 2, 1, 1
+    ) == "partial_redaction", (
+        "Incomplete protection must not be reported as successful complete redaction"
+    )
+
+    # Mapped region must have changed pixels
+    l, t, r, b = regions[0]["rect"]
+    arr_orig   = _arr(grad)
+    arr_result = _arr(result)
+    assert not np.array_equal(arr_orig[t:b, l:r], arr_result[t:b, l:r]), (
+        "Mapped entity region must have changed pixels after BLUR_SENSITIVE"
+    )
+
+    # A clearly separate benign row (y=60-80, far from entity at y=10-40) must not change
+    assert np.array_equal(arr_orig[60:80, :], arr_result[60:80, :]), (
+        "Pixels outside all entity regions must remain unchanged"
+    )
+
+
+# ---------------------------------------------------------------------------
+# FRAG-PIX  Fragmented-entity boxes actually change pixels
+# ---------------------------------------------------------------------------
+
+def test_frag_pixel_changes_in_fragmented_regions():
+    """
+    FRAG pixel validation: when an email is split across two consecutive OCR
+    boxes and both are redacted, pixels inside EACH fragmented region must
+    change on a nonuniform source image.
+
+    The assertion would fail if redact_image returned the original unchanged.
+    This is distinct from the FRAG-01..03 tests, which only count regions.
+    """
+    grad = _grad()
+    entity = "alice@example.com"
+    box1 = _box(10, 10, 55, 30)
+    box2 = _box(56, 10, 120, 30)
+    detections = [
+        (box1, "alice@",      0.95),
+        (box2, "example.com", 0.95),
+    ]
+    detection_output = {
+        "EMAIL": {"matches": [entity], "count": 1},
+        "total_sensitive_entity_count": 1,
+    }
+
+    result, regions, stats = redact_image(grad, detections, detection_output, "BLUR_SENSITIVE")
+
+    assert len(regions) == 2, "Both fragment boxes must produce redacted regions"
+    assert stats["fragmented_matches"] == 1
+
+    arr_orig   = _arr(grad)
+    arr_result = _arr(result)
+    for reg in regions:
+        l, t, r, b = reg["rect"]
+        assert not np.array_equal(arr_orig[t:b, l:r], arr_result[t:b, l:r]), (
+            f"Fragmented region {reg['rect']} must have changed pixels "
+            "(this assertion fails if the image is returned unchanged)"
+        )
+
+
+# ---------------------------------------------------------------------------
+# STATS-INVAR  entities_detected == entities_mapped + entities_unmapped
+# ---------------------------------------------------------------------------
+
+def test_stats_invariant_blur_sensitive_detected_equals_mapped_plus_unmapped():
+    """
+    For BLUR_SENSITIVE with distinct entity values, entities_detected must
+    equal entities_mapped + entities_unmapped.  This invariant is tested
+    across three cases: all mapped, partially mapped, and none mapped.
+
+    The invariant is NOT asserted for MONITOR / BLOCK / BLUR_AND_ALERT, which
+    use different counting semantics (entities_mapped is set to n_entities or
+    zero without an entity-to-box search).
+    """
+    cases = [
+        # (entity_list, detections, expected_detected)
+        (
+            ["alice@example.com"],
+            [(_box(5, 5, 150, 30), "alice@example.com", 0.99)],
+            1,
+        ),
+        (
+            ["alice@example.com", "ghost@nowhere.xyz"],
+            [(_box(5, 5, 150, 30), "alice@example.com", 0.99)],
+            2,
+        ),
+        (
+            ["never@found.io"],
+            [(_box(5, 5, 80, 30), "completely unrelated text", 0.99)],
+            1,
+        ),
+    ]
+    for entity_list, detections, expected_detected in cases:
+        detection_output = {
+            "EMAIL": {"matches": entity_list, "count": len(entity_list)},
+            "total_sensitive_entity_count": len(entity_list),
+        }
+        _, _, stats = redact_image(_solid(), detections, detection_output, "BLUR_SENSITIVE")
+        assert stats["entities_detected"] == expected_detected, (
+            f"entities_detected must equal total entity count for {entity_list}"
+        )
+        assert (
+            stats["entities_detected"]
+            == stats["entities_mapped"] + stats["entities_unmapped"]
+        ), (
+            f"entities_detected ({stats['entities_detected']}) must equal "
+            f"entities_mapped ({stats['entities_mapped']}) + "
+            f"entities_unmapped ({stats['entities_unmapped']}) "
+            f"for BLUR_SENSITIVE with entities={entity_list}"
+        )
 
 
 # ---------------------------------------------------------------------------
