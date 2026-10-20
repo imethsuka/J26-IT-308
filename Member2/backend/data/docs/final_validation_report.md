@@ -273,9 +273,70 @@ Method: candidates.csv entity flag counts (no OCR re-run required)
 
 ---
 
+---
+
+## 10. End-to-End Processing Latency (2026-10-20)
+
+Script: `measure_latency.py` (scratchpad)  
+Output: `backend/data/latency_results.json`  
+Method: 50 runs per stage on synthetic text input (email + phone + date + IP + URL entities). EasyOCR excluded — takes 30–90 s on CPU and dominates real-world latency. All other pipeline stages measured independently.
+
+| Stage | Mean (ms) | Std (ms) |
+|-------|-----------|----------|
+| 1. Entity detection (regex) | 0.03 | <0.01 |
+| 2. Feature extraction | <0.01 | <0.01 |
+| 3. ML risk prediction (Random Forest) | 5.49 | 1.02 |
+| 4. Rule-based prediction | <0.01 | <0.01 |
+| 5. Protection selection | <0.01 | <0.01 |
+| 6. Tokenization | 0.01 | <0.01 |
+| 7. Contextual NER | 0.06 | 0.01 |
+| 8. CV feature extraction | 0.02 | 0.01 |
+| 9. Pixel redaction (BLUR_SENSITIVE) | 0.57 | 0.05 |
+| **Full non-OCR pipeline** | **6.57** | **1.08** |
+
+**Key finding**: the Random Forest `predict_proba` call (5.49 ms) is the single largest non-OCR latency. Total non-OCR processing is **~7 ms per image**, making EasyOCR the overwhelming production bottleneck.
+
+**sklearn feature-name warning**: the RF model was fitted with a pandas DataFrame; at inference, features are passed as a numpy array without column names. sklearn emits a `UserWarning` per call. This is cosmetic only — predictions are correct. Fix: wrap the inference array in a named DataFrame matching the training feature order.
+
+---
+
+## 11. Session 9 Re-verification (2026-10-20)
+
+### 11.1 Protected File Integrity
+
+| File | SHA-256 | Status |
+|------|---------|--------|
+| `CAPRLM_annotation_50.csv` | `6FA1FEC8…` | UNMODIFIED — matches session 8 |
+| `caprlm_model.joblib` | `C08E30BC…` | UNMODIFIED — matches session 8 |
+| `training_log.json` | `3EAFB095…` | UNMODIFIED — matches session 8 |
+
+### 11.2 Test Suite
+
+381 passed, 1 warning (httpx deprecation, non-functional), 0 failures — confirmed 2026-10-20.
+
+### 11.3 Detection Evaluation Re-run
+
+`backend/scripts/detection_eval.py` re-executed on unchanged CSV. Results identical to session 8:
+
+| Entity type | Screenshots with pipeline detection (on 28 LOW-zero-annotation rows) | Rate |
+|---|---|---|
+| DATE | 26 / 28 | 92.9% |
+| PHONE | 2 / 28 | 7.1% |
+| IP_ADDRESS | 1 / 28 | 3.6% |
+| EMAIL | 0 / 28 | 0% |
+| URL, WINDOWS_PATH | 0 / 28 | 0% |
+
+Results are reproducible and consistent.
+
+### 11.4 Annotation Guidelines Stale Content — Fixed
+
+`annotation_guidelines_DRAFT.md` Section 2 previously listed pixel redaction, CV feature extraction, contextual NER, and continual learning as "NOT implemented." These are all now implemented as research extensions. A correction note was added to Section 2 and the document bumped to v0.3 (2026-10-20). Labelling policy itself is unchanged.
+
+---
+
 ## 9. Summary
 
-The CAPRLM backend is functionally complete with **381 passing tests and 0 failures**. Core proposal requirements (R1–R14) are verified complete or partially complete. Four research extensions (CV features, contextual NER, pixel redaction, continual learning with rollback) are implemented and tested. Two security defects were identified and fixed earlier (random store keys, whitespace stripping). Frontend defects were fixed in this session (port 8000→8765, user_id propagation, redacted image display). Detection evaluation ran on 28 LOW-zero-annotation screenshots and identified DATE false positives (92.9% rate) as a documented annotation-policy gap. Critical submission blockers remain in the annotation review process and require human action.
+The CAPRLM backend is functionally complete with **381 passing tests and 0 failures** (confirmed 2026-10-20). Core proposal requirements (R1–R14) are verified complete or partially complete. Four research extensions (CV features, contextual NER, pixel redaction, continual learning with rollback) are implemented and tested. Two security defects were identified and fixed (random store keys, whitespace stripping). Frontend defects were fixed (port 8000→8765, user_id propagation, redacted image display). Detection evaluation confirmed 92.9% DATE false-positive rate on annotated-clean rows — documented annotation-policy gap. Non-OCR pipeline latency measured at 6.57 ms ±1.08 ms; EasyOCR (30–90 s/image) is the production bottleneck. Annotation guidelines v0.3 corrects stale Section 2 capability claims. Critical submission blockers remain in the annotation review process and require human action.
 
 ---
 

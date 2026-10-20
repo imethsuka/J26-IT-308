@@ -1,5 +1,5 @@
 {
-  "evaluated_at": "2026-10-15T17:13:28Z",
+  "evaluated_at": "2026-10-20T05:39:17Z",
   "method": "candidates_csv_entity_flags_only_no_ocr_rerun",
   "annotation_csv": "C:\\Users\\ASUS\\OneDrive\\Desktop\\J26-IT-308\\Member2\\backend\\data\\CAPRLM_annotation_50.csv",
   "candidates_csv": "C:\\Users\\ASUS\\OneDrive\\Desktop\\J26-IT-308\\Member2\\backend\\data\\processing_output\\candidates.csv",
