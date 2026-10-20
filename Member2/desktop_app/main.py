@@ -181,11 +181,11 @@ class CaprlmWindow(QMainWindow):
 def main() -> int:
     app = QApplication(sys.argv)
     app.setStyleSheet("""
-      QWidget { background:#f5f7fb; color:#172033; font-family:'Segoe UI'; font-size:14px; }
+      QWidget { background:#f5f7fb; color:#172033; font-family:'Segoe UI'; font-size:11pt; }
       QListWidget { background:#111a2e; color:#dbe4f3; border:0; padding:12px; }
       QListWidget::item { padding:13px 10px; border-radius:6px; }
       QListWidget::item:selected { background:#294a77; color:white; }
-      QLabel#Heading { font-size:25px; font-weight:650; color:#14213a; }
+      QLabel#Heading { font-size:19pt; font-weight:600; color:#14213a; }
       QLabel#Muted { color:#59677e; }
       QTextBrowser { background:white; border:1px solid #dce3ee; border-radius:8px; padding:14px; }
       QProgressBar { background:#e8edf5; border:0; border-radius:5px; height:19px; text-align:center; }
