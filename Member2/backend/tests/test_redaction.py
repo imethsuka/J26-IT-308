@@ -283,6 +283,140 @@ def test_redact12_partial_substring_does_match():
 
 
 # ---------------------------------------------------------------------------
+# STAGE-3  Redaction validation
+# ---------------------------------------------------------------------------
+
+def test_stage3_entity_level_coverage_is_complete_for_multiple_entities():
+    """Every synthetic entity must have at least one redacted OCR region."""
+    img = _solid()
+    detections = [
+        (_box(5, 10, 80, 30), "alice@example.com", 0.99),
+        (_box(90, 10, 160, 30), "555-123-4567", 0.99),
+        (_box(5, 50, 80, 70), "nearby benign text", 0.99),
+    ]
+    detection_output = {
+        "EMAIL": {"matches": ["alice@example.com"], "count": 1},
+        "PHONE": {"matches": ["555-123-4567"], "count": 1},
+        "total_sensitive_entity_count": 2,
+    }
+
+    _, regions, stats = redact_image(
+        img, detections, detection_output, "BLUR_SENSITIVE"
+    )
+
+    assert stats["entities_detected"] == 2
+    assert stats["entities_mapped"] == 2
+    assert stats["entities_unmapped"] == 0
+    assert len(regions) == 2
+    assert compute_redaction_status(
+        "BLUR_SENSITIVE",
+        stats["entities_detected"],
+        stats["entities_mapped"],
+        stats["entities_unmapped"],
+    ) == "redacted"
+
+
+def test_stage3_missing_and_malformed_boxes_are_incomplete_protection():
+    """Missing or malformed geometry must not count as successful coverage."""
+    img = _solid()
+    detection_output = _detection()
+
+    for bbox in ([], [[10, 10]], [["bad", 10], [20, 20]]):
+        _, regions, stats = redact_image(
+            img, [(bbox, "alice@example.com", 0.99)],
+            detection_output, "BLUR_SENSITIVE",
+        )
+        assert regions == []
+        assert stats["entities_detected"] == 1
+        assert stats["entities_mapped"] == 0
+        assert stats["entities_unmapped"] == 1
+        assert compute_redaction_status(
+            "BLUR_SENSITIVE", 1, 0, 1
+        ) == "entities_unmapped"
+
+
+def test_stage3_partial_mapping_is_not_reported_as_success():
+    img = _solid()
+    detection_output = {
+        "EMAIL": {
+            "matches": ["alice@example.com", "missing@example.com"],
+            "count": 2,
+        },
+        "total_sensitive_entity_count": 2,
+    }
+    detections = [(_box(5, 10, 80, 30), "alice@example.com", 0.99)]
+
+    _, regions, stats = redact_image(
+        img, detections, detection_output, "BLUR_SENSITIVE"
+    )
+
+    assert len(regions) == 1
+    assert stats["entities_mapped"] == 1
+    assert stats["entities_unmapped"] == 1
+    assert compute_redaction_status(
+        "BLUR_SENSITIVE", 2, 1, 1
+    ) == "partial_redaction"
+    assert compute_redaction_status(
+        "BLUR_SENSITIVE", 2, 1, 1
+    ) != "redacted"
+
+
+def test_stage3_redaction_exception_is_not_a_success_shaped_result():
+    """Invalid image input must raise rather than return an unprotected image."""
+    with pytest.raises(AttributeError):
+        redact_image(
+            None,  # type: ignore[arg-type]
+            [(_box(5, 5, 80, 30), "alice@example.com", 0.99)],
+            _detection(),
+            "BLUR_SENSITIVE",
+        )
+
+
+def test_stage3_block_output_has_no_synthetic_sensitive_marker():
+    """
+    Use a synthetic red marker as a deterministic residual detector.
+    BLOCK must remove that marker completely; this is not an OCR benchmark.
+    """
+    img = _solid((255, 255, 255), 100, 60)
+    pixels = np.array(img)
+    pixels[10:30, 10:50] = (220, 20, 20)
+    marked = Image.fromarray(pixels)
+
+    result, _, stats = redact_image(
+        marked,
+        [(_box(10, 10, 50, 30), "synthetic-secret", 0.99)],
+        {"PASSWORD": {"matches": ["synthetic-secret"], "count": 1},
+         "total_sensitive_entity_count": 1},
+        "BLOCK",
+    )
+
+    residual_marker = np.all(_arr(result) == (220, 20, 20), axis=2).sum()
+    assert residual_marker == 0
+    assert stats["entities_unmapped"] == 0
+
+
+def test_stage3_benign_neighbor_remains_unchanged():
+    """Sensitive redaction must not alter a nearby benign synthetic region."""
+    img = _grad()
+    sensitive = _box(10, 10, 70, 35)
+    benign = _box(75, 10, 135, 35)
+    detections = [
+        (sensitive, "alice@example.com", 0.99),
+        (benign, "ordinary benign text", 0.99),
+    ]
+    result, regions, _ = redact_image(
+        img, detections, _detection(), "BLUR_SENSITIVE"
+    )
+
+    left, top, right, bottom = _bbox_to_rect(benign, *img.size)
+    assert len(regions) == 1
+    assert np.array_equal(
+        _arr(img)[top:bottom, left:right],
+        _arr(result)[top:bottom, left:right],
+    )
+
+
+# ---------------------------------------------------------------------------
 # FRAG-01  Email split at '@' — both boxes redacted
 # ---------------------------------------------------------------------------
 
@@ -349,6 +483,34 @@ def test_frag03_email_split_three_boxes():
     assert len(regions) == 3, "3-part email split must redact all three boxes"
     assert stats["fragmented_matches"] == 1
     assert stats["entities_mapped"] == 1
+
+
+def test_frag03b_email_split_across_more_than_three_boxes():
+    img = _solid()
+    detections = [
+        (_box(5, 10, 25, 30), "al", 0.90),
+        (_box(26, 10, 45, 30), "ice", 0.90),
+        (_box(46, 10, 60, 30), "@", 0.90),
+        (_box(61, 10, 85, 30), "example", 0.90),
+        (_box(86, 10, 105, 30), ".com", 0.90),
+    ]
+    result, regions, stats = redact_image(
+        img, detections, _detection(), "BLUR_SENSITIVE"
+    )
+    assert result is not None
+    assert len(regions) == 5
+    assert stats["entities_mapped"] == 1
+    assert stats["fragmented_matches"] == 1
+
+
+def test_frag03c_malformed_bbox_is_skipped_without_crashing():
+    img = _solid()
+    detections = [([], "alice@example.com", 0.90)]
+    _, regions, stats = redact_image(
+        img, detections, _detection(), "BLUR_SENSITIVE"
+    )
+    assert regions == []
+    assert stats["entities_unmapped"] == 1
 
 
 # ---------------------------------------------------------------------------

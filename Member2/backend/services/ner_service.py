@@ -57,6 +57,20 @@ _CONTEXT_TRIGGERS: dict[str, list[tuple[re.Pattern[str], str, float]]] = {
     "WINDOWS_PATH": [
         (re.compile(r"\b(?:path|directory|folder|file|saved|located|at)\s*[:\-]?\s*$", re.I), "path-label", 0.20),
     ],
+    "PASSWORD": [
+        (re.compile(r"\b(?:password|passwd|pwd|passcode)\s*[:=]?\s*$", re.I), "credential-label", 0.20),
+    ],
+    "API_KEY": [
+        (re.compile(r"\b(?:api[_ -]?key|access[_ -]?key|client[_ -]?secret)\s*[:=]?\s*$", re.I), "credential-label", 0.20),
+    ],
+    "BEARER_TOKEN": [],
+    "JWT": [],
+    "AWS_ACCESS_KEY": [],
+    "GOOGLE_API_KEY": [],
+    "GITHUB_TOKEN": [],
+    "EMAIL_OBFUSCATED": [
+        (re.compile(r"\b(?:email|e-mail|contact)\s*[:\-]?\s*$", re.I), "email-label", 0.20),
+    ],
 }
 
 # Negative context — words that suggest the entity is an example or template
@@ -66,6 +80,11 @@ _NEGATIVE_TRIGGERS: list[re.Pattern[str]] = [
 
 # Base confidence for a regex match with no context
 _BASE_CONFIDENCE = 0.75
+_DETECTION_CATEGORIES = (
+    "EMAIL", "PHONE", "URL", "IP_ADDRESS", "DATE", "WINDOWS_PATH",
+    "PASSWORD", "API_KEY", "BEARER_TOKEN", "JWT", "AWS_ACCESS_KEY",
+    "GOOGLE_API_KEY", "GITHUB_TOKEN", "EMAIL_OBFUSCATED",
+)
 
 
 def _extract_left_context(text: str, match_start: int, window: int = 60) -> str:
@@ -118,7 +137,7 @@ def detect_entities_with_scores(text: str) -> dict[str, Any]:
     base = detect_sensitive_entities(text)
     result: dict[str, Any] = {}
 
-    for category in ("EMAIL", "PHONE", "URL", "IP_ADDRESS", "DATE", "WINDOWS_PATH"):
+    for category in _DETECTION_CATEGORIES:
         cat_info = base.get(category, {"matches": [], "count": 0})
         matches: list[str] = cat_info.get("matches", [])
 
@@ -154,7 +173,7 @@ def high_confidence_entities(
     Useful for filtering noisy matches when deciding what to redact.
     """
     out: dict[str, list[str]] = {}
-    for category in ("EMAIL", "PHONE", "URL", "IP_ADDRESS", "DATE", "WINDOWS_PATH"):
+    for category in _DETECTION_CATEGORIES:
         cat = scored_output.get(category, {})
         filtered = [
             sm["value"]

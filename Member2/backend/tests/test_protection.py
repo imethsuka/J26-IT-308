@@ -51,9 +51,16 @@ def test_critical_maps_to_block():
     assert result["reversible"] is False
 
 
-def test_unknown_risk_falls_back_to_monitor():
+def test_unknown_risk_falls_back_to_block():
     result = select_protection("UNKNOWN_LEVEL", None, _empty_detection())
-    assert result["protection_action"] == "MONITOR"
+    assert result["protection_action"] == "BLOCK"
+    assert result["reversible"] is False
+
+
+def test_unavailable_risk_blocks():
+    result = select_protection("UNAVAILABLE", None, _empty_detection())
+    assert result["protection_action"] == "BLOCK"
+    assert result["risk_level_received"] == "UNAVAILABLE"
 
 
 # ---------------------------------------------------------------------------

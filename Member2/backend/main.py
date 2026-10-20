@@ -8,6 +8,8 @@ from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, field_validator
 
 from backend.database import get_connection, init_db
@@ -57,6 +59,11 @@ app.add_middleware(
         "http://localhost:5500",
     ],
 )
+
+# Serve the frontend directory for the demo page (same-origin — no CORS needed).
+_FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
+if _FRONTEND_DIR.is_dir():
+    app.mount("/frontend", StaticFiles(directory=str(_FRONTEND_DIR)), name="frontend")
 
 # ---------------------------------------------------------------------------
 # Allowed values (validated at the boundary)
@@ -243,15 +250,30 @@ async def analyze(request: Request):
         temporary_file.write(image_bytes)
         temporary_file.close()
 
-        extracted_text, detections_count, ocr_detections = extract_text_with_boxes(temporary_path)
-        detection_output = detect_sensitive_entities(extracted_text)
+        try:
+            extracted_text, detections_count, ocr_detections = extract_text_with_boxes(
+                temporary_path
+            )
+        except Exception as exc:
+            raise HTTPException(
+                status_code=503,
+                detail="Privacy processing could not complete because OCR failed.",
+            ) from exc
 
-        # Contextual NER — confidence-scored entity detection
-        ner_output = detect_entities_with_scores(extracted_text)
+        try:
+            detection_output = detect_sensitive_entities(extracted_text)
 
-        extracted_features = extract_features(
-            extracted_text, detection_output, application_context
-        )
+            # Contextual NER — confidence-scored entity detection
+            ner_output = detect_entities_with_scores(extracted_text)
+
+            extracted_features = extract_features(
+                extracted_text, detection_output, application_context
+            )
+        except Exception as exc:
+            raise HTTPException(
+                status_code=503,
+                detail="Privacy processing could not complete because sensitive-entity detection failed.",
+            ) from exc
 
         # Load user profile for personalised threshold
         profile = ups.load_profile(user_id)
@@ -316,10 +338,57 @@ async def analyze(request: Request):
                 )
                 if redacted_regions:
                     redacted_png_bytes = image_to_png_bytes(_redacted_img)
-        except Exception:
-            redacted_png_bytes = None
-            redacted_regions = []
-            redaction_stats = {}
+        except Exception as exc:
+            raise HTTPException(
+                status_code=503,
+                detail="Privacy processing could not complete because image redaction failed.",
+            ) from exc
+
+        protection_status = "completed"
+        if (
+            protection_action != "MONITOR"
+            and redaction_stats.get("entities_unmapped", 0) > 0
+        ):
+            # A partial blur is not a safe result. Replace it with an opaque
+            # block so detected entities cannot remain visible.
+            incomplete_stats = dict(redaction_stats)
+            try:
+                from PIL import Image as _PIL_Image3
+                with _PIL_Image3.open(temporary_path) as _src_img:
+                    _src_img.load()
+                    _blocked_img, redacted_regions, blocked_stats = redact_image(
+                        _src_img, ocr_detections, detection_output, "BLOCK"
+                    )
+                    redacted_png_bytes = image_to_png_bytes(_blocked_img)
+            except Exception as exc:
+                raise HTTPException(
+                    status_code=503,
+                    detail="Privacy processing could not complete after incomplete entity mapping.",
+                ) from exc
+
+            protection_action = "BLOCK"
+            protection_status = "incomplete_entity_mapping"
+            protection_selection = {
+                **protection_selection,
+                "protection_action": "BLOCK",
+                "description": (
+                    "Detected entities could not all be mapped to OCR regions; "
+                    "the image was blocked as a fail-safe."
+                ),
+                "reversible": False,
+                "severity": 3,
+                "fallback_reason": "unmapped_sensitive_entities",
+            }
+            redaction_stats = {
+                **blocked_stats,
+                "entities_detected": incomplete_stats.get("entities_detected", 0),
+                "entities_mapped": incomplete_stats.get("entities_mapped", 0),
+                "entities_unmapped": incomplete_stats.get("entities_unmapped", 0),
+                "unmapped_entity_categories": incomplete_stats.get(
+                    "unmapped_entity_categories", []
+                ),
+                "fallback_action": "BLOCK",
+            }
 
         # Store redacted image keyed by a random token, NOT the user-supplied
         # filename.  Using the filename as a key allows any caller who knows
@@ -382,6 +451,7 @@ async def analyze(request: Request):
             },
             "redaction_summary": {
                 "protection_action":          protection_action,
+                "protection_status":          protection_status,
                 "regions_redacted":           len(redacted_regions),
                 "redacted_image_available":   redacted_png_bytes is not None,
                 "redacted_image_endpoint": (
@@ -569,6 +639,68 @@ async def rollback_calibration(payload: RollbackRequest):
     return {
         "status": "rolled_back",
         "user_profile_summary": ups.profile_summary(updated),
+    }
+
+
+@app.get("/demo")
+async def demo_redirect():
+    """Convenience redirect — opens the presentation demo page."""
+    return RedirectResponse(url="/frontend/demo.html")
+
+
+# ---------------------------------------------------------------------------
+# /demo-predict — text-only prediction (no OCR) for live demonstrations
+# ---------------------------------------------------------------------------
+
+class DemoPredictRequest(BaseModel):
+    text: str
+    application_context: str
+    privacy_preference: str
+    historical_protection_level: str
+
+    @field_validator("privacy_preference", "historical_protection_level")
+    @classmethod
+    def _validate_preference(cls, v: str) -> str:
+        normalised = v.strip().capitalize()
+        if normalised not in _VALID_PREFERENCE_VALUES:
+            raise ValueError(
+                f"Value must be one of {sorted(_VALID_PREFERENCE_VALUES)}, got '{v}'."
+            )
+        return normalised
+
+    @field_validator("application_context", "text")
+    @classmethod
+    def _validate_non_empty(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("Field must not be empty.")
+        return v.strip()
+
+
+@app.post("/demo-predict")
+async def demo_predict(payload: DemoPredictRequest):
+    """
+    Text-only prediction for live demonstrations.
+    Runs entity detection, feature extraction, and ML prediction
+    without any image upload or OCR step.
+    Not for production use — no DB logging, no tokenization, no redaction.
+    """
+    detection_output = detect_sensitive_entities(payload.text)
+    extracted_features = extract_features(
+        payload.text, detection_output, payload.application_context
+    )
+    risk_prediction = predict_privacy_risk(
+        extracted_features,
+        payload.application_context,
+        payload.privacy_preference,
+        payload.historical_protection_level,
+    )
+    rule_prediction = predict_rule_based(extracted_features)
+
+    return {
+        "detection_results": detection_output,
+        "extracted_features": extracted_features,
+        "risk_prediction": risk_prediction,
+        "rule_baseline": rule_prediction,
     }
 
 

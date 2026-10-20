@@ -46,10 +46,10 @@ _RISK_TO_ACTION: dict[str, dict[str, Any]] = {
 }
 
 _FALLBACK_ACTION: dict[str, Any] = {
-    "protection_action": "MONITOR",
-    "description": "Risk level unrecognised; defaulting to MONITOR.",
-    "reversible": True,
-    "severity": 0,
+    "protection_action": "BLOCK",
+    "description": "Risk state unavailable or unrecognised; blocking until it can be assessed safely.",
+    "reversible": False,
+    "severity": 3,
 }
 
 _VALID_RISK_LEVELS = frozenset(_RISK_TO_ACTION)
@@ -78,7 +78,7 @@ def select_protection(
         protection_action, description, reversible, severity,
         risk_level_received, confidence_received, affected_categories
     """
-    level = str(risk_level).upper().strip() if risk_level else "LOW"
+    level = str(risk_level).upper().strip() if risk_level else "UNAVAILABLE"
     action_info = _RISK_TO_ACTION.get(level, _FALLBACK_ACTION)
 
     # Enumerate which entity categories are present (for display / audit)

@@ -86,6 +86,14 @@ def test_ner05_all_six_categories_present():
         assert cat in result, f"Category {cat} missing from output"
 
 
+def test_ner05b_credential_categories_are_scored():
+    result = detect_entities_with_scores(
+        "password: Synthetic-Pass_42! api_key=synthetickey_1234567890abcd"
+    )
+    assert result["PASSWORD"]["scored_matches"][0]["confidence"] > 0.75
+    assert result["API_KEY"]["scored_matches"][0]["confidence"] > 0.75
+
+
 # ---------------------------------------------------------------------------
 # NER-06  scored_matches length matches matches length
 # ---------------------------------------------------------------------------
@@ -150,6 +158,7 @@ def test_ner10_empty_string_no_crash():
     for cat in ("EMAIL", "PHONE", "URL", "IP_ADDRESS", "DATE", "WINDOWS_PATH"):
         assert result[cat]["count"] == 0
         assert result[cat]["scored_matches"] == []
+    assert result["EMAIL_OBFUSCATED"]["count"] == 0
 
 
 # ---------------------------------------------------------------------------

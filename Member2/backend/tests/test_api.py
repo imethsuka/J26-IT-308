@@ -7,6 +7,7 @@ The ML model is mocked to avoid requiring a trained model artifact.
 
 import io
 import json
+from PIL import Image
 import pytest
 from unittest.mock import patch, MagicMock
 import numpy as np
@@ -60,13 +61,16 @@ def _mock_bundle():
 
 
 def _analyze_multipart(client, *, user_id="test_user"):
-    image_content = b"\xff\xd8\xff" + b"\x00" * 100  # minimal fake JPEG header
+    image = Image.new("RGB", (80, 40), (220, 220, 220))
+    image_content = io.BytesIO()
+    image.save(image_content, format="PNG")
+    image_content.seek(0)
     data = {
         "application_context": (None, "Google Chrome"),
         "privacy_preference": (None, "Medium"),
         "historical_protection_level": (None, "Medium"),
         "user_id": (None, user_id),
-        "image": ("test.jpg", io.BytesIO(image_content), "image/jpeg"),
+        "image": ("test.png", image_content, "image/png"),
     }
     return client.post("/analyze", files=data)
 
