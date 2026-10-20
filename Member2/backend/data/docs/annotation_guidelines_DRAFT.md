@@ -2,7 +2,7 @@
 
 **Project:** J26-IT-308 · Member 2 · CAPRLM  
 **Status:** DRAFT — not approved. All unresolved policy decisions are marked ⚠️ REQUIRES APPROVAL.  
-**Version:** 0.2 (revised 2026-10-15 — fixes C1, C2, C3, M1, M3, M5 from review report)  
+**Version:** 0.3 (revised 2026-10-20 — correction note for Section 2 stale capability list)  
 **Applies to:** `CAPRLM_annotation_50.csv` and any future annotation files.  
 **Do not use as a finalised standard until all policy decisions are resolved and a supervisor approves.**
 
@@ -14,6 +14,7 @@
 |---|---|---|
 | 0.1 | 2026-10-15 | Initial draft |
 | 0.2 | 2026-10-15 | Fixed HIGH/CRITICAL contradiction (C1); unified column name to `annotation_notes` (C3); added `01bf28e2` to review queue (C2/M5); corrected DATE-only count to 9 (M1); corrected Section 10.2 arithmetic (M3); added URL-only clarification (M2/requirement 8) |
+| 0.3 | 2026-10-20 | Added correction note to Section 2: pixel redaction, CV features, contextual NER, and continual learning are now implemented as research extensions; persistent cross-request tokenization remains intentionally absent; labelling policy unchanged |
 
 ---
 
@@ -72,16 +73,38 @@ output even when a human annotator can see a date in the screenshot.
 These gaps are documented in README.md Limitations 3 and 4. Labels for
 OCR-invisible risk must be documented by the annotator (see Sections 6 and 7).
 
-**What this prototype does NOT implement:**
-- Computer vision, image classification, or pixel-level layout analysis.
-- A trained Named Entity Recognition (NER) model.
-- Actual image blurring, blocking, or any pixel-level transformation.
-- Persistent reversible tokenization across requests.
-- Continual learning or online model updating.
+**Extensions implemented after v0.2 was drafted (correction added 2026-10-20):**
 
-These unimplemented capabilities are documented in README.md. Annotation
-guidelines and dataset targets are designed around what the pipeline
-**actually does**, not what a future version might do.
+> ⚠️ **Note:** Section 2 of this document was written at v0.1/v0.2 when several
+> capabilities were still unimplemented. Since then, the following research
+> extensions have been added to the pipeline. Annotation guidelines still apply
+> to what the pipeline *detects via text*, not to the downstream transformations:
+>
+> | Capability | Added status |
+> |---|---|
+> | Pixel-level redaction (Gaussian blur / BLOCK) | IMPLEMENTED — `services/redaction.py`; 15 passing tests |
+> | Layout-based CV feature extraction (bbox analysis) | IMPLEMENTED — `services/cv_features.py`; 11 passing tests |
+> | Contextual NER with confidence scoring | IMPLEMENTED — `services/ner_service.py`; 12 passing tests; heuristic, not trained |
+> | Continual learning / threshold recalibration | IMPLEMENTED — `services/user_profile_service.py`; windowed; 12 passing tests |
+> | Persistent reversible tokenization across requests | NOT IMPLEMENTED — by design; ephemeral per-request only |
+>
+> **These extensions do not change annotation policy.** Labels are still
+> assigned based on OCR-extracted text entities as defined below. The pipeline
+> extensions operate downstream of entity detection and do not affect labelling
+> rules.
+
+**What the pipeline still cannot detect via OCR (unchanged from v0.2):**
+- Sensitive data visible as images (e.g. photos of ID cards, screenshots
+  of PDFs rendered as images).
+- Sensitive UI text rendered as anti-aliased or styled pixels that EasyOCR
+  cannot segment (e.g. some CAPTCHA elements, anti-screen-capture overlays).
+- Layout-level context: a screenshot where the visible application interface
+  implies a sensitive operation even though no matching text is present.
+- Prose-format dates, names, or locations that do not match the numeric
+  regex patterns above.
+
+These gaps are documented in README.md Limitations 3 and 4. Labels for
+OCR-invisible risk must be documented by the annotator (see Sections 6 and 7).
 
 ---
 

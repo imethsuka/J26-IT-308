@@ -1,8 +1,8 @@
 # Requirements Traceability Matrix — CAPRLM
 **Project:** J26-IT-308  
-**Generated:** 2026-10-15 · **Updated:** 2026-10-15 (B4/B5 pass)  
+**Generated:** 2026-10-15 · **Updated:** 2026-10-20 (latency results, annotation guidelines v0.3, session 9 re-verification)  
 **Evaluator:** Claude Sonnet 4.6 (AI verification only — not human review)  
-**Test evidence:** 381 passed, 1 warning (live run 2026-10-15, venv pytest)  
+**Test evidence:** 381 passed, 1 warning (live run 2026-10-20, venv pytest — re-confirmed; matches 2026-10-15 count)  
 **Live API evidence:** POST /analyze with entity image → HTTP 200, risk_level=MEDIUM, confidence=0.86, redaction_status=redacted, regions_redacted=2, 2647 changed pixels confirmed, GET /redacted-image → valid PNG; error handling verified (missing field → 4xx, invalid label → 422); all routes verified (2026-10-15)
 
 ---
@@ -111,7 +111,7 @@ These features were not required by the original proposal (as inferred from code
 
 **Note on proposal document**: No formal project proposal (PDF, DOCX, or similar) was found in the repository. Requirements R1–R14 were derived by code inspection and cross-referenced against the annotation CSV, experiment artifacts, session history, and the `PROJECT_CONTROL_CENTER.md` stated objectives. The closest formal source is `PROJECT_CONTROL_CENTER.md` §1 ("Stated proposal objectives"). Gaps in proposal-scope coverage should be verified against the actual project brief before final submission.
 
-**Note on annotation_guidelines_DRAFT.md v0.2 stale content**: Section 2 of that document lists several capabilities as "NOT implemented" (image transformations, continual learning, CV features). Those have since been implemented as research extensions. The guidelines document needs a correction note before submission to avoid contradicting the implemented system.
+**Note on annotation_guidelines_DRAFT.md**: v0.3 (2026-10-20) corrects the stale Section 2 — the "NOT implemented" list for pixel redaction, CV features, contextual NER, and continual learning has been replaced with a correction note listing their actual implementation status. Labelling policy is unchanged. Persistent reversible tokenization across requests remains intentionally absent.
 
 ---
 
@@ -130,13 +130,27 @@ These features were not required by the original proposal (as inferred from code
 
 ---
 
+## Processing Latency (measured 2026-10-20, 50 runs, synthetic input)
+
+| Stage | Mean (ms) |
+|-------|-----------|
+| Entity detection | 0.03 |
+| ML risk prediction (RF) | 5.49 |
+| Pixel redaction (BLUR_SENSITIVE) | 0.57 |
+| **Full non-OCR pipeline** | **6.57** |
+| EasyOCR (per-image, CPU-only) | 30 000–90 000 (measured separately) |
+
+Full results: `backend/data/latency_results.json`. EasyOCR is the production bottleneck.
+
+---
+
 ## Critical Submission Risks
 
 1. **R13 BLOCKED**: 16/50 (32%) annotation rows have unresolved anomalies. Model was trained on potentially incorrect labels. All evaluation numbers are provisional until corrected.
 2. **R4 gap**: ML model provides no measurable advantage over majority-class baseline (identical F1=0.4444). This is an important honest research finding, not a bug — but must be clearly documented.
 3. **R12 PARTIALLY_COMPLETE**: Frontend UI browser rendering not tested — VS Code Live Server required. Code and API integration verified.
 4. **E7/E8 NOT_IMPLEMENTED**: No inter-annotator agreement or statistical significance — standard academic expectations for a dataset paper.
-5. **annotation_guidelines_DRAFT.md stale claims**: Section 2 lists pixel redaction, continual learning, CV features as not implemented — these are now implemented extensions. Update before submission.
+5. **annotation_guidelines_DRAFT.md**: v0.3 corrects stale capability claims — resolved 2026-10-20.
 
 ---
 

@@ -1,0 +1,93 @@
+{
+  "run_at": "2026-10-20T05:38:57Z",
+  "n_runs": 50,
+  "synthetic_text_length": 170,
+  "application_context": "Word",
+  "note": "EasyOCR is excluded from this automated benchmark (takes 30-90 s per image on CPU). These timings cover all pipeline stages after OCR.",
+  "stages": {
+    "1_entity_detection": {
+      "mean_ms": 0.032,
+      "std_ms": 0.002,
+      "min_ms": 0.031,
+      "max_ms": 0.04,
+      "n_runs": 50
+    },
+    "2_feature_extraction": {
+      "mean_ms": 0.003,
+      "std_ms": 0.0,
+      "min_ms": 0.002,
+      "max_ms": 0.005,
+      "n_runs": 50
+    },
+    "3_ml_risk_prediction": {
+      "mean_ms": 5.485,
+      "std_ms": 1.017,
+      "min_ms": 4.777,
+      "max_ms": 8.783,
+      "n_runs": 50
+    },
+    "4_rule_based_prediction": {
+      "mean_ms": 0.002,
+      "std_ms": 0.0,
+      "min_ms": 0.002,
+      "max_ms": 0.004,
+      "n_runs": 50
+    },
+    "5_protection_selection": {
+      "mean_ms": 0.003,
+      "std_ms": 0.001,
+      "min_ms": 0.003,
+      "max_ms": 0.007,
+      "n_runs": 50
+    },
+    "6_tokenization": {
+      "mean_ms": 0.01,
+      "std_ms": 0.001,
+      "min_ms": 0.009,
+      "max_ms": 0.017,
+      "n_runs": 50
+    },
+    "7_contextual_ner": {
+      "mean_ms": 0.056,
+      "std_ms": 0.007,
+      "min_ms": 0.053,
+      "max_ms": 0.102,
+      "n_runs": 50
+    },
+    "8_cv_features": {
+      "mean_ms": 0.021,
+      "std_ms": 0.005,
+      "min_ms": 0.019,
+      "max_ms": 0.054,
+      "n_runs": 50
+    },
+    "9_pixel_redaction": {
+      "mean_ms": 0.568,
+      "std_ms": 0.054,
+      "min_ms": 0.542,
+      "max_ms": 0.91,
+      "n_runs": 50
+    },
+    "10_full_non_ocr_pipeline": {
+      "mean_ms": 6.566,
+      "std_ms": 1.082,
+      "min_ms": 5.779,
+      "max_ms": 10.663,
+      "n_runs": 50
+    }
+  },
+  "risk_prediction_sample": {
+    "risk_level": "HIGH",
+    "confidence": 0.5,
+    "protection_action": "BLUR_AND_ALERT"
+  },
+  "entity_detection_sample": {
+    "EMAIL": 1,
+    "PHONE": 1,
+    "URL": 1,
+    "IP_ADDRESS": 0,
+    "DATE": 1,
+    "WINDOWS_PATH": 0,
+    "total_sensitive_entity_count": 4
+  }
+}
