@@ -59,6 +59,11 @@ def reload_bundle() -> None:
     _load_bundle()
 
 
+def get_bundle() -> dict:
+    """Return the loaded model bundle (loads from disk on first call)."""
+    return _load_bundle()
+
+
 # ---------------------------------------------------------------------------
 # Feature preparation
 # ---------------------------------------------------------------------------

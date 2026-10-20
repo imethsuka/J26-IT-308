@@ -1,3 +1,4 @@
+import json
 import re
 import secrets
 import time
@@ -16,7 +17,7 @@ from backend.database import get_connection, init_db
 from backend.services.feature_extraction import extract_features
 from backend.services.ocr_service import extract_text_with_boxes
 from backend.services.protection import select_protection
-from backend.services.risk_prediction import predict_privacy_risk, reload_bundle
+from backend.services.risk_prediction import predict_privacy_risk, reload_bundle, get_bundle
 from backend.services.rule_baseline import predict_rule_based
 from backend.services.sensitive_detection import detect_sensitive_entities
 from backend.services.tokenizer import tokenize as _tokenize_entities
@@ -58,6 +59,8 @@ app.add_middleware(
         "http://127.0.0.1:5500",
         "http://localhost:5500",
     ],
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type"],
 )
 
 # Serve the frontend directory for the demo page (same-origin — no CORS needed).
