@@ -385,3 +385,24 @@ python -m pytest backend/tests/ -v
 ```
 
 209 tests covering OCR pipeline, entity detection, feature extraction, rule baseline, baseline comparison evaluation, risk prediction, reversible tokenization (T5), user profiles, model training, database schema/migration, and the FastAPI endpoints.
+
+## Native desktop model workbench
+
+The PySide6 app under `desktop_app/` inspects the existing serialized model and calls `backend.services.risk_prediction` directly for feature-based predictions. It does not make local HTTP requests, retrain the model, or process screenshots. The evaluation page reads the latest recorded held-out evaluation in `backend/data/training_log.json`; it does not calculate or substitute training metrics. A Random Forest tree view shows one estimator at a time and truncates the display at depth 4.
+
+From a Windows terminal in this `Member2` directory, install the project dependencies and launch:
+
+```
+.venv\Scripts\python.exe -m pip install -r requirements.txt
+run_desktop_app.bat
+```
+
+The launcher only uses `.venv\Scripts\python.exe` and gives an error if that project interpreter is absent. If the checked-in environment does not work on the machine, create a project environment with Python 3.14 and install `requirements.txt` into it before launching. The current repository environment could not be executed in the implementation shell because its base Python path was inaccessible.
+
+Run the full backend and desktop integration tests from `Member2` with:
+
+```
+.venv\Scripts\python.exe -m pytest backend/tests/ -v
+```
+
+Research caution: the saved model was trained from 50 imbalanced annotations (LOW 38, MEDIUM 10, HIGH 2); the recorded 10-row held-out split contains no HIGH examples. `CRITICAL` is not a trained class. Feature importance is not causal evidence, and the displayed probability estimates have not been evaluated for calibration. Manually entered desktop features do not constitute screenshot analysis.

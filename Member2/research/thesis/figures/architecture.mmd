@@ -1,0 +1,23 @@
+flowchart TD
+    A[Desktop screenshots] --> B[EasyOCR extraction]
+    B --> C[OCR text and bounding boxes]
+    C --> D[Rule-based sensitive entity detection]
+    D --> E[Feature extraction]
+    E --> F[Random Forest risk prediction]
+    D --> G[Contextual heuristic scores]
+    F --> H[Protection selection]
+    H --> I{Action}
+    I -->|MONITOR| J[Copy/no pixel change]
+    I -->|BLUR_SENSITIVE| K[Mapped entity boxes blurred]
+    I -->|BLUR_AND_ALERT| L[OCR text regions blurred]
+    I -->|BLOCK| M[Opaque black image]
+    K --> N[Redaction statistics]
+    L --> N
+    M --> N
+    N --> O{Incomplete mapping?}
+    O -->|Yes| M
+    O -->|No| P[API response and in-memory redacted-image store]
+    D --> Q[Risk-adaptive tokenization]
+    Q --> P
+    P --> R[SQLite metadata and feedback]
+    R --> S[Threshold recalibration]

@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CAPRLM Model Insights</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" crossorigin="anonymous"></script>
+  <style>
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 18px;
+      color: var(--accent);
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-decoration: none;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .back-link:hover { text-decoration: underline; }
+
+    .insights-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .chart-container {
+      position: relative;
+      height: 280px;
+      margin-top: 16px;
+    }
+
+    .unavailable {
+      color: var(--muted);
+      font-size: 0.82rem;
+      font-style: italic;
+    }
+
+    .warning-box {
+      margin-top: 12px;
+      padding: 10px 13px;
+      background: #fdf6e7;
+      border: 1px solid #e8d8a0;
+      color: #6b5200;
+      font-size: 0.78rem;
+    }
+
+    .limitation-list {
+      margin: 6px 0 0;
+      padding-left: 18px;
+      color: var(--muted);
+      font-size: 0.78rem;
+    }
+    .limitation-list li { margin-bottom: 3px; }
+
+    .confusion-table {
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 0.82rem;
+    }
+    .confusion-table th,
+    .confusion-table td {
+      border: 1px solid var(--line);
+      padding: 6px 10px;
+      text-align: center;
+    }
+    .confusion-table th {
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 700;
+    }
+    .confusion-table td.diagonal {
+      background: #e7f0ef;
+      font-weight: 700;
+    }
+
+    .per-class-table {
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 0.82rem;
+      width: 100%;
+    }
+    .per-class-table th,
+    .per-class-table td {
+      border: 1px solid var(--line);
+      padding: 6px 10px;
+      text-align: right;
+    }
+    .per-class-table th:first-child,
+    .per-class-table td:first-child {
+      text-align: left;
+      font-weight: 700;
+    }
+    .per-class-table th {
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+      margin-top: 16px;
+    }
+    .form-grid .field { margin: 0; }
+    .checkbox-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 4px;
+    }
+    .checkbox-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.82rem;
+      font-weight: 400;
+      color: var(--ink);
+      cursor: pointer;
+    }
+    .checkbox-label input[type="checkbox"] {
+      width: 15px;
+      height: 15px;
+      cursor: pointer;
+    }
+
+    .predict-result {
+      margin-top: 16px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      background: var(--accent-soft);
+    }
+    .predict-result .risk-level {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .tree-node {
+      margin: 4px 0;
+      padding-left: 16px;
+      border-left: 2px solid var(--line);
+    }
+    .tree-node > summary {
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--ink);
+      padding: 3px 0;
+      list-style: none;
+    }
+    .tree-node > summary::before { content: "\25B6\00A0"; color: var(--accent); }
+    .tree-node[open] > summary::before { content: "\25BC\00A0"; }
+    .tree-branch-label {
+      font-size: 0.72rem;
+      color: var(--accent);
+      font-weight: 700;
+      text-transform: uppercase;
+      margin: 6px 0 2px 0;
+    }
+    .tree-leaf {
+      margin: 4px 0 4px 16px;
+      font-size: 0.82rem;
+      color: var(--muted);
+      padding: 5px 10px;
+      border-left: 2px solid var(--accent);
+      background: var(--accent-soft);
+    }
+    .tree-leaf strong { color: var(--ink); }
+    .tree-truncated {
+      font-size: 0.78rem;
+      color: var(--muted);
+      font-style: italic;
+      margin-left: 16px;
+    }
+
+    .spinner { color: var(--muted); font-size: 0.82rem; }
+
+    @media (max-width: 620px) {
+      .form-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app-shell">
+    <a href="index.html" class="back-link">&#8592; Main application</a>
+
+    <header class="app-header">
+      <div>
+        <p class="eyebrow">Member2 / model insights</p>
+        <h1>Random Forest Model Insights</h1>
+        <p class="subtitle">Read-only dashboard — actual trained model, no retraining.</p>
+      </div>
+      <div class="prototype-status" id="connection-status" aria-label="Backend status">
+        <span class="status-indicator" aria-hidden="true"></span>
+        <span>Connecting…</span>
+      </div>
+    </header>
+
+    <div class="insights-grid">
+
+      <!-- PHASE 2: Model Overview -->
+      <section class="workspace" aria-labelledby="overview-heading">
+        <div class="section-heading">
+          <div>
+            <p class="section-label">01 / Overview</p>
+            <h2 id="overview-heading">Model Overview</h2>
+          </div>
+          <span class="section-status">Random Forest</span>
+        </div>
+        <div id="overview-content"><p class="spinner">Loading…</p></div>
+      </section>
+
+      <!-- PHASE 3: Feature Importance -->
+      <section class="workspace" aria-labelledby="importance-heading">
+        <div class="section-heading">
+          <div>
+            <p class="section-label">02 / Features</p>
+            <h2 id="importance-heading">Feature Importance</h2>
+          </div>
+          <span class="section-status">Mean decrease in impurity</span>
+        </div>
+        <p class="field-help">
+          Relative model reliance on each input. Does not imply causality.
+        </p>
+        <div class="chart-container">
+          <canvas id="importance-chart" aria-label="Feature importance bar chart"></canvas>
+        </div>
+        <p id="importance-note" class="field-help" style="margin-top:10px"></p>
+      </section>
+
+      <!-- PHASE 4: Prediction Explorer -->
+      <section class="workspace" aria-labelledby="predict-heading">
+        <div class="section-heading">
+          <div>
+            <p class="section-label">03 / Explorer</p>
+            <h2 id="predict-heading">Interactive Prediction Explorer</h2>
+          </div>
+          <span class="section-status">Experimental</span>
+        </div>
+        <div class="warning-box">
+          These are manually entered <strong>experimental inputs</strong>, not
+          screenshot-derived observations. Results are not valid real-world risk assessments.
+        </div>
+
+        <div class="form-grid">
+          <div class="field" style="grid-column: span 2">
+            <label>Entity features present (binary)</label>
+            <div class="checkbox-group">
+              <label class="checkbox-label"><input type="checkbox" id="feat-email"> EMAIL</label>
+              <label class="checkbox-label"><input type="checkbox" id="feat-phone"> PHONE</label>
+              <label class="checkbox-label"><input type="checkbox" id="feat-url"> URL</label>
+              <label class="checkbox-label"><input type="checkbox" id="feat-ip"> IP_ADDRESS</label>
+              <label class="checkbox-label"><input type="checkbox" id="feat-date"> DATE</label>
+              <label class="checkbox-label"><input type="checkbox" id="feat-path"> WINDOWS_PATH</label>
+              <label class="checkbox-label"><input type="checkbox" id="feat-sensitive"> sensitive_entity_present</label>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="predict-context">Application context</label>
+            <select id="predict-context">
+              <option value="Google Chrome">Google Chrome</option>
+              <option value="Visual Studio Code">Visual Studio Code</option>
+              <option value="ChatGPT">ChatGPT</option>
+              <option value="Microsoft Word">Microsoft Word</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="predict-preference">Privacy preference</label>
+            <select id="predict-preference">
+              <option value="Low">Low</option>
+              <option value="Medium" selected>Medium</option>
+              <option value="High">High</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="predict-history">Historical protection level</label>
+            <select id="predict-history">
+              <option value="Low">Low</option>
+              <option value="Medium" selected>Medium</option>
+              <option value="High">High</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="action-row">
+          <button id="predict-button" class="button button-primary" type="button">Run prediction</button>
+          <span id="predict-note" class="action-note"></span>
+        </div>
+
+        <div id="predict-result" hidden></div>
+      </section>
+
+      <!-- PHASE 5: Decision Tree Explorer -->
+      <section class="workspace" aria-labelledby="tree-heading">
+        <div class="section-heading">
+          <div>
+            <p class="section-label">04 / Trees</p>
+            <h2 id="tree-heading">Decision Tree Explorer</h2>
+          </div>
+          <span class="section-status" id="tree-count-label">Loading…</span>
+        </div>
+        <div class="warning-box">
+          One tree does not represent the full Random Forest ensemble.
+          Individual trees may reach different conclusions.
+        </div>
+        <div class="action-row" style="padding-top: 16px; margin-top: 0; border-top: none;">
+          <label for="tree-index-input" style="color: var(--ink); font-size: 0.82rem; font-weight: 700;">Tree index</label>
+          <input type="number" id="tree-index-input" value="0" min="0" step="1"
+            style="width:80px; padding:6px 9px; border:1px solid var(--line); border-radius:2px; font:inherit; font-size:0.9rem;">
+          <button id="tree-load-button" class="button button-primary" type="button">Load tree</button>
+          <span id="tree-note" class="action-note"></span>
+        </div>
+        <div id="tree-content" style="margin-top:16px"></div>
+      </section>
+
+      <!-- PHASE 6: Model Evaluation -->
+      <section class="workspace" aria-labelledby="eval-heading">
+        <div class="section-heading">
+          <div>
+            <p class="section-label">05 / Evaluation</p>
+            <h2 id="eval-heading">Model Evaluation</h2>
+          </div>
+          <span class="section-status">Held-out test set</span>
+        </div>
+        <div id="eval-content"><p class="spinner">Loading…</p></div>
+      </section>
+
+    </div><!-- .insights-grid -->
+
+    <footer class="app-footer">
+      <span>Adaptive Privacy-Preserving Cognitive Memory System</span>
+      <span>Model Insights — read-only</span>
+    </footer>
+  </main>
+
+  <script src="insights.js"></script>
+</body>
+</html>

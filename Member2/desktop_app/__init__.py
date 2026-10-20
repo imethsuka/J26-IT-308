@@ -1,0 +1,1 @@
+"""CAPRLM desktop inspection application."""

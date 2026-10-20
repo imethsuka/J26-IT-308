@@ -68,6 +68,8 @@ _FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
 if _FRONTEND_DIR.is_dir():
     app.mount("/frontend", StaticFiles(directory=str(_FRONTEND_DIR)), name="frontend")
 
+_TRAINING_LOG_PATH = Path(__file__).parent / "data" / "training_log.json"
+
 # ---------------------------------------------------------------------------
 # Allowed values (validated at the boundary)
 # ---------------------------------------------------------------------------
@@ -783,4 +785,294 @@ async def model_info():
         "model_available": True,
         "model_path": str(MODEL_PATH),
         "last_training": last_entry,
+    }
+
+
+# ---------------------------------------------------------------------------
+# /insights/* — Model Insights dashboard endpoints (read-only, no retraining)
+# ---------------------------------------------------------------------------
+
+@app.get("/insights/model-overview")
+async def insights_model_overview():
+    """Model metadata for the insights dashboard."""
+    try:
+        bundle = get_bundle()
+    except RuntimeError:
+        return {"model_available": False}
+
+    model = bundle["model"]
+    feature_names: list[str] = bundle.get("feature_names", [])
+    classes: list[str] = bundle.get("classes", [])
+
+    return {
+        "model_available": True,
+        "algorithm": "RandomForestClassifier",
+        "n_estimators": getattr(model, "n_estimators", None),
+        "n_features": len(feature_names),
+        "feature_names": feature_names,
+        "class_labels": classes,
+        "model_version": bundle.get("model_version"),
+        "random_state": bundle.get("random_state"),
+        "train_size": bundle.get("train_size"),
+        "test_size": bundle.get("test_size"),
+        "cv_folds": bundle.get("cv_folds"),
+        "cv_macro_f1_mean": bundle.get("cv_macro_f1_mean"),
+        "cv_macro_f1_std": bundle.get("cv_macro_f1_std"),
+        "test_macro_f1": bundle.get("test_macro_f1"),
+        "test_accuracy": bundle.get("test_accuracy"),
+        "model_artifact": "backend/data/caprlm_model.joblib",
+    }
+
+
+@app.get("/insights/feature-importance")
+async def insights_feature_importance():
+    """Feature importances from the actual trained Random Forest model."""
+    try:
+        bundle = get_bundle()
+    except RuntimeError:
+        raise HTTPException(status_code=503, detail="Model not available.")
+
+    model = bundle["model"]
+    feature_names: list[str] = bundle.get("feature_names", [])
+
+    if not hasattr(model, "feature_importances_"):
+        raise HTTPException(
+            status_code=503,
+            detail="Model artifact does not expose feature_importances_.",
+        )
+
+    importances = model.feature_importances_.tolist()
+    paired = sorted(zip(feature_names, importances), key=lambda x: x[1], reverse=True)
+
+    return {
+        "feature_importances": [
+            {"feature": name, "importance": round(imp, 6)}
+            for name, imp in paired
+        ],
+        "note": (
+            "Feature importance (mean decrease in impurity) indicates the model's "
+            "relative reliance on each feature. It does not prove causality."
+        ),
+    }
+
+
+@app.get("/insights/evaluation")
+async def insights_evaluation():
+    """Evaluation metrics from the most recent training run in training_log.json."""
+    if not _TRAINING_LOG_PATH.exists():
+        return {"available": False, "message": "No training log found."}
+
+    try:
+        with open(_TRAINING_LOG_PATH, "r", encoding="utf-8") as f:
+            log: list[dict] = json.load(f)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500, detail=f"Could not read training log: {exc}"
+        ) from exc
+
+    if not log:
+        return {"available": False, "message": "Training log is empty."}
+
+    latest = log[-1]
+    report = latest.get("test_classification_report", {})
+
+    return {
+        "available": True,
+        "evaluation_split": "held-out test set (20% stratified)",
+        "model_version": latest.get("model_version"),
+        "trained_at": latest.get("trained_at"),
+        "dataset_rows": latest.get("dataset_rows"),
+        "label_distribution": latest.get("label_distribution"),
+        "train_size": latest.get("train_size"),
+        "test_size": latest.get("test_size"),
+        "cv_folds": latest.get("cv_folds"),
+        "cv_macro_f1_mean": latest.get("cv_macro_f1_mean"),
+        "cv_macro_f1_std": latest.get("cv_macro_f1_std"),
+        "test_macro_f1": latest.get("test_macro_f1"),
+        "test_accuracy": report.get("accuracy"),
+        "macro_precision": report.get("macro avg", {}).get("precision"),
+        "macro_recall": report.get("macro avg", {}).get("recall"),
+        "macro_f1": report.get("macro avg", {}).get("f1-score"),
+        "per_class_metrics": {
+            cls: report[cls]
+            for cls in report
+            if cls not in ("accuracy", "macro avg", "weighted avg")
+        },
+        "confusion_matrix": latest.get("test_confusion_matrix"),
+        "confusion_matrix_labels": latest.get("confusion_matrix_labels"),
+        "limitations": latest.get("limitations"),
+        "note": (
+            "These are held-out test metrics from a single 80/20 split on n=50 samples. "
+            "Small dataset; results may not generalise. "
+            "Training metrics are not displayed to avoid overfitting illusions."
+        ),
+    }
+
+
+def _tree_to_dict(
+    sklearn_tree: Any,
+    feature_names: list[str],
+    class_names: list[str],
+    node_id: int = 0,
+    max_depth: int = 4,
+    depth: int = 0,
+) -> dict:
+    """Recursively serialise one scikit-learn decision tree to a plain dict."""
+    TREE_LEAF = -1
+    if depth > max_depth:
+        return {"type": "truncated", "message": f"Display limit (depth {max_depth}) reached."}
+
+    left_child = int(sklearn_tree.children_left[node_id])
+    values = sklearn_tree.value[node_id][0]
+    predicted_idx = int(values.argmax())
+    predicted_class = class_names[predicted_idx] if predicted_idx < len(class_names) else "Unknown"
+
+    if left_child == TREE_LEAF:
+        return {
+            "type": "leaf",
+            "predicted_class": predicted_class,
+            "samples": int(sklearn_tree.n_node_samples[node_id]),
+            "class_distribution": {c: int(v) for c, v in zip(class_names, values)},
+            "impurity": round(float(sklearn_tree.impurity[node_id]), 4),
+        }
+
+    feature_idx = int(sklearn_tree.feature[node_id])
+    feature_name = (
+        feature_names[feature_idx] if feature_idx < len(feature_names) else f"feature_{feature_idx}"
+    )
+    threshold = round(float(sklearn_tree.threshold[node_id]), 4)
+
+    return {
+        "type": "split",
+        "feature": feature_name,
+        "threshold": threshold,
+        "condition": f"{feature_name} ≤ {threshold}",
+        "predicted_class": predicted_class,
+        "samples": int(sklearn_tree.n_node_samples[node_id]),
+        "impurity": round(float(sklearn_tree.impurity[node_id]), 4),
+        "left": _tree_to_dict(
+            sklearn_tree, feature_names, class_names,
+            int(sklearn_tree.children_left[node_id]), max_depth, depth + 1,
+        ),
+        "right": _tree_to_dict(
+            sklearn_tree, feature_names, class_names,
+            int(sklearn_tree.children_right[node_id]), max_depth, depth + 1,
+        ),
+    }
+
+
+@app.get("/insights/tree/{tree_index}")
+async def insights_tree(tree_index: int):
+    """Return the split structure of one decision tree from the Random Forest."""
+    try:
+        bundle = get_bundle()
+    except RuntimeError:
+        raise HTTPException(status_code=503, detail="Model not available.")
+
+    model = bundle["model"]
+    feature_names: list[str] = bundle.get("feature_names", [])
+    class_names: list[str] = bundle.get("classes", [])
+
+    if not hasattr(model, "estimators_"):
+        raise HTTPException(
+            status_code=503,
+            detail="Model artifact does not expose estimators_. Tree exploration unavailable.",
+        )
+
+    n_trees = len(model.estimators_)
+    if tree_index < 0 or tree_index >= n_trees:
+        raise HTTPException(
+            status_code=400,
+            detail=f"tree_index must be 0–{n_trees - 1}. Got {tree_index}.",
+        )
+
+    estimator = model.estimators_[tree_index]
+    tree_structure = _tree_to_dict(estimator.tree_, feature_names, class_names)
+
+    return {
+        "tree_index": tree_index,
+        "n_trees_total": n_trees,
+        "max_depth_displayed": 4,
+        "feature_names": feature_names,
+        "class_names": class_names,
+        "tree": tree_structure,
+        "warning": (
+            "This is one tree out of the full Random Forest. "
+            "Individual tree predictions may differ from the ensemble."
+        ),
+    }
+
+
+class InsightsPredictRequest(BaseModel):
+    email: int = Field(ge=0, le=1)
+    phone: int = Field(ge=0, le=1)
+    url: int = Field(ge=0, le=1)
+    ip_address: int = Field(ge=0, le=1)
+    date: int = Field(ge=0, le=1)
+    windows_path: int = Field(ge=0, le=1)
+    sensitive_entity_present: int = Field(ge=0, le=1)
+    application_context: str
+    privacy_preference: str = "Medium"
+    historical_protection_level: str = "Medium"
+
+    @field_validator("privacy_preference", "historical_protection_level")
+    @classmethod
+    def _validate_preference(cls, v: str) -> str:
+        normalised = v.strip().capitalize()
+        if normalised not in _VALID_PREFERENCE_VALUES:
+            raise ValueError(
+                f"Value must be one of {sorted(_VALID_PREFERENCE_VALUES)}, got '{v}'."
+            )
+        return normalised
+
+    @field_validator("application_context")
+    @classmethod
+    def _validate_context(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("application_context must not be empty.")
+        return v.strip()
+
+
+@app.post("/insights/predict")
+async def insights_predict(payload: InsightsPredictRequest):
+    """
+    Direct feature prediction for the Model Insights dashboard.
+    Accepts the 8 model features explicitly — no OCR, no image upload.
+    Inputs are labelled experimental; they are not screenshot-derived observations.
+    """
+    synthetic_features = {
+        "email_count": payload.email,
+        "phone_count": payload.phone,
+        "url_count": payload.url,
+        "ip_count": payload.ip_address,
+        "date_count": payload.date,
+        "windows_path_count": payload.windows_path,
+        "sensitive_entity_count": payload.sensitive_entity_present,
+        "ocr_text_length": 0,
+        "application_context": payload.application_context,
+    }
+
+    result = predict_privacy_risk(
+        synthetic_features,
+        payload.application_context,
+        payload.privacy_preference,
+        payload.historical_protection_level,
+    )
+
+    return {
+        "input_features": {
+            "EMAIL": payload.email,
+            "PHONE": payload.phone,
+            "URL": payload.url,
+            "IP_ADDRESS": payload.ip_address,
+            "DATE": payload.date,
+            "WINDOWS_PATH": payload.windows_path,
+            "sensitive_entity_present": payload.sensitive_entity_present,
+            "application_context": payload.application_context,
+        },
+        "risk_prediction": result,
+        "disclaimer": (
+            "These are manually entered experimental inputs, not screenshot-derived "
+            "observations. Do not treat results as valid real-world risk assessments."
+        ),
     }
