@@ -1,0 +1,13 @@
+# Python deps for CAPRLM/research (the shared/ package itself needs only the stdlib + pytest).
+#   pip install -r CAPRLM/requirements.txt
+#   python -m spacy download en_core_web_sm
+scikit-learn>=1.5
+joblib
+spacy>=3.7
+fastapi>=0.110
+uvicorn>=0.27
+pydantic>=2
+pillow
+pytesseract      # also needs the Tesseract binary installed separately (see docs/BUILD_LOG.md)
+pytest
+httpx            # FastAPI TestClient
