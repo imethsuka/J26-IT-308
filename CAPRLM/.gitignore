@@ -1,0 +1,8 @@
+# Model trained on the placeholder dataset — regenerate with research.eval.run_comparison.
+research/artifacts/
+
+# Local notebook runs write CSVs here.
+Colab/benchmark-output/
+
+__pycache__/
+*.pyc
