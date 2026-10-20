@@ -334,9 +334,92 @@ Results are reproducible and consistent.
 
 ---
 
+## 12. Session 10 — Privacy and Security Finalisation (2026-10-20)
+
+### 12.1 Baseline
+
+| Run | Tests Passed | Failures | Warnings |
+|-----|-------------|---------|---------|
+| Pre-session (session 10 start) | 410 | 0 | 1 |
+| Post-session (session 10 end) | **416** | **0** | 1 |
+
+### 12.2 Security Findings
+
+The full pipeline was reviewed as a senior security engineer, tracing data from screenshot upload through OCR, detection, feature extraction, risk prediction, protection selection, redaction, storage, and API response.
+
+| ID | Finding | Class | Status |
+|----|---------|-------|--------|
+| F1 | No image upload size limit — arbitrarily large payload accepted, causing downstream OOM risk | A — Confirmed defect | **Fixed** |
+| F2 | No image format validation — malformed bytes proceeded to PIL (redaction step), returning 503 (server error) instead of 400 (client error) | A — Confirmed defect | **Fixed** |
+| F3 | `FeedbackRequest.screenshot_id` and `user_id` had no length cap — storage abuse via extremely long strings | A — Confirmed defect | **Fixed** |
+| F4 | `RollbackRequest.user_id` had no length cap | A — Confirmed defect | **Fixed** |
+| F5 | `_sanitise_user_id` stripped chars but did not cap length — very long user_id could pass Pydantic validators and reach DB | A — Confirmed defect | **Fixed** |
+| F6 | `user_id` is entirely client-controlled; no authentication prevents one user impersonating another | C — Requires deployment infrastructure | Not addressed (documented below) |
+| F7 | Redacted image store is not user-scoped; any caller with a valid token can retrieve any image | B — Mitigated by `secrets.token_hex(16)` (256-bit brute-force infeasible) | Partially mitigated |
+| F8 | No rate limiting on `/feedback` — adversarial threshold manipulation possible despite per-screenshot poisoning guard | C — Requires deployment infrastructure | Not addressed (documented below) |
+| F9 | Residual OCR text in redacted image — Gaussian blur does not guarantee unreadable text | Inherent limitation | Documented (see §12.4) |
+
+### 12.3 Fixes Implemented
+
+**`Member2/backend/main.py`**
+- Added `_MAX_IMAGE_BYTES = 20 * 1024 * 1024` (20 MB) constant.
+- Added `_VALID_IMAGE_MAGIC` tuple containing PNG, JPEG, BMP, GIF, TIFF-LE, and TIFF-BE file signatures.
+- Added `_is_valid_image_bytes(data) → bool` helper (magic-bytes prefix check).
+- In `_parse_analyze_request`: size check → 413 (Request Entity Too Large); format check → 400 (Bad Request) before the image is written to any temp file or passed to OCR.
+- Added `Field(max_length=128)` to `FeedbackRequest.user_id` and `Field(max_length=512)` to `FeedbackRequest.screenshot_id`.
+- Added `Field(max_length=128)` to `RollbackRequest.user_id`.
+- Added `Field` import.
+
+**`Member2/backend/services/user_profile_service.py`**
+- In `_sanitise_user_id`: added `if len(cleaned) > 128: raise ValueError(...)` as a defence-in-depth guard covering the `/analyze` form-data path (not covered by Pydantic models).
+
+### 12.4 Tests Added or Updated
+
+**`Member2/backend/tests/test_api_integration.py`** (26 tests, up from 20):
+- `test_int02_non_image_bytes_rejected_before_ocr` — updated from 503 to 400; added detail-message assertion. The Phase 4 fix replaces PIL failure (503) with early rejection (400).
+- `test_int13_oversized_image_upload_returns_413` — 21 MB payload with valid PNG magic bytes → 413; "20 MB" in detail.
+- `test_int14_invalid_image_format_returns_400` — arbitrary non-image bytes → 400; "recognised image format" in detail.
+- `test_sec01_feedback_user_id_too_long_returns_422` — 129-char user_id → 422 from Pydantic.
+- `test_sec02_feedback_screenshot_id_too_long_returns_422` — 513-char screenshot_id → 422 from Pydantic.
+- `test_sec03_redacted_image_unknown_token_returns_404` — random token → 404; empty id → 400.
+- `test_sec04_distinct_user_profiles_are_isolated` — user A's calibration not visible in user B's fresh profile (DB-level row isolation confirmed).
+
+**`Member2/backend/tests/test_redaction.py`** (54 tests, up from 46 in session 9):
+- STAGE3-PIX-01: BLUR_SENSITIVE pixel change on nonuniform gradient image.
+- STAGE3-PIX-02: Adjacent-boundary benign box unchanged (0-px gap from entity box).
+- STAGE3-PIX-03: Partial mapping pixel test — mapped region changes, benign row unchanged.
+- FRAG-PIX: Both fragmented boxes show pixel changes on gradient image.
+- STATS-INVAR: `entities_detected = entities_mapped + entities_unmapped` for BLUR_SENSITIVE.
+
+### 12.5 Residual OCR Limitation
+
+**Gaussian blur does not guarantee unreadable text.** A blur with radius 15 applied to a small OCR bounding box may still leave readable characters for a human or OCR engine, depending on font size, contrast, and blur kernel coverage. Evaluating residual readability requires re-running EasyOCR on each blurred region (30–90 s per image on CPU), which is impractical in automated tests. This limitation is not addressed by the current test suite.
+
+Claim: BLUR_SENSITIVE applies a pixel-level transformation to detected entity regions. **It does not guarantee that the blurred text is unreadable or that OCR recovery is infeasible.**
+
+### 12.6 Deployment Prerequisites (Routes Unsafe Without Authentication)
+
+The following routes accept client-supplied `user_id` with no authentication:
+- `POST /analyze` — reads and creates user profiles by client-supplied `user_id`
+- `POST /feedback` — records corrections for any `user_id`; influences threshold calibration
+- `GET /user/calibration-history?user_id=...` — returns calibration history for any `user_id`
+- `POST /user/rollback` — rolls back calibration for any `user_id`
+
+Without a session-bound identity layer these routes cannot prevent impersonation. Implementing authentication requires deployment infrastructure outside this prototype's scope (OAuth2 / session tokens / API keys). These routes must be protected before any production or multi-user deployment.
+
+### 12.7 Protected File Integrity (Session 10)
+
+| File | SHA-256 | Status |
+|------|---------|--------|
+| `CAPRLM_annotation_50.csv` | `6FA1FEC86EF40FFE9B93A0A9AF40EDD69F15997AA838AF3C64D1025A75C1708B` | UNMODIFIED |
+| `caprlm_model.joblib` | `C08E30BC92632C41D64CA66197A6105B6D4F2E17AE51A3599A972D574907E3F4` | UNMODIFIED |
+| `training_log.json` | `3EAFB095BAB9C3941E5C76380D4276704AC36A2211E2DB9D49A2E4764A0E4C52` | UNMODIFIED |
+
+---
+
 ## 9. Summary
 
-The CAPRLM backend is functionally complete with **381 passing tests and 0 failures** (confirmed 2026-10-20). Core proposal requirements (R1–R14) are verified complete or partially complete. Four research extensions (CV features, contextual NER, pixel redaction, continual learning with rollback) are implemented and tested. Two security defects were identified and fixed (random store keys, whitespace stripping). Frontend defects were fixed (port 8000→8765, user_id propagation, redacted image display). Detection evaluation confirmed 92.9% DATE false-positive rate on annotated-clean rows — documented annotation-policy gap. Non-OCR pipeline latency measured at 6.57 ms ±1.08 ms; EasyOCR (30–90 s/image) is the production bottleneck. Annotation guidelines v0.3 corrects stale Section 2 capability claims. Critical submission blockers remain in the annotation review process and require human action.
+The CAPRLM backend is functionally complete with **416 passing tests and 0 failures** (confirmed 2026-10-20, session 10). Core proposal requirements (R1–R14) are verified complete or partially complete. Four research extensions (CV features, contextual NER, pixel redaction, continual learning with rollback) are implemented and tested. Security hardening in session 10 added image upload size limits (413), early image format validation (400 replacing downstream 503), and field-length caps on all user-controlled string inputs. Redaction pixel-change validation was strengthened in session 9 (pixel assertions on nonuniform synthetic images, fragmentation pixel tests, statistics invariant). Detection evaluation confirmed 92.9% DATE false-positive rate on annotated-clean rows — documented annotation-policy gap. Non-OCR pipeline latency: 6.57 ms ±1.08 ms. EasyOCR (30–90 s/image) is the production bottleneck. Critical submission blockers remain in the annotation review process and require human action. Authentication infrastructure is required before any production deployment.
 
 ---
 
