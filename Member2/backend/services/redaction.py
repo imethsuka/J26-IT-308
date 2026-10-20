@@ -58,7 +58,7 @@ _BLUR_RADIUS = 15
 _MIN_ENTITY_LEN_FOR_FRAGMENTED = 4
 
 # Maximum number of consecutive boxes to join in one window.
-_MAX_WINDOW = 3
+_MAX_WINDOW = 6
 
 BBox = list[list[float]]  # [[x1,y1],[x2,y2],[x3,y3],[x4,y4]] from EasyOCR
 
@@ -76,6 +76,20 @@ def _bbox_to_rect(bbox: BBox, img_w: int, img_h: int) -> tuple[int, int, int, in
     right  = min(img_w, int(max(xs)) + 1)
     bottom = min(img_h, int(max(ys)) + 1)
     return left, top, right, bottom
+
+
+def _is_usable_bbox(bbox: BBox) -> bool:
+    """Return whether a detector box has enough numeric points to redact."""
+    return (
+        isinstance(bbox, list)
+        and len(bbox) >= 2
+        and all(
+            isinstance(point, (list, tuple))
+            and len(point) >= 2
+            and all(isinstance(value, (int, float)) for value in point[:2])
+            for point in bbox
+        )
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -346,17 +360,21 @@ def redact_image(
     fragmented_count   = 0
 
     for entity_val, indices in contributing.items():
-        if not indices:
+        usable_indices = {
+            idx for idx in indices
+            if _is_usable_bbox(ocr_detections[idx][0])
+        }
+        if not usable_indices:
             entities_unmapped += 1
             cat = _entity_category(entity_val, detection_output)
             if cat and cat not in unmapped_cats:
                 unmapped_cats.append(cat)
         else:
             entities_mapped += 1
-            mtype = "fragmented" if len(indices) > 1 else "exact"
+            mtype = "fragmented" if len(usable_indices) > 1 else "exact"
             if mtype == "fragmented":
                 fragmented_count += 1
-            for idx in indices:
+            for idx in usable_indices:
                 # Prefer "fragmented" label if any entity needs multi-box coverage
                 if idx not in index_to_match_type or index_to_match_type[idx] == "exact":
                     index_to_match_type[idx] = mtype

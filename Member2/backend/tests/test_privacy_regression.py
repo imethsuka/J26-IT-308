@@ -30,6 +30,7 @@ from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
+from PIL import Image
 
 import backend.services.user_profile_service as ups
 from backend.database import get_connection, init_db
@@ -84,13 +85,15 @@ def _make_analyze_request(client, *, ocr_mock=_mock_ocr_with_pii, bundle=None):
     """Helper to POST /analyze with standard mocked deps."""
     import backend.services.risk_prediction as rp
     bundle = bundle or _BUNDLE_LOW_HIGH_CONF
-    image_content = b"\xff\xd8\xff" + b"\x00" * 100
+    image_content = io.BytesIO()
+    Image.new("RGB", (80, 40), (220, 220, 220)).save(image_content, format="PNG")
+    image_content.seek(0)
     data = {
         "application_context": (None, "Google Chrome"),
         "privacy_preference": (None, "Medium"),
         "historical_protection_level": (None, "Medium"),
         "user_id": (None, "reg_test_user"),
-        "image": ("test.jpg", io.BytesIO(image_content), "image/jpeg"),
+        "image": ("test.png", image_content, "image/png"),
     }
     with patch("backend.main.extract_text_with_boxes", ocr_mock):
         with patch.object(rp, "_bundle", bundle):

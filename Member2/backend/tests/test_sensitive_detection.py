@@ -40,6 +40,23 @@ def test_no_email_in_plain_text():
     assert result["EMAIL"]["count"] == 0
 
 
+def test_obfuscated_emails_are_detected():
+    result = detect_sensitive_entities(
+        "email: alice [at] example [dot] com and bob(at)test(dot)org"
+    )
+    assert result["EMAIL_OBFUSCATED"]["count"] == 2
+
+
+def test_ocr_style_email_substitution_with_obfuscation_is_detected():
+    result = detect_sensitive_entities("alice [at] examp1e [dot] com")
+    assert result["EMAIL_OBFUSCATED"]["count"] == 1
+
+
+def test_spaced_email_is_detected():
+    result = detect_sensitive_entities("contact alice @ example . com")
+    assert result["EMAIL_OBFUSCATED"]["matches"] == ["alice @ example . com"]
+
+
 # ---------------------------------------------------------------------------
 # PHONE
 # ---------------------------------------------------------------------------
@@ -136,6 +153,54 @@ def test_date_version_number_not_detected():
 def test_windows_path_detected():
     result = detect_sensitive_entities(r"File is at C:\Users\alice\Documents\report.pdf")
     assert result["WINDOWS_PATH"]["count"] == 1
+
+
+def test_credential_like_patterns_are_detected_as_synthetic_values():
+    text = (
+        "password: Synth-Pass_42! "
+        "api_key=sk_test_1234567890abcdef "
+        "Authorization: Bearer syntheticBearerToken_1234567890 "
+        "JWT eyJhbGciOiJIUzI1NiJ9.payload.signature "
+        "AWS AKIAABCDEFGHIJKLMNOP "
+        "Google AIza12345678901234567890123456789012345 "
+        "GitHub ghp_123456789012345678901234"
+    )
+    result = detect_sensitive_entities(text)
+    for category in (
+        "PASSWORD", "API_KEY", "BEARER_TOKEN", "JWT",
+        "AWS_ACCESS_KEY", "GOOGLE_API_KEY", "GITHUB_TOKEN",
+    ):
+        assert result[category]["count"] == 1, category
+
+
+def test_credential_labels_without_values_are_not_detected():
+    result = detect_sensitive_entities(
+        "The password policy describes API keys and bearer authentication."
+    )
+    assert result["PASSWORD"]["count"] == 0
+    assert result["API_KEY"]["count"] == 0
+    assert result["BEARER_TOKEN"]["count"] == 0
+
+
+def test_multiple_categories_and_overlapping_values_are_counted():
+    result = detect_sensitive_entities(
+        "api_key=synthetickey_1234567890abcd AWS AKIAABCDEFGHIJKLMNOP"
+    )
+    assert result["API_KEY"]["count"] == 1
+    assert result["AWS_ACCESS_KEY"]["count"] == 1
+    assert result["total_sensitive_entity_count"] >= 2
+
+
+def test_duplicate_sensitive_values_are_retained_for_audit_counts():
+    result = detect_sensitive_entities("alice@example.com alice@example.com")
+    assert result["EMAIL"]["count"] == 2
+    assert result["EMAIL"]["matches"] == ["alice@example.com", "alice@example.com"]
+
+
+def test_ocr_style_substitution_is_not_overmatched():
+    result = detect_sensitive_entities("ordinary alice0example.com")
+    assert result["EMAIL"]["count"] == 0
+    assert result["EMAIL_OBFUSCATED"]["count"] == 0
 
 
 # ---------------------------------------------------------------------------

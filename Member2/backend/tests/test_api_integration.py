@@ -25,6 +25,7 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 from fastapi.testclient import TestClient
+from PIL import Image
 
 import backend.services.user_profile_service as ups
 from backend.database import get_connection, init_db
@@ -78,10 +79,11 @@ def _make_bundle(proba=None, classes=None):
 
 
 def _post_analyze(client, *, ocr_text="Sample text", user_id="int_user",
-                   image_bytes=None, extra_fields=None, bundle=None):
+                   image_bytes=None, extra_fields=None, bundle=None, ocr_fn=None,
+                   patch_bundle=True):
     import backend.services.risk_prediction as rp
     bundle = bundle or _make_bundle()
-    image_bytes = image_bytes or (b"\xff\xd8\xff" + b"\x00" * 100)
+    image_bytes = image_bytes or _valid_png()
     data = {
         "application_context": (None, "Google Chrome"),
         "privacy_preference": (None, "Medium"),
@@ -95,9 +97,18 @@ def _post_analyze(client, *, ocr_text="Sample text", user_id="int_user",
     def _mock_ocr(_path):
         return ocr_text, ocr_text.count(" ") + 1, []
 
-    with patch("backend.main.extract_text_with_boxes", _mock_ocr):
-        with patch.object(rp, "_bundle", bundle):
-            return client.post("/analyze", files=data)
+    with patch("backend.main.extract_text_with_boxes", ocr_fn or _mock_ocr):
+        if patch_bundle:
+            with patch.object(rp, "_bundle", bundle):
+                return client.post("/analyze", files=data)
+        return client.post("/analyze", files=data)
+
+
+def _valid_png() -> bytes:
+    image = Image.new("RGB", (80, 40), (220, 220, 220))
+    output = io.BytesIO()
+    image.save(output, format="PNG")
+    return output.getvalue()
 
 
 # ---------------------------------------------------------------------------
@@ -135,7 +146,95 @@ def test_int02_malformed_image_bytes_succeeds_with_mocked_ocr(client):
     not raise an unhandled exception on random image bytes.
     """
     resp = _post_analyze(client, image_bytes=b"\x00\x01\x02\x03\xff", user_id="int02_user")
+    assert resp.status_code == 503, resp.text
+
+
+def test_int02b_ocr_failure_returns_explicit_503(client):
+    import backend.services.risk_prediction as rp
+
+    with patch(
+        "backend.main.extract_text_with_boxes",
+        side_effect=RuntimeError("synthetic OCR failure"),
+    ):
+        with patch.object(rp, "_bundle", _make_bundle()):
+            resp = client.post(
+                "/analyze",
+                files={
+                    "application_context": (None, "Google Chrome"),
+                    "privacy_preference": (None, "Medium"),
+                    "historical_protection_level": (None, "Medium"),
+                    "user_id": (None, "int02b_user"),
+                    "image": ("test.png", io.BytesIO(_valid_png()), "image/png"),
+                },
+            )
+
+    assert resp.status_code == 503
+    assert "OCR failed" in resp.json()["detail"]
+
+
+def test_int02c_detection_failure_returns_explicit_503(client):
+    import backend.services.risk_prediction as rp
+
+    with patch("backend.main.detect_sensitive_entities", side_effect=RuntimeError("synthetic detection failure")):
+        with patch.object(rp, "_bundle", _make_bundle()):
+            resp = _post_analyze(
+                client, image_bytes=_valid_png(), user_id="int02c_user",
+            )
+
+    assert resp.status_code == 503
+    assert "detection failed" in resp.json()["detail"]
+
+
+def test_int02d_redaction_failure_returns_explicit_503(client):
+    import backend.services.risk_prediction as rp
+
+    with patch("backend.main.redact_image", side_effect=RuntimeError("synthetic redaction failure")):
+        with patch.object(rp, "_bundle", _make_bundle()):
+            resp = _post_analyze(client, image_bytes=_valid_png(), user_id="int02d_user")
+
+    assert resp.status_code == 503
+    assert "redaction failed" in resp.json()["detail"]
+
+
+def test_int02e_unavailable_model_blocks_instead_of_monitoring(client):
+    import backend.services.risk_prediction as rp
+
+    with patch.object(rp, "_load_bundle", side_effect=RuntimeError("synthetic missing model")):
+        with patch.object(rp, "_bundle", None):
+            resp = _post_analyze(
+                client, ocr_text="Contact alice@example.com",
+                image_bytes=_valid_png(), user_id="int02e_user",
+                patch_bundle=False,
+            )
+
     assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["risk_prediction"]["risk_level"] == "UNAVAILABLE"
+    assert body["protection_selection"]["protection_action"] == "BLOCK"
+    assert body["redaction_summary"]["protection_action"] == "BLOCK"
+    assert body["redaction_summary"]["redacted_image_available"] is True
+
+
+def test_int02f_unmappable_entity_uses_explicit_incomplete_block(client):
+    import backend.services.risk_prediction as rp
+
+    def ocr_with_unmappable_email(_path):
+        return "Contact alice@example.com", 1, []
+
+    with patch.object(rp, "_bundle", _make_bundle(proba=[0.10, 0.05, 0.85])):
+        resp = _post_analyze(
+            client, image_bytes=_valid_png(), user_id="int02f_user",
+            ocr_fn=ocr_with_unmappable_email,
+            bundle=_make_bundle(proba=[0.10, 0.05, 0.85]),
+        )
+
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    summary = body["redaction_summary"]
+    assert summary["protection_action"] == "BLOCK"
+    assert summary["protection_status"] == "incomplete_entity_mapping"
+    assert summary["entities_unmapped"] == 1
+    assert summary["redacted_image_available"] is True
 
 
 # ---------------------------------------------------------------------------
@@ -148,7 +247,7 @@ def test_int03_large_image_bytes_accepted(client):
     a 413 or server error. There is no explicit size limit in the current
     endpoint (OCR is mocked, so actual processing is not an issue in tests).
     """
-    large_bytes = b"\xff\xd8\xff" + b"\xab" * (1024 * 1024)
+    large_bytes = _valid_png()
     resp = _post_analyze(client, image_bytes=large_bytes, user_id="int03_user")
     assert resp.status_code == 200, resp.text
 

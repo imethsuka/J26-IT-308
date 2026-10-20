@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CAPRLM — Research Demo</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #f4f5f7;
+      --surface:   #ffffff;
+      --border:    #dde1e7;
+      --primary:   #1a56db;
+      --primary-h: #1648c0;
+      --text:      #111827;
+      --muted:     #6b7280;
+      --low:       #16a34a;
+      --medium:    #d97706;
+      --high:      #dc2626;
+      --low-bg:    #f0fdf4;
+      --medium-bg: #fffbeb;
+      --high-bg:   #fef2f2;
+      --low-bdr:   #86efac;
+      --medium-bdr:#fcd34d;
+      --high-bdr:  #fca5a5;
+      --radius:    8px;
+      --shadow:    0 1px 3px rgba(0,0,0,.10), 0 1px 2px rgba(0,0,0,.06);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.55;
+      font-size: 15px;
+    }
+
+    /* ── layout ── */
+    .page { max-width: 1060px; margin: 0 auto; padding: 0 20px 48px; }
+
+    /* ── header ── */
+    .site-header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 20px 0;
+      margin-bottom: 28px;
+    }
+    .site-header .inner {
+      max-width: 1060px; margin: 0 auto; padding: 0 20px;
+      display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap;
+    }
+    .site-header h1 { font-size: 1.45rem; font-weight: 700; letter-spacing: -.4px; }
+    .site-header .tagline { color: var(--muted); font-size: .875rem; }
+    .badge {
+      margin-left: auto;
+      background: #eff6ff; color: #1d4ed8;
+      font-size: .75rem; font-weight: 600;
+      padding: 3px 10px; border-radius: 999px;
+      border: 1px solid #bfdbfe;
+      white-space: nowrap;
+    }
+
+    /* ── section titles ── */
+    .section-title {
+      font-size: .6875rem; font-weight: 700; letter-spacing: .08em;
+      text-transform: uppercase; color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    /* ── cards ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 20px 22px;
+      margin-bottom: 20px;
+    }
+
+    /* ── model-info grid ── */
+    .model-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 12px;
+    }
+    .model-stat { }
+    .model-stat dt { font-size: .75rem; color: var(--muted); margin-bottom: 2px; }
+    .model-stat dd { font-weight: 600; font-size: .9375rem; }
+
+    .limitation-box {
+      background: #fffbeb;
+      border: 1px solid #fcd34d;
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-size: .8125rem;
+      color: #92400e;
+      margin-top: 12px;
+    }
+    .limitation-box strong { display: block; margin-bottom: 2px; }
+
+    /* ── features table ── */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+      font-size: .8125rem;
+      margin-top: 8px;
+    }
+    .feat-cell {
+      padding: 7px 10px;
+      border-right: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .feat-cell:nth-child(4n) { border-right: none; }
+    .feat-cell.head {
+      background: #f9fafb;
+      font-weight: 600;
+      color: var(--muted);
+      font-size: .7rem;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+
+    /* ── cases ── */
+    .cases-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 16px;
+    }
+
+    .case-card {
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transition: border-color .15s;
+    }
+    .case-card.active { border-color: var(--primary); }
+
+    .case-label {
+      font-size: .6875rem; font-weight: 700;
+      letter-spacing: .08em; text-transform: uppercase;
+      color: var(--muted);
+    }
+    .case-title { font-weight: 700; font-size: 1rem; }
+    .case-subtitle { font-size: .8125rem; color: var(--muted); }
+
+    .case-text-preview {
+      background: #f9fafb;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 8px 10px;
+      font-size: .775rem;
+      color: #374151;
+      font-family: monospace;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 80px;
+      overflow: hidden;
+    }
+
+    .predict-btn {
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 9px 16px;
+      font-size: .875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .15s;
+      align-self: flex-start;
+    }
+    .predict-btn:hover:not(:disabled) { background: var(--primary-h); }
+    .predict-btn:disabled { opacity: .55; cursor: not-allowed; }
+
+    /* ── result panel ── */
+    .result-panel {
+      border-top: 1px solid var(--border);
+      padding-top: 14px;
+      margin-top: 4px;
+    }
+    .result-panel[hidden] { display: none; }
+
+    .risk-pill {
+      display: inline-block;
+      font-size: 1.15rem;
+      font-weight: 700;
+      padding: 5px 16px;
+      border-radius: 999px;
+      margin-bottom: 12px;
+    }
+    .risk-pill.LOW    { background: var(--low-bg);    color: var(--low);    border: 1.5px solid var(--low-bdr); }
+    .risk-pill.MEDIUM { background: var(--medium-bg); color: var(--medium); border: 1.5px solid var(--medium-bdr); }
+    .risk-pill.HIGH   { background: var(--high-bg);   color: var(--high);   border: 1.5px solid var(--high-bdr); }
+
+    .prob-bars { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+    .prob-row { display: flex; align-items: center; gap: 8px; font-size: .8125rem; }
+    .prob-label { width: 64px; font-weight: 600; }
+    .prob-track {
+      flex: 1; height: 10px; background: #e5e7eb; border-radius: 999px; overflow: hidden;
+    }
+    .prob-fill {
+      height: 100%; border-radius: 999px; transition: width .4s ease;
+    }
+    .prob-fill.HIGH   { background: var(--high); }
+    .prob-fill.MEDIUM { background: var(--medium); }
+    .prob-fill.LOW    { background: var(--low); }
+    .prob-value { width: 42px; text-align: right; color: var(--muted); }
+
+    .entities-row { font-size: .8125rem; margin-bottom: 8px; }
+    .entity-chip {
+      display: inline-block;
+      background: #eff6ff;
+      color: #1d4ed8;
+      border: 1px solid #bfdbfe;
+      border-radius: 4px;
+      padding: 1px 7px;
+      margin: 2px 3px 2px 0;
+      font-size: .75rem;
+      font-weight: 600;
+    }
+    .entity-none { color: var(--muted); font-style: italic; }
+
+    .feat-mini { font-size: .775rem; color: var(--muted); }
+    .feat-mini span { color: var(--text); font-weight: 600; }
+
+    .thresh-note { font-size: .75rem; color: var(--muted); margin-top: 6px; }
+    .rule-note   { font-size: .75rem; color: var(--muted); }
+
+    .error-box {
+      background: #fef2f2;
+      border: 1px solid #fca5a5;
+      border-radius: 5px;
+      padding: 8px 12px;
+      font-size: .8125rem;
+      color: var(--high);
+    }
+
+    /* ── status bar ── */
+    .status-bar {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px 18px;
+      font-size: .8125rem;
+      color: var(--muted);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .dot {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+      background: #9ca3af;
+    }
+    .dot.ok  { background: #22c55e; }
+    .dot.err { background: var(--high); }
+
+    /* ── footer ── */
+    .site-footer {
+      text-align: center;
+      font-size: .75rem;
+      color: var(--muted);
+      padding: 24px 20px;
+      border-top: 1px solid var(--border);
+      margin-top: 24px;
+    }
+
+    @media (max-width: 600px) {
+      .features-grid { grid-template-columns: repeat(2, 1fr); }
+      .feat-cell:nth-child(4n) { border-right: 1px solid var(--border); }
+      .feat-cell:nth-child(2n) { border-right: none; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="inner">
+    <h1>CAPRLM</h1>
+    <span class="tagline">Context-Aware Privacy Risk Level Model &mdash; J26-IT-308 &middot; Member 2</span>
+    <span class="badge">Research Demonstration</span>
+  </div>
+</header>
+
+<main class="page">
+
+  <!-- backend status -->
+  <div class="status-bar" id="status-bar">
+    <span class="dot" id="status-dot"></span>
+    <span id="status-text">Checking backend&hellip;</span>
+  </div>
+
+  <!-- model information -->
+  <p class="section-title">Model Information</p>
+  <div class="card">
+    <dl class="model-grid">
+      <div class="model-stat"><dt>Algorithm</dt><dd>Random Forest (sklearn)</dd></div>
+      <div class="model-stat"><dt>Dataset</dt><dd>50 annotated rows (40 train / 10 test)</dd></div>
+      <div class="model-stat"><dt>Test macro F1</dt><dd>0.4444</dd></div>
+      <div class="model-stat"><dt>Test accuracy</dt><dd>0.800</dd></div>
+      <div class="model-stat"><dt>Test samples</dt><dd>10</dd></div>
+      <div class="model-stat"><dt>HIGH training examples</dt><dd>2</dd></div>
+      <div class="model-stat"><dt>Classes</dt><dd>LOW &middot; MEDIUM &middot; HIGH</dd></div>
+      <div class="model-stat"><dt>Threshold (medium)</dt><dd>&ge; 0.35</dd></div>
+    </dl>
+    <p class="section-title" style="margin-top:14px">Features fed to the model (8 total)</p>
+    <div class="features-grid">
+      <div class="feat-cell head">Feature</div>
+      <div class="feat-cell head">Type</div>
+      <div class="feat-cell head">Feature</div>
+      <div class="feat-cell head">Type</div>
+      <div class="feat-cell">EMAIL</div>          <div class="feat-cell">binary (0/1)</div>
+      <div class="feat-cell">IP_ADDRESS</div>     <div class="feat-cell">binary (0/1)</div>
+      <div class="feat-cell">PHONE</div>          <div class="feat-cell">binary (0/1)</div>
+      <div class="feat-cell">DATE</div>           <div class="feat-cell">binary (0/1)</div>
+      <div class="feat-cell">URL</div>            <div class="feat-cell">binary (0/1)</div>
+      <div class="feat-cell">WINDOWS_PATH</div>   <div class="feat-cell">binary (0/1)</div>
+      <div class="feat-cell">sensitive_entity_present</div><div class="feat-cell">binary</div>
+      <div class="feat-cell">application_context_encoded</div><div class="feat-cell">integer (LabelEncoder)</div>
+    </div>
+    <div class="limitation-box">
+      <strong>Research limitation (documented)</strong>
+      Test macro F1 = 0.4444 equals the majority-class (LOW) baseline.
+      Root cause: MEDIUM and HIGH share overlapping entity patterns; only 2 HIGH training examples exist.
+      The model has not demonstrated improvement over a simple majority-class predictor on the 10-row test fold.
+      All three classifiers (majority, rule-based, ML) achieved identical F1 on this fold.
+    </div>
+  </div>
+
+  <!-- demo cases -->
+  <p class="section-title">Demonstration Cases</p>
+  <div class="cases-grid" id="cases-grid">
+    <!-- populated by JS -->
+  </div>
+
+</main>
+
+<footer class="site-footer">
+  J26-IT-308 CAPRLM &mdash; Member 2 &middot; Research prototype &middot;
+  Predictions call the live FastAPI backend at <code>http://127.0.0.1:8765</code>
+</footer>
+
+<script>
+"use strict";
+
+const API = "http://127.0.0.1:8765";
+
+const CASES = [
+  {
+    id: "A",
+    title: "Case A — VS Code, no entities",
+    subtitle: "Expected: LOW  |  Context: VS Code",
+    context: "VS Code",
+    pref: "Medium",
+    hist: "Medium",
+    text: "VS Code editor. Project: caprlm_prototype. Python 3.11 environment active. No network connections, no user credentials shown.",
+  },
+  {
+    id: "B",
+    title: "Case B — Chrome, URL + DATE",
+    subtitle: "Expected: MEDIUM  |  Context: Google Chrome",
+    context: "Google Chrome",
+    pref: "Medium",
+    hist: "Medium",
+    text: "Chrome address bar shows https://docs.example-org.internal/wiki. Page footer: last updated 2026-10-15. No personal contact information visible.",
+  },
+  {
+    id: "C",
+    title: "Case C — Desktop, EMAIL + PHONE + IP",
+    subtitle: "Expected: HIGH  |  Context: Desktop",
+    context: "Desktop",
+    pref: "Medium",
+    hist: "Medium",
+    text: "Desktop sticky note: Contact: helpdesk@example-corp.com  Phone: +1 (555) 012-3456  Server: 192.168.10.50",
+  },
+];
+
+// ── check backend ──────────────────────────────────────────────────────────
+async function checkBackend() {
+  const dot  = document.getElementById("status-dot");
+  const text = document.getElementById("status-text");
+  try {
+    const r = await fetch(`${API}/`);
+    if (r.ok) {
+      dot.className  = "dot ok";
+      text.textContent = "Backend connected — http://127.0.0.1:8765 is running.";
+    } else {
+      throw new Error(`HTTP ${r.status}`);
+    }
+  } catch (e) {
+    dot.className  = "dot err";
+    text.textContent = `Backend unavailable (${e.message}). Start the FastAPI server first.`;
+  }
+}
+
+// ── render entity chips ───────────────────────────────────────────────────
+function entityChips(detection) {
+  const CATS = ["EMAIL","PHONE","URL","IP_ADDRESS","DATE","WINDOWS_PATH"];
+  const found = [];
+  for (const cat of CATS) {
+    const info = detection[cat];
+    const count = info && typeof info === "object" ? (info.count || 0) : 0;
+    if (count > 0) found.push(`${cat}×${count}`);
+  }
+  if (found.length === 0) return `<span class="entity-none">None detected</span>`;
+  return found.map(f => `<span class="entity-chip">${f}</span>`).join("");
+}
+
+// ── probability bar ───────────────────────────────────────────────────────
+function probBar(label, value, cls) {
+  const pct = Math.round((value || 0) * 100);
+  return `
+    <div class="prob-row">
+      <span class="prob-label">${label}</span>
+      <div class="prob-track"><div class="prob-fill ${cls}" style="width:${pct}%"></div></div>
+      <span class="prob-value">${(value || 0).toFixed(3)}</span>
+    </div>`;
+}
+
+// ── feature mini-table ────────────────────────────────────────────────────
+function featureMini(features) {
+  const SHOW = ["email_count","phone_count","url_count","ip_count","date_count",
+                "windows_path_count","sensitive_entity_count","application_context"];
+  return SHOW.map(k => {
+    const v = features[k];
+    const bin = (typeof v === "number" && k !== "application_context") ? ` → binary=${v > 0 ? 1 : 0}` : "";
+    return `<span class="feat-mini">${k.replace(/_/g," ")}: <span>${v}</span>${bin}</span>`;
+  }).join(" &nbsp;&middot;&nbsp; ");
+}
+
+// ── build result HTML ──────────────────────────────────────────────────────
+function buildResult(data) {
+  const rp     = data.risk_prediction || {};
+  const det    = data.detection_results || {};
+  const feat   = data.extracted_features || {};
+  const rule   = data.rule_baseline || {};
+  const level  = rp.risk_level || "?";
+  const raw    = rp.raw_probabilities || {};
+  const thresh = rp.applied_thresholds || {};
+
+  return `
+    <div class="result-panel">
+      <span class="risk-pill ${level}">${level}</span>
+      <div class="prob-bars">
+        ${probBar("HIGH",   raw.HIGH,   "HIGH")}
+        ${probBar("MEDIUM", raw.MEDIUM, "MEDIUM")}
+        ${probBar("LOW",    raw.LOW,    "LOW")}
+      </div>
+      <div class="entities-row">
+        <strong>Detected entities:</strong><br>${entityChips(det)}
+      </div>
+      <div style="font-size:.8125rem;margin-bottom:6px">${featureMini(feat)}</div>
+      <p class="thresh-note">
+        Confidence: <strong>${rp.confidence != null ? Number(rp.confidence).toFixed(4) : "n/a"}</strong>
+        &nbsp;&middot;&nbsp;
+        Thresholds: medium&ge;${thresh.medium ?? "?"} &nbsp; high&ge;${thresh.high ?? "?"}
+        &nbsp;&middot;&nbsp;
+        Model: ${rp.model_status ?? "n/a"}
+      </p>
+      <p class="rule-note">Rule baseline: <strong>${rule.risk_level ?? "n/a"}</strong> (confidence ${rule.confidence != null ? Number(rule.confidence).toFixed(2) : "n/a"})</p>
+    </div>`;
+}
+
+// ── render one case card ───────────────────────────────────────────────────
+function renderCase(c) {
+  const card = document.createElement("div");
+  card.className = "case-card";
+  card.id = `case-${c.id}`;
+
+  card.innerHTML = `
+    <p class="case-label">Case ${c.id}</p>
+    <p class="case-title">${c.title}</p>
+    <p class="case-subtitle">${c.subtitle}</p>
+    <pre class="case-text-preview">${c.text}</pre>
+    <button class="predict-btn" id="btn-${c.id}">Predict Risk</button>
+    <div id="result-${c.id}" hidden></div>
+  `;
+
+  const btn = card.querySelector(`#btn-${c.id}`);
+  btn.addEventListener("click", () => runPrediction(c, card, btn));
+  return card;
+}
+
+// ── call /demo-predict ─────────────────────────────────────────────────────
+async function runPrediction(c, card, btn) {
+  btn.disabled = true;
+  btn.textContent = "Running…";
+  card.classList.add("active");
+
+  const resultEl = document.getElementById(`result-${c.id}`);
+  resultEl.hidden = true;
+  resultEl.innerHTML = "";
+
+  try {
+    const res = await fetch(`${API}/demo-predict`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        text: c.text,
+        application_context: c.context,
+        privacy_preference: c.pref,
+        historical_protection_level: c.hist,
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+    resultEl.innerHTML = buildResult(data);
+    resultEl.hidden = false;
+
+  } catch (e) {
+    resultEl.innerHTML = `<div class="error-box result-panel">Error: ${e.message}</div>`;
+    resultEl.hidden = false;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Predict Risk";
+  }
+}
+
+// ── init ───────────────────────────────────────────────────────────────────
+const grid = document.getElementById("cases-grid");
+for (const c of CASES) grid.appendChild(renderCase(c));
+checkBackend();
+</script>
+</body>
+</html>

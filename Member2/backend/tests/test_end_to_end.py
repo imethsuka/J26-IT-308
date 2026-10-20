@@ -22,6 +22,7 @@ from unittest.mock import patch, MagicMock
 import numpy as np
 import pytest
 from fastapi.testclient import TestClient
+from PIL import Image
 
 import backend.services.user_profile_service as ups
 from backend.database import init_db
@@ -32,8 +33,11 @@ from backend.database import init_db
 # ---------------------------------------------------------------------------
 
 def _minimal_jpg() -> bytes:
-    """Minimal JPEG file header bytes (enough to avoid immediate parse errors)."""
-    return b"\xff\xd8\xff\xe0" + b"\x00" * 200
+    """Small valid image fixture for API redaction tests."""
+    image = Image.new("RGB", (80, 40), (220, 220, 220))
+    output = io.BytesIO()
+    image.save(output, format="PNG")
+    return output.getvalue()
 
 
 def _make_bundle(risk_class="HIGH", proba=None):

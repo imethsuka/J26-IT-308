@@ -24,6 +24,7 @@ from unittest.mock import patch, MagicMock
 import numpy as np
 import pytest
 from fastapi.testclient import TestClient
+from PIL import Image
 
 import backend.services.user_profile_service as ups
 from backend.database import init_db
@@ -81,13 +82,16 @@ def _mock_ocr_with_email(_path):
 def _post_analyze(client, *, ocr_mock=_mock_ocr_with_email, bundle=None, user_id="route_user"):
     import backend.services.risk_prediction as rp
     bundle = bundle or _make_bundle()
-    img = b"\xff\xd8\xff" + b"\x00" * 100
+    image = Image.new("RGB", (80, 40), (220, 220, 220))
+    img = io.BytesIO()
+    image.save(img, format="PNG")
+    img.seek(0)
     data = {
         "application_context": (None, "Google Chrome"),
         "privacy_preference": (None, "Medium"),
         "historical_protection_level": (None, "Medium"),
         "user_id": (None, user_id),
-        "image": ("test.jpg", io.BytesIO(img), "image/jpeg"),
+        "image": ("test.png", img, "image/png"),
     }
     with patch("backend.main.extract_text_with_boxes", ocr_mock):
         with patch.object(rp, "_bundle", bundle):
