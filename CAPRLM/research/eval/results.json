@@ -1,0 +1,158 @@
+{
+  "schema_version": 1,
+  "dataset": "llm-synthetic-unaudited",
+  "dataset_detail": {
+    "label_protocol": "labels written by an LLM from a tier-definition prompt; NOT human-audited",
+    "n_train_scenarios": 424,
+    "n_test_scenarios": 105,
+    "n_test_sensitive_spans": 246,
+    "seed": 7,
+    "split": "random 80/20 by row; all rows from the same generator",
+    "load_report": {
+      "files": 9,
+      "rows_kept": 529,
+      "dropped": {
+        "surface_not_in_text": 3,
+        "unparseable_json": 5
+      }
+    },
+    "detection_coverage_test": {
+      "sensitive_spans": 246,
+      "detected": 213,
+      "rate": 0.8658536585365854
+    },
+    "detection_coverage_train": {
+      "sensitive_spans": 1102,
+      "detected": 965,
+      "rate": 0.8756805807622504
+    }
+  },
+  "generated_at": "2026-10-20T21:12:14+00:00",
+  "detection": {
+    "ner_model": "en_core_web_sm"
+  },
+  "model": {
+    "version": "caprlm/logreg-v0.2",
+    "selection": {
+      "metric": "cv_macro_f1_on_risk_tier",
+      "folds": 5,
+      "scores": {
+        "logreg C=0.3 cw=none": 0.7436,
+        "logreg C=0.3 cw=balanced": 0.7395,
+        "logreg C=1 cw=none": 0.7507,
+        "logreg C=1 cw=balanced": 0.7511,
+        "logreg C=3 cw=none": 0.7531,
+        "logreg C=3 cw=balanced": 0.7558,
+        "logreg C=10 cw=none": 0.751,
+        "logreg C=10 cw=balanced": 0.7522,
+        "logreg C=30 cw=none": 0.7523,
+        "logreg C=30 cw=balanced": 0.7475,
+        "randomforest cw=none": 0.7216,
+        "randomforest cw=balanced": 0.7332
+      },
+      "rule": "best logreg unless best randomforest beats it by >= 0.02",
+      "chosen": "logreg C=3 cw=balanced",
+      "none_threshold": {
+        "objective": "F2 on protect-vs-pass, out-of-fold",
+        "argmax": {
+          "precision": 0.9008919722497523,
+          "recall": 0.8929273084479371,
+          "f2": 0.8945089549301317
+        },
+        "tuned": {
+          "precision": 0.8033843674456084,
+          "recall": 0.9793713163064833,
+          "f2": 0.9382646339168078
+        },
+        "tau": 0.9
+      },
+      "n_training_spans": 1549
+    },
+    "config": {
+      "kind": "logreg",
+      "C": 3.0,
+      "class_weight": "balanced",
+      "none_threshold": 0.9
+    },
+    "untuned_on_test": {
+      "precision": 0.9484536082474226,
+      "recall": 0.7479674796747967,
+      "f1": 0.8363636363636364,
+      "leakage_rate": 0.25203252032520324,
+      "reidentification_rate": 0.2764227642276423,
+      "semantic_similarity": 0.8219228626920908,
+      "blocked_rate": 0.0,
+      "errors": 0
+    }
+  },
+  "similarity_method": "lexical_tfidf_cosine",
+  "filter_versions": {
+    "caprlm": "caprlm/logreg-v0.2",
+    "rule_based": "rule-based/0.1",
+    "static_masking": "static-masking/0.1",
+    "anonymization": "anonymization/0.1",
+    "pseudonymization": "pseudonymization/0.1"
+  },
+  "metrics": {
+    "caprlm": {
+      "precision": 0.8793103448275862,
+      "recall": 0.8292682926829268,
+      "f1": 0.8535564853556484,
+      "leakage_rate": 0.17073170731707318,
+      "reidentification_rate": 0.1991869918699187,
+      "semantic_similarity": 0.7882634889066747,
+      "blocked_rate": 0.0,
+      "errors": 0
+    },
+    "rule_based": {
+      "precision": 0.828125,
+      "recall": 0.21544715447154472,
+      "f1": 0.3419354838709678,
+      "leakage_rate": 0.7845528455284553,
+      "reidentification_rate": 0.6707317073170732,
+      "semantic_similarity": 0.9445990119667574,
+      "blocked_rate": 0.0,
+      "errors": 0
+    },
+    "static_masking": {
+      "precision": 0.8153846153846154,
+      "recall": 0.8617886178861789,
+      "f1": 0.8379446640316206,
+      "leakage_rate": 0.13821138211382114,
+      "reidentification_rate": 0.16666666666666666,
+      "semantic_similarity": 0.7576753312110717,
+      "blocked_rate": 0.0,
+      "errors": 0
+    },
+    "anonymization": {
+      "precision": 0.8153846153846154,
+      "recall": 0.8617886178861789,
+      "f1": 0.8379446640316206,
+      "leakage_rate": 0.13821138211382114,
+      "reidentification_rate": 0.16666666666666666,
+      "semantic_similarity": 0.6941693521056923,
+      "blocked_rate": 0.0,
+      "errors": 0
+    },
+    "pseudonymization": {
+      "precision": 0.8153846153846154,
+      "recall": 0.8617886178861789,
+      "f1": 0.8379446640316206,
+      "leakage_rate": 0.13821138211382114,
+      "reidentification_rate": 0.16666666666666666,
+      "semantic_similarity": 0.6385955429047359,
+      "blocked_rate": 0.0,
+      "errors": 0
+    }
+  },
+  "personalization": null,
+  "notes": [
+    "Small LLM-generated, unaudited dataset: indicative only, not reportable until human-audited.",
+    "detection_coverage_*: share of sensitive spans the detectors find at all. Categories with no detector (e.g. NATIONAL_ID, MEDICAL, BANK_ACCOUNT) are invisible to every detection-sharing filter, so recall is capped by this, not by the risk model.",
+    "precision/recall/f1: over gold spans. A span counts as protected if its text no longer appears in the output; sensitive = gold tier above 'none'. Over-redaction lowers precision.",
+    "leakage_rate: share of sensitive spans whose exact text survives in the output.",
+    "reidentification_rate: share of sensitive spans where any identifying token (>=4 chars) survives \u2014 a crude token-level attacker, not a model-based attack.",
+    "semantic_similarity is a lexical TF-IDF cosine proxy, not an embedding-based score.",
+    "rule_based has its own regex-only detection; the other three baselines share CAPRLM's regex+NER detection. Compare CAPRLM with static_masking to isolate the risk model's contribution; a gap to rule_based also includes detection coverage."
+  ]
+}
