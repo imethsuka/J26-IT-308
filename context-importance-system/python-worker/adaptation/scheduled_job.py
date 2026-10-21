@@ -42,7 +42,7 @@ from app_paths import default_run_log_path
 from models.lightgbm_model import DEFAULT_VERSIONS_DIR, ImportanceModel
 from models.rule_based import RuleBasedImportanceScorer
 
-from .deployment import validate_and_maybe_deploy
+from .deployment import DEFAULT_PRIMARY_METRIC, PRIMARY_METRICS, validate_and_maybe_deploy
 from .drift_detection import ErrorDriftDetector
 from .host_state import HostReadiness, check_host_ready
 from .label_construction import (
@@ -72,7 +72,7 @@ class CycleConfig:
     min_train_rows: int = 20
     holdout_fraction: float = 0.2
     num_boost_round: int = 100
-    primary_metric: str = "f1"
+    primary_metric: str = DEFAULT_PRIMARY_METRIC
     threshold: float = 0.5
     drift_delta: float = 0.002
     versions_dir: Path = field(default_factory=lambda: DEFAULT_VERSIONS_DIR)
@@ -536,7 +536,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--prototype-k", type=int, default=8)
     parser.add_argument("--min-train-rows", type=int, default=20)
     parser.add_argument("--holdout-fraction", type=float, default=0.2)
-    parser.add_argument("--primary-metric", default="f1", choices=["f1", "precision", "recall", "accuracy"])
+    parser.add_argument("--primary-metric", default=DEFAULT_PRIMARY_METRIC, choices=list(PRIMARY_METRICS))
     parser.add_argument("--versions-dir", default=None)
     parser.add_argument("--retrain-without-new-labels", action="store_true",
                         help="retrain even if nothing was labelled since the last candidate")

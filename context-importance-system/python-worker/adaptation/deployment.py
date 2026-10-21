@@ -19,7 +19,17 @@ from typing import Any, Callable, Iterable
 
 from models.base import Features, ImportanceScorer
 
-PRIMARY_METRICS = ("f1", "precision", "recall", "accuracy")
+# The first four depend on the 0.5 threshold. The last three only use the *order* of the scores, so a
+# model and the rule-based baseline can be compared fairly even though their scores are calibrated
+# differently (the rules keep ~85% of contexts at 0.5, which flatters them on F1).
+THRESHOLD_METRICS = ("f1", "precision", "recall", "accuracy")
+RANKING_METRICS = ("avg_precision", "roc_auc", "recall_at_keep_30")
+PRIMARY_METRICS = THRESHOLD_METRICS + RANKING_METRICS
+DEFAULT_PRIMARY_METRIC = "avg_precision"
+KEEP_BUDGET = 0.30
+# Share of contexts the deployed model may save. The save/discard threshold is the held-out score at this
+# quantile, not a fixed 0.5 (a model whose scores sit high would otherwise keep nearly everything).
+DEFAULT_KEEP_RATE = 0.30
 
 # (features, label) pairs, or a pandas DataFrame with 'features' and 'label' columns.
 LabelledData = Any
@@ -38,9 +48,13 @@ class ClassificationMetrics:
     fn: int
     tn: int
     threshold: float
+    # Threshold-free ranking metrics; None when not computed or undefined (e.g. one class in the set).
+    avg_precision: float | None = None
+    roc_auc: float | None = None
+    recall_at_keep_30: float | None = None
 
     @classmethod
-    def from_confusion(cls, tp: int, fp: int, fn: int, tn: int, *, threshold: float) -> "ClassificationMetrics":
+    def from_confusion(cls, tp: int, fp: int, fn: int, tn: int, *, threshold: float, **ranking: float | None) -> "ClassificationMetrics":
         precision = tp / (tp + fp) if (tp + fp) else 0.0
         recall = tp / (tp + fn) if (tp + fn) else 0.0
         f1 = (2 * precision * recall / (precision + recall)) if (precision + recall) else 0.0
@@ -54,9 +68,10 @@ class ClassificationMetrics:
             support=total,
             tp=tp, fp=fp, fn=fn, tn=tn,
             threshold=threshold,
+            **ranking,
         )
 
-    def value(self, metric: str) -> float:
+    def value(self, metric: str) -> float | None:
         if metric not in PRIMARY_METRICS:
             raise ValueError(f"unknown metric {metric!r}; choose from {PRIMARY_METRICS}")
         return getattr(self, metric)
@@ -70,7 +85,7 @@ class DeploymentDecision:
     deployed: bool
     reason: str
     primary_metric: str
-    candidate_score: float
+    candidate_score: float | None
     current_score: float | None
     candidate_metrics: ClassificationMetrics
     current_metrics: ClassificationMetrics | None
@@ -79,12 +94,48 @@ class DeploymentDecision:
     logged_version_row_id: int | None
 
 
+def ranking_scores(labels, scores, keep_budget: float = KEEP_BUDGET) -> dict[str, float | None]:
+    """Average precision, ROC AUC and recall when only the top ``keep_budget`` share may be kept.
+
+    AP / AUC are None when the set has one class only (undefined), so the gate cannot decide on them.
+    """
+    import numpy as np
+    from sklearn.metrics import average_precision_score, roc_auc_score
+
+    y = np.asarray(labels, dtype=int)
+    s = np.asarray(scores, dtype=float)
+    if len(y) == 0 or y.min() == y.max():
+        return {"avg_precision": None, "roc_auc": None, "recall_at_keep_30": None}
+    order = np.argsort(-s, kind="stable")
+    kept = order[: int(round(keep_budget * len(y)))]
+    return {
+        "avg_precision": round(float(average_precision_score(y, s)), 6),
+        "roc_auc": round(float(roc_auc_score(y, s)), 6),
+        "recall_at_keep_30": round(float(y[kept].sum() / max(1, y.sum())), 6),
+    }
+
+
+def budget_threshold(scores, keep_rate: float = DEFAULT_KEEP_RATE) -> float | None:
+    """The score such that about ``keep_rate`` of ``scores`` are at or above it (None if there are none)."""
+    import numpy as np
+
+    values = np.asarray(list(scores), dtype=float)
+    if values.size == 0 or not 0 < keep_rate <= 1:
+        return None
+    return round(float(np.quantile(values, 1.0 - keep_rate)), 6)
+
+
 def evaluate_model(model: ImportanceScorer, held_out: LabelledData, threshold: float = 0.5) -> ClassificationMetrics:
-    """Precision/recall/F1/accuracy of ``model`` on the held-out labelled set at ``threshold``."""
+    """Threshold metrics at ``threshold`` plus the threshold-free ranking metrics of ``model`` on the held-out set."""
     tp = fp = fn = tn = 0
+    labels: list[int] = []
+    scores: list[float] = []
     for features, label in _iter_labelled(held_out):
-        predicted = 1 if model.predict_proba(features) >= threshold else 0
+        score = float(model.predict_proba(features))
+        predicted = 1 if score >= threshold else 0
         actual = int(label)
+        labels.append(actual)
+        scores.append(score)
         if predicted == 1 and actual == 1:
             tp += 1
         elif predicted == 1 and actual == 0:
@@ -93,26 +144,31 @@ def evaluate_model(model: ImportanceScorer, held_out: LabelledData, threshold: f
             fn += 1
         else:
             tn += 1
-    return ClassificationMetrics.from_confusion(tp, fp, fn, tn, threshold=threshold)
+    return ClassificationMetrics.from_confusion(tp, fp, fn, tn, threshold=threshold, **ranking_scores(labels, scores))
 
 
 def decide_deployment(
     candidate_metrics: ClassificationMetrics,
     current_metrics: ClassificationMetrics | None,
     *,
-    primary_metric: str = "f1",
+    primary_metric: str = DEFAULT_PRIMARY_METRIC,
 ) -> tuple[bool, str]:
     """
     Pure decision: deploy iff the candidate is *strictly better* on ``primary_metric``.
 
     A tie keeps the current model (avoid churning the deployment on no real improvement). If there
-    is no current model (cold start), the candidate is deployed.
+    is no current model (cold start), the candidate is deployed. If the metric is undefined on this
+    held-out set (a ranking metric with one class only), nothing is changed.
     """
     candidate_score = candidate_metrics.value(primary_metric)
+    if candidate_score is None:
+        return False, f"{primary_metric} is undefined on this held-out set (needs both classes); keeping current"
     if current_metrics is None:
         return True, f"no incumbent model; deploying candidate ({primary_metric}={candidate_score:.4f})"
 
     current_score = current_metrics.value(primary_metric)
+    if current_score is None:
+        return False, f"{primary_metric} is undefined for the current model on this held-out set; keeping current"
     if candidate_score > current_score:
         return True, f"candidate {primary_metric} {candidate_score:.4f} > current {current_score:.4f}"
     return False, f"candidate {primary_metric} {candidate_score:.4f} not strictly better than current {current_score:.4f}"
@@ -125,11 +181,12 @@ def validate_and_maybe_deploy(
     *,
     conn,
     candidate_version: str,
-    primary_metric: str = "f1",
+    primary_metric: str = DEFAULT_PRIMARY_METRIC,
     threshold: float = 0.5,
     algorithm: str | None = None,
     notes: str | None = None,
     metrics_fn: MetricsFn | None = None,
+    keep_rate: float | None = DEFAULT_KEEP_RATE,
 ) -> DeploymentDecision:
     """
     Score both models on ``held_out_labelled_data``, deploy the candidate only if strictly better on
@@ -151,6 +208,9 @@ def validate_and_maybe_deploy(
     current_metrics = evaluate(current_model, materialized, threshold) if current_model is not None else None
 
     deployed, reason = decide_deployment(candidate_metrics, current_metrics, primary_metric=primary_metric)
+    decision_threshold = (
+        budget_threshold((candidate_model.predict_proba(f) for f, _ in materialized), keep_rate) if keep_rate else None
+    )
 
     incumbent = get_active_model_version(conn)
     current_version = incumbent.version if incumbent else None
@@ -159,6 +219,9 @@ def validate_and_maybe_deploy(
         "primary_metric": primary_metric,
         "threshold": threshold,
         "n_held_out": len(materialized),
+        # What the worker saves with when this version is active (None: the worker's default threshold).
+        "decision_threshold": decision_threshold,
+        "keep_rate": keep_rate if decision_threshold is not None else None,
         "deployed": deployed,
         "reason": reason,
         "candidate": candidate_metrics.to_dict(),
