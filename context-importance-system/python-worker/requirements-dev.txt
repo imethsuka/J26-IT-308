@@ -1,0 +1,14 @@
+# Dev/test-only dependencies.
+# The IPC layer and the resource probe are pure standard library. The encoder-input tests need
+# numpy + pillow (both already in requirements.txt). Running eval/measure_encoder.py additionally
+# needs torch and the mobileclip package (installed separately; see features/mobileclip_encoder.py).
+-r requirements.txt
+pytest
+# Training notebooks (../Colab/01_train_local.ipynb): kernel, headless execution, plots, bundles.
+ipykernel
+nbclient
+nbformat
+matplotlib
+pyarrow
+tqdm
+onnx
