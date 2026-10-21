@@ -1,0 +1,117 @@
+<UserControl x:Class="ContextDashboard.Views.OverviewPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:v="clr-namespace:ContextDashboard.Views"
+             FontFamily="Segoe UI" FontSize="13" Foreground="{StaticResource Ink}">
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel Margin="32,24,32,24">
+      <DockPanel Margin="0,0,0,18">
+        <v:CaptureBar DockPanel.Dock="Right" VerticalAlignment="Top" />
+        <StackPanel>
+          <TextBlock Text="Overview" Style="{StaticResource PageTitle}" />
+          <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+            <TextBlock Text="Model:" Style="{StaticResource MutedText}" Margin="0,0,5,0" />
+            <TextBlock Text="{Binding ActiveModelText}" FontSize="12" FontWeight="SemiBold" />
+          </StackPanel>
+        </StackPanel>
+      </DockPanel>
+
+      <Border Background="#FBF1D8" BorderBrush="#E8C46A" BorderThickness="1" CornerRadius="10" Padding="14,10" Margin="0,0,0,14">
+        <Border.Style>
+          <Style TargetType="Border">
+            <Setter Property="Visibility" Value="Visible" />
+            <Style.Triggers>
+              <DataTrigger Binding="{Binding Warning}" Value="">
+                <Setter Property="Visibility" Value="Collapsed" />
+              </DataTrigger>
+            </Style.Triggers>
+          </Style>
+        </Border.Style>
+        <TextBlock Text="{Binding Warning}" TextWrapping="Wrap" />
+      </Border>
+
+      <WrapPanel>
+        <Border Style="{StaticResource StatCard}"><StackPanel>
+          <TextBlock Text="RECORDS" Style="{StaticResource CardLabel}" />
+          <TextBlock Text="{Binding RecordsText}" Style="{StaticResource CardValue}" /></StackPanel></Border>
+        <Border Style="{StaticResource StatCard}"><StackPanel>
+          <TextBlock Text="DECISION" Style="{StaticResource CardLabel}" />
+          <TextBlock Text="{Binding SaveRateText}" Style="{StaticResource CardValue}" /></StackPanel></Border>
+        <Border Style="{StaticResource StatCard}"><StackPanel>
+          <TextBlock Text="WITH EMBEDDING" Style="{StaticResource CardLabel}" />
+          <TextBlock Text="{Binding EmbeddingText}" Style="{StaticResource CardValue}" /></StackPanel></Border>
+        <Border Style="{StaticResource StatCard}"><StackPanel>
+          <TextBlock Text="LAST CAPTURE" Style="{StaticResource CardLabel}" />
+          <TextBlock Text="{Binding LastCaptureText}" Style="{StaticResource CardValue}" /></StackPanel></Border>
+        <Border Style="{StaticResource StatCard}"><StackPanel>
+          <TextBlock Text="DATABASE SIZE" Style="{StaticResource CardLabel}" />
+          <TextBlock Text="{Binding DiskText}" Style="{StaticResource CardValue}" /></StackPanel></Border>
+      </WrapPanel>
+
+      <Border Style="{StaticResource Card}">
+        <StackPanel>
+          <TextBlock Text="Data sources" Style="{StaticResource CardTitle}" />
+          <TextBlock Style="{StaticResource MutedText}" Margin="0,3,0,10"
+                     Text="DRC history is the DesktopResearchCollector data merged in. Only captures older than the live data were kept, so nothing is counted twice." />
+          <Grid>
+            <Grid.ColumnDefinitions><ColumnDefinition Width="130" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+            <Grid.RowDefinitions><RowDefinition /><RowDefinition /></Grid.RowDefinitions>
+            <TextBlock Text="LIVE CAPTURE" Style="{StaticResource CardLabel}" Margin="0,3,0,6" />
+            <TextBlock Grid.Column="1" Text="{Binding LiveSourceText}" Margin="0,0,0,6" />
+            <TextBlock Grid.Row="1" Text="DRC HISTORY" Style="{StaticResource CardLabel}" Margin="0,3,0,0" />
+            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding HistorySourceText}" />
+          </Grid>
+        </StackPanel>
+      </Border>
+
+      <Border Style="{StaticResource Card}">
+        <StackPanel>
+          <DockPanel>
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+              <Ellipse Width="9" Height="9" Fill="{StaticResource Green}" Margin="0,0,5,0" /><TextBlock Text="saved" Style="{StaticResource MutedText}" Margin="0,0,14,0" />
+              <Ellipse Width="9" Height="9" Fill="#E3E0D5" Margin="0,0,5,0" /><TextBlock Text="discarded" Style="{StaticResource MutedText}" />
+            </StackPanel>
+            <TextBlock Text="{Binding ActivityTitle}" Style="{StaticResource CardTitle}" />
+          </DockPanel>
+          <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+            <RadioButton x:Name="Range1" GroupName="Range" Tag="1" IsChecked="True" Style="{StaticResource LevelCard}" Checked="OnRangeChecked" Margin="0,0,6,0"><TextBlock Text="24 hours" /></RadioButton>
+            <RadioButton GroupName="Range" Tag="7" Style="{StaticResource LevelCard}" Checked="OnRangeChecked" Margin="0,0,6,0"><TextBlock Text="7 days" /></RadioButton>
+            <RadioButton GroupName="Range" Tag="30" Style="{StaticResource LevelCard}" Checked="OnRangeChecked" Margin="0,0,6,0"><TextBlock Text="30 days" /></RadioButton>
+            <RadioButton GroupName="Range" Tag="90" Style="{StaticResource LevelCard}" Checked="OnRangeChecked" Margin="0"><TextBlock Text="3 months" /></RadioButton>
+          </StackPanel>
+          <v:BarChart Buckets="{Binding Hours}" Height="170" Margin="0,10,0,0" />
+        </StackPanel>
+      </Border>
+
+      <Border Style="{StaticResource Card}">
+        <StackPanel>
+          <TextBlock Text="Top apps, last 24 hours" Style="{StaticResource CardTitle}" Margin="0,0,0,10" />
+          <ItemsControl ItemsSource="{Binding TopApps}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Grid Margin="0,4">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="170" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="70" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock Text="{Binding App}" TextTrimming="CharacterEllipsis" />
+                  <ProgressBar Grid.Column="1" Maximum="1" Value="{Binding Share, Mode=OneWay}" Height="8"
+                               Foreground="{StaticResource Green}" Background="{StaticResource Track}" BorderThickness="0" Margin="8,0" />
+                  <TextBlock Grid.Column="2" Text="{Binding Records}" FontFamily="Consolas" HorizontalAlignment="Right" />
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+
+      <Border Style="{StaticResource Card}">
+        <StackPanel>
+          <TextBlock Text="Compared with DRC's rules" Style="{StaticResource CardTitle}" />
+          <TextBlock Text="{Binding DrcText}" Foreground="{StaticResource Muted}" Margin="0,4,0,0" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

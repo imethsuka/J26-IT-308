@@ -1,0 +1,151 @@
+<UserControl x:Class="ContextDashboard.Views.EnginePage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:v="clr-namespace:ContextDashboard.Views"
+             FontFamily="Segoe UI" FontSize="13" Foreground="{StaticResource Ink}">
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel Margin="32,24,32,24">
+      <DockPanel Margin="0,0,0,18">
+        <v:CaptureBar DockPanel.Dock="Right" VerticalAlignment="Top" />
+        <StackPanel>
+          <TextBlock Text="Importance Engine" Style="{StaticResource PageTitle}" />
+          <TextBlock Text="What deserves long-term memory, measured from your own recorded activity"
+                     Style="{StaticResource MutedText}" Margin="0,2,0,0" />
+        </StackPanel>
+      </DockPanel>
+
+      <TextBlock x:Name="EmptyNote" Style="{StaticResource MutedText}" Margin="0,0,0,12" Visibility="Collapsed" />
+
+      <UniformGrid Columns="4" Margin="0,0,-12,0">
+        <Border Style="{StaticResource StatCard}">
+          <StackPanel>
+            <TextBlock Text="PENDING LABEL" Style="{StaticResource CardLabel}" />
+            <StackPanel Orientation="Horizontal">
+              <TextBlock x:Name="PendingValue" Text="–" Style="{StaticResource CardValue}" />
+              <TextBlock Text="obs" Foreground="{StaticResource Green}" FontSize="14" VerticalAlignment="Bottom" Margin="5,0,0,3" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+        <Border Style="{StaticResource StatCard}">
+          <StackPanel>
+            <TextBlock Text="COMMIT RATE · 24H" Style="{StaticResource CardLabel}" />
+            <StackPanel Orientation="Horizontal">
+              <TextBlock x:Name="CommitValue" Text="–" Style="{StaticResource CardValue}" />
+              <TextBlock x:Name="CommitUnit" Foreground="{StaticResource Green}" FontSize="14" VerticalAlignment="Bottom" Margin="5,0,0,3" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+        <Border Style="{StaticResource StatCard}">
+          <StackPanel>
+            <TextBlock Text="DECISION THRESHOLD" Style="{StaticResource CardLabel}" />
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Text="0.50" Style="{StaticResource CardValue}" />
+              <TextBlock Text="worker default" Foreground="{StaticResource Muted}" FontSize="11" VerticalAlignment="Bottom" Margin="7,0,0,5" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+        <Border Style="{StaticResource StatCard}">
+          <StackPanel>
+            <TextBlock Text="COMMIT-RATE SHIFT" Style="{StaticResource CardLabel}" />
+            <StackPanel Orientation="Horizontal">
+              <TextBlock x:Name="ShiftValue" Text="–" Style="{StaticResource CardValue}" />
+              <TextBlock x:Name="ShiftUnit" Foreground="{StaticResource Amber}" FontSize="12" VerticalAlignment="Bottom" Margin="5,0,0,4" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+      </UniformGrid>
+
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="1.35*" />
+          <ColumnDefinition Width="16" />
+          <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <Border Grid.Column="0" Style="{StaticResource Card}" Margin="0,4,0,16">
+          <StackPanel>
+            <TextBlock Text="Dwell-time distribution" Style="{StaticResource CardTitle}" />
+            <TextBlock x:Name="DwellSub" Style="{StaticResource MutedText}" Margin="0,3,0,10" />
+            <v:DwellChart x:Name="Dwell" Height="230" />
+          </StackPanel>
+        </Border>
+
+        <Border Grid.Column="2" Style="{StaticResource Card}" Margin="0,4,0,16">
+          <StackPanel>
+            <TextBlock Text="Behavioral signals" Style="{StaticResource CardTitle}" />
+            <TextBlock Text="Average of what the worker recorded, last 7 days (0 to 1)" Style="{StaticResource MutedText}" Margin="0,3,0,14" />
+            <ItemsControl x:Name="SignalList">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Grid Margin="0,0,0,13" ToolTip="{Binding Detail}">
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="112" />
+                      <ColumnDefinition Width="*" />
+                      <ColumnDefinition Width="42" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="{Binding Name}" Foreground="{StaticResource Muted}" VerticalAlignment="Center" />
+                    <ProgressBar Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding Value, Mode=OneWay}" Height="7"
+                                 Foreground="{Binding Brush}" Background="{StaticResource Track}" BorderThickness="0" Margin="6,0" />
+                    <TextBlock Grid.Column="2" Text="{Binding ValueText}" FontFamily="Consolas" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+      </Grid>
+
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="16" />
+          <ColumnDefinition Width="1.15*" />
+        </Grid.ColumnDefinitions>
+
+        <Border Grid.Column="0" Style="{StaticResource Card}" VerticalAlignment="Top">
+          <StackPanel>
+            <TextBlock Text="Learning status" Style="{StaticResource CardTitle}" />
+            <TextBlock Text="How the engine adapts: old records get a label from what you did afterwards" Style="{StaticResource MutedText}" Margin="0,3,0,12" />
+            <TextBlock Text="ACTIVE MODEL" Style="{StaticResource CardLabel}" />
+            <TextBlock Text="{Binding ActiveModelText}" FontWeight="SemiBold" Margin="0,2,0,10" />
+            <TextBlock Text="LABELLED" Style="{StaticResource CardLabel}" />
+            <TextBlock x:Name="LabelledText" Margin="0,2,0,10" />
+            <TextBlock Text="LAST LEARNING RUN" Style="{StaticResource CardLabel}" />
+            <TextBlock Text="{Binding LearningText}" TextWrapping="Wrap" Margin="0,2,0,10" />
+            <TextBlock Text="{Binding LearnerText}" Style="{StaticResource MutedText}" />
+          </StackPanel>
+        </Border>
+
+        <Border Grid.Column="2" Style="{StaticResource Card}" VerticalAlignment="Top">
+          <StackPanel>
+            <DockPanel>
+              <Border DockPanel.Dock="Right" Style="{StaticResource Chip}" Background="{StaticResource InsetBg}">
+                <TextBlock x:Name="PendingChip" FontFamily="Consolas" FontSize="11" Foreground="{StaticResource Muted}" />
+              </Border>
+              <TextBlock Text="Pending observation buffer" Style="{StaticResource CardTitle}" />
+            </DockPanel>
+            <TextBlock Text="Newest records still waiting for a label. Titles stay on this PC." Style="{StaticResource MutedText}" Margin="0,3,0,8" />
+            <TextBlock x:Name="NoPending" Text="Nothing is waiting for a label." Style="{StaticResource MutedText}" Margin="0,6,0,0" />
+            <ItemsControl x:Name="PendingList">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Border BorderBrush="{StaticResource CardBorder}" BorderThickness="0,1,0,0" Padding="0,10">
+                    <DockPanel>
+                      <Border DockPanel.Dock="Right" Style="{StaticResource Chip}" Background="{Binding ChipBg}" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Decision}" FontFamily="Consolas" FontSize="11" Foreground="{Binding ChipFg}" />
+                      </Border>
+                      <StackPanel>
+                        <TextBlock Text="{Binding Headline}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{Binding Detail}" FontFamily="Consolas" FontSize="11" Foreground="{StaticResource Muted}" Margin="0,2,0,0" />
+                      </StackPanel>
+                    </DockPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+      </Grid>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

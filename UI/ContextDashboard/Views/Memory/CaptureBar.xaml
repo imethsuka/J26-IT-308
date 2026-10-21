@@ -1,0 +1,34 @@
+<UserControl x:Class="ContextDashboard.Views.CaptureBar"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             FontFamily="Segoe UI" FontSize="13">
+  <UserControl.Resources>
+    <Style x:Key="Dot" TargetType="Ellipse">
+      <Setter Property="Width" Value="9" />
+      <Setter Property="Height" Value="9" />
+      <Setter Property="Margin" Value="0,0,6,0" />
+      <Setter Property="Fill" Value="{StaticResource Muted}" />
+      <Style.Triggers>
+        <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}" Value="True">
+          <Setter Property="Fill" Value="{StaticResource Green}" />
+        </DataTrigger>
+      </Style.Triggers>
+    </Style>
+  </UserControl.Resources>
+  <StackPanel>
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+      <Border Style="{StaticResource Chip}" Background="{StaticResource InsetBg}" Padding="12,5" Margin="0,0,10,0">
+        <StackPanel Orientation="Horizontal">
+          <Ellipse Style="{StaticResource Dot}" Tag="{Binding CollectorRunning}" />
+          <TextBlock Text="Collector" Margin="0,0,14,0" Foreground="{StaticResource Muted}" />
+          <Ellipse Style="{StaticResource Dot}" Tag="{Binding WorkerRunning}" />
+          <TextBlock Text="Worker" Foreground="{StaticResource Muted}" />
+        </StackPanel>
+      </Border>
+      <Button Content="Start capture" Click="OnStart" Margin="0,0,8,0" />
+      <Button Content="Stop capture" Click="OnStop" />
+    </StackPanel>
+    <TextBlock Text="{Binding StatusMessage}" Foreground="{StaticResource Amber}" TextWrapping="Wrap"
+               HorizontalAlignment="Right" TextAlignment="Right" Margin="0,6,0,0" MaxWidth="460" />
+  </StackPanel>
+</UserControl>
