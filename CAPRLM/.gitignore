@@ -6,3 +6,8 @@ Colab/benchmark-output/
 
 __pycache__/
 *.pyc
+
+# Frozen-service build output (packaging/build_service.ps1).
+packaging/.venv-build/
+packaging/build/
+packaging/dist/
