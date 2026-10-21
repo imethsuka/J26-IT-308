@@ -79,6 +79,27 @@ CREATE TABLE IF NOT EXISTS memory_entries (
 );
 CREATE INDEX IF NOT EXISTS ix_episodes_doc ON episodes(doc_id, start_ts);
 CREATE INDEX IF NOT EXISTS ix_entries_created ON memory_entries(created_at);
+-- Written by the rollup stage (adaptation/rollups.py). `key` is a hash of the entry ids in the session, so a session that
+-- grows gets a new key and a new note; the dashboard groups entries the same way and looks notes up by that key.
+CREATE TABLE IF NOT EXISTS session_notes (
+    key        TEXT PRIMARY KEY,
+    day        TEXT NOT NULL,
+    first_ts   INTEGER NOT NULL,
+    last_ts    INTEGER NOT NULL,
+    n_entries  INTEGER NOT NULL,
+    title      TEXT,
+    tag        TEXT,
+    tldr       TEXT,
+    model      TEXT,
+    created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS day_notes (
+    day          TEXT PRIMARY KEY,
+    sessions_key TEXT NOT NULL,                -- hash of the session keys the recap was written from
+    tldr         TEXT,
+    model        TEXT,
+    created_at   INTEGER NOT NULL
+);
 """
 
 
@@ -157,6 +178,152 @@ class MemoryStore:
             if limit is not None:
                 sql += f" LIMIT {int(limit)}"
             return [dict(r) for r in conn.execute(sql).fetchall()]
+
+    def pending_summaries(self, *, limit: int) -> list[dict[str, Any]]:
+        """Entries that kept page text and are waiting for a summary, newest first: id, doc_id and the parsed entry_json.
+
+        Entries whose text was stored by the unredacted developer filter are left out: the model must only read filtered text."""
+        with self._lock:
+            conn = self._connection(create=False)
+            if conn is None:
+                return []
+            rows = conn.execute(
+                "SELECT e.id, e.doc_id, e.entry_json FROM memory_entries e WHERE e.needs_summary = 1 AND e.text_persisted = 1 "
+                "AND NOT EXISTS (SELECT 1 FROM memory_entries x WHERE x.doc_id = e.doc_id "
+                "AND COALESCE(x.filter_version, '') LIKE 'passthrough%') "  # never read a page that held unfiltered text
+                "ORDER BY e.created_at DESC, e.id DESC LIMIT ?", (int(limit),)).fetchall()
+            return [{"id": r["id"], "doc_id": r["doc_id"], "entry": json.loads(r["entry_json"])} for r in rows]
+
+    def set_summary(self, entry_id: int, summary: str | None, model: str | None) -> None:
+        """Store the summary and clear the waiting flag. ``summary=None`` gives up on this entry (it keeps its plain sentence)."""
+        with self._lock:
+            conn = self._connection(create=False)
+            if conn is None:
+                return
+            with conn:
+                conn.execute("UPDATE memory_entries SET summary = ?, summary_model = ?, needs_summary = 0 WHERE id = ?",
+                             (summary, model if summary else None, int(entry_id)))
+
+    # -- rollups: sessions and days ------------------------------------------------------------------------
+
+    def rollup_entries(self, *, since_us: int) -> list[dict[str, Any]]:
+        """High and medium entries from ``since_us`` on (low ones are noise for a narrative), oldest first."""
+        with self._lock:
+            conn = self._connection(create=False)
+            if conn is None:
+                return []
+            rows = conn.execute(
+                "SELECT e.id, e.tier, e.importance, e.entry_json, e.summary, e.text_persisted FROM memory_entries e "
+                "JOIN episodes p ON p.id = e.episode_id WHERE e.tier IN ('high', 'medium') AND p.start_ts >= ? "
+                "ORDER BY p.start_ts ASC, e.id ASC", (int(since_us),)).fetchall()
+            return [{"id": r["id"], "tier": r["tier"], "importance": r["importance"], "entry": json.loads(r["entry_json"]),
+                     "summary": r["summary"], "text_persisted": bool(r["text_persisted"])} for r in rows]
+
+    def site_pages(self, app: str | None, domain: str | None, *, limit: int = 60) -> list[list[str]]:
+        """The lines of the newest stored pages of the same site (same domain, or same app when there is no domain), for finding
+        text a whole site repeats. Decrypts up to ``limit`` pages."""
+        with self._lock:
+            conn = self._connection(create=False)
+            if conn is None:
+                return []
+            if domain and domain != "-":
+                rows = conn.execute("SELECT doc_id FROM documents WHERE fragments_blob IS NOT NULL AND domain = ? "
+                                    "ORDER BY last_seen DESC LIMIT ?", (domain, limit)).fetchall()
+            else:
+                rows = conn.execute("SELECT doc_id FROM documents WHERE fragments_blob IS NOT NULL AND app = ? "
+                                    "AND (domain IS NULL OR domain = '' OR domain = '-') ORDER BY last_seen DESC LIMIT ?",
+                                    (app, limit)).fetchall()
+        pages = []
+        for r in rows:
+            stored = self.load_document(r["doc_id"])
+            if stored is not None:
+                pages.append(stored.document.text().splitlines())
+        return pages
+
+    def session_note_keys(self) -> set[str]:
+        with self._lock:
+            conn = self._connection(create=False)
+            return set() if conn is None else {r[0] for r in conn.execute("SELECT key FROM session_notes")}
+
+    def save_session_note(self, *, key: str, day: str, first_ts: int, last_ts: int, n_entries: int,
+                          title: str | None, tag: str | None, tldr: str | None, model: str | None) -> None:
+        with self._lock:
+            conn = self._connection(create=True)
+            assert conn is not None
+            with conn:
+                conn.execute(
+                    "INSERT OR REPLACE INTO session_notes(key, day, first_ts, last_ts, n_entries, title, tag, tldr, model, created_at) "
+                    "VALUES (?,?,?,?,?,?,?,?,?,?)", (key, day, first_ts, last_ts, n_entries, title, tag, tldr, model, now_epoch_us()))
+
+    def get_session_notes(self, keys: list[str]) -> dict[str, dict[str, Any]]:
+        if not keys:
+            return {}
+        with self._lock:
+            conn = self._connection(create=False)
+            if conn is None:
+                return {}
+            marks = ",".join("?" * len(keys))
+            rows = conn.execute(f"SELECT key, title, tag, tldr FROM session_notes WHERE key IN ({marks})", keys).fetchall()
+            return {r["key"]: {"title": r["title"], "tag": r["tag"], "tldr": r["tldr"]} for r in rows}
+
+    def day_note_key(self, day: str) -> str | None:
+        with self._lock:
+            conn = self._connection(create=False)
+            row = None if conn is None else conn.execute("SELECT sessions_key FROM day_notes WHERE day = ?", (day,)).fetchone()
+            return None if row is None else row[0]
+
+    def save_day_note(self, *, day: str, sessions_key: str, tldr: str | None, model: str | None) -> None:
+        with self._lock:
+            conn = self._connection(create=True)
+            assert conn is not None
+            with conn:
+                conn.execute("INSERT OR REPLACE INTO day_notes(day, sessions_key, tldr, model, created_at) VALUES (?,?,?,?,?)",
+                             (day, sessions_key, tldr, model, now_epoch_us()))
+
+    def prune_notes(self, *, before_us: int) -> None:
+        with self._lock:
+            conn = self._connection(create=False)
+            if conn is None:
+                return
+            with conn:
+                conn.execute("DELETE FROM session_notes WHERE last_ts < ?", (int(before_us),))
+                conn.execute("DELETE FROM day_notes WHERE created_at < ?", (int(before_us),))
+
+    # -- one-time clean-up of text stored without a real filter -----------------------------------------------
+
+    def documents_to_refilter(self) -> list[dict[str, Any]]:
+        """Pages that hold text and were stored without a real filter (or that ever held unfiltered text)."""
+        with self._lock:
+            conn = self._connection(create=False)
+            if conn is None:
+                return []
+            rows = conn.execute(
+                "SELECT d.doc_id, d.app, d.domain, d.title FROM documents d WHERE d.fragments_blob IS NOT NULL AND ("
+                "d.filter_version IS NULL OR d.filter_version LIKE 'passthrough%' OR EXISTS (SELECT 1 FROM memory_entries x "
+                "WHERE x.doc_id = d.doc_id AND COALESCE(x.filter_version, '') LIKE 'passthrough%')) ORDER BY d.last_seen DESC"
+            ).fetchall()
+            return [dict(r) for r in rows]
+
+    def replace_document_text(self, doc_id: str, document: TextDocument | None, filter_version: str | None) -> None:
+        """Swap a page's text for its filtered version in one transaction. ``None`` drops the text (the page was blocked):
+        its entries then no longer claim to hold text and stop waiting for a summary."""
+        blob = None
+        words = 0
+        if document is not None and document.word_count:
+            words = document.word_count
+            blob = self._protect().protect(zlib.compress(json.dumps(document.to_dict(), ensure_ascii=False).encode("utf-8"), 6))
+        keep = blob is not None
+        with self._lock:
+            conn = self._connection(create=True)
+            assert conn is not None
+            with conn:
+                conn.execute("UPDATE documents SET fragments_blob = ?, word_count = ?, filter_version = ? WHERE doc_id = ?",
+                             (blob, words, filter_version if keep else None, doc_id))
+                conn.execute(
+                    "UPDATE memory_entries SET filter_version = ?, text_persisted = ?, "
+                    "needs_summary = CASE WHEN ? = 1 AND tier = 'high' AND summary IS NULL THEN 1 ELSE 0 END "
+                    "WHERE doc_id = ? AND text_persisted = 1",
+                    (filter_version if keep else None, int(keep), int(keep), doc_id))
 
     def stats(self) -> dict[str, int]:
         with self._lock:

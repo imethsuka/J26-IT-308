@@ -8,6 +8,8 @@ Runs the maintenance pipeline in a fixed order, gated on the host being idle and
     4. drift check           (adaptation.drift_detection)         -> Phase 11
     5. validation gate       (adaptation.deployment)              -> Phase 12
     6. screen memory         (adaptation.screen_memory)           -> optional, independent of 1-5 (--screen-memory)
+    7. summaries             (adaptation.summarizer)              -> optional, after 6, local language model (--summarize)
+    8. session + day notes   (adaptation.rollups)                 -> optional, after 7, same model (--summarize)
 
 It can be run one-shot from Windows Task Scheduler, or as a daemon with ``--loop`` that polls until
 the host is idle. Every run emits a structured JSON summary (duration, contexts labelled, drift,
@@ -80,6 +82,10 @@ class CycleConfig:
     require_new_labels: bool = True
     # Optional stage 6: turn buffered screen text into memory entries (adaptation.screen_memory.ScreenMemoryJob).
     screen_memory: Any = None
+    # Optional stage 7: a small local language model writes a sentence for each important memory (adaptation.summarizer).
+    summarizer: Any = None
+    # Optional stage 8: a title, tag and TLDR per work session and a recap per day (adaptation.rollups), from stage 7's sentences.
+    rollups: Any = None
 
 
 @dataclass
@@ -133,7 +139,39 @@ def run_if_ready(
     summary = run_cycle(conn, config, now=now, base_summary=summary, load_incumbent_fn=load_incumbent_fn)
     if config.screen_memory is not None:
         _run_screen_memory_stage(config, summary, now)
+    if config.summarizer is not None:
+        _run_summarizer_stage(config, summary)
+    if config.rollups is not None:
+        _run_rollups_stage(config, summary)
     return summary
+
+
+def _run_rollups_stage(config: CycleConfig, summary: RunSummary) -> None:
+    """Stage 8. Runs after stage 7 so sentences written in this run are used. Its failure changes nothing else."""
+    from .rollups import run_rollups
+
+    try:
+        report = run_rollups(config.rollups)
+        summary.stages["rollups"] = report
+        logger.info("rollups: %d session notes, %d day recaps (%d sessions seen)",
+                    report["session_notes"], report["day_notes"], report["sessions_seen"])
+    except Exception as exc:
+        logger.exception("rollup stage failed")
+        summary.stages["rollups"] = {"error": f"{type(exc).__name__}: {exc}"}
+
+
+def _run_summarizer_stage(config: CycleConfig, summary: RunSummary) -> None:
+    """Stage 7. Runs after stage 6 so entries written in this run are summarised in this run. Its failure changes nothing else."""
+    from .summarizer import run_summaries
+
+    try:
+        report = run_summaries(config.summarizer)
+        summary.stages["summaries"] = report
+        logger.info("summaries: %d written, %d discarded, %d failed (%d were waiting)",
+                    report["summarized"], report["discarded"], report["failed"], report["waiting"])
+    except Exception as exc:
+        logger.exception("summary stage failed")
+        summary.stages["summaries"] = {"error": f"{type(exc).__name__}: {exc}"}
 
 
 def _run_screen_memory_stage(config: CycleConfig, summary: RunSummary, now: datetime | None) -> None:
@@ -402,6 +440,7 @@ def log_summary(summary: RunSummary, log_path: Path | str) -> None:
 # =============================================================================================
 
 def _build_config(args: argparse.Namespace) -> CycleConfig:
+    summarizer, rollups = _build_llm_stages(args)
     return CycleConfig(
         label_delay=timedelta(hours=args.label_delay_hours),
         label_horizon=timedelta(hours=args.label_horizon_hours),
@@ -415,7 +454,34 @@ def _build_config(args: argparse.Namespace) -> CycleConfig:
         versions_dir=Path(args.versions_dir) if args.versions_dir else DEFAULT_VERSIONS_DIR,
         require_new_labels=not args.retrain_without_new_labels,
         screen_memory=_build_screen_memory(args),
+        summarizer=summarizer,
+        rollups=rollups,
     )
+
+
+def _build_llm_stages(args: argparse.Namespace):
+    """(summary stage, rollup stage); both None unless --summarize and a model file exists. They share one loaded model."""
+    if not getattr(args, "summarize", False):
+        return None, None
+    model_path = Path(args.llm_model) if args.llm_model else None
+    if model_path is None or not model_path.is_file():
+        logger.warning("--summarize given but the language model file was not found (%s): summaries are skipped", model_path)
+        return None, None
+    from storage.memory_store import MemoryStore, memory_path_for
+
+    from .rollups import RollupConfig, RollupJob
+    from .summarizer import LlamaCppModel, SummarizeConfig, SummarizeJob
+
+    memory = MemoryStore(args.memory_db or memory_path_for(args.db))
+    loaded: list[Any] = []
+
+    def shared_model():
+        if not loaded:
+            loaded.append(LlamaCppModel(model_path))
+        return loaded[0]
+
+    return (SummarizeJob(memory=memory, model_factory=shared_model, config=SummarizeConfig(max_entries=args.summary_max_entries)),
+            RollupJob(memory=memory, model_factory=shared_model, config=RollupConfig()))
 
 
 def _build_screen_memory(args: argparse.Namespace):
@@ -429,7 +495,18 @@ def _build_screen_memory(args: argparse.Namespace):
     from .screen_memory import ScreenMemoryConfig, ScreenMemoryJob
 
     privacy_filter = None
-    if args.dev_passthrough_filter:
+    if getattr(args, "privacy_url", None):
+        # CAPRLM, running on this PC. If it is not up, no text is kept at all (metadata-only entries): never unfiltered.
+        from .caprlm_client import CaprlmPrivacyFilter
+
+        client = CaprlmPrivacyFilter(args.privacy_url)
+        if client.available():
+            privacy_filter = client
+            if args.dev_passthrough_filter:
+                logger.warning("--privacy-url given: the CAPRLM filter is used and --dev-passthrough-filter is ignored")
+        else:
+            logger.warning("privacy service at %s is not reachable: no screen text will be kept in this run", args.privacy_url)
+    elif args.dev_passthrough_filter:
         logger.warning("DEV ONLY: the pass-through privacy filter stores screen text unredacted; use it on your own data only")
         privacy_filter = PassThroughFilter()
     return ScreenMemoryJob(
@@ -467,8 +544,14 @@ def main(argv: list[str] | None = None) -> int:
                         help="also turn buffered screen text into memory entries (needs the collector's screenContent on)")
     parser.add_argument("--raw-db", default=None, help="raw screen-text buffer (default: raw_buffer.db beside --db)")
     parser.add_argument("--memory-db", default=None, help="memory store (default: memory.db beside --db)")
+    parser.add_argument("--privacy-url", default=None,
+                        help="CAPRLM's local service (e.g. http://127.0.0.1:8787) used as the privacy filter; loopback only")
     parser.add_argument("--dev-passthrough-filter", action="store_true",
                         help="DEV ONLY: use no redaction. Without a privacy filter no screen text is stored")
+    parser.add_argument("--summarize", action="store_true",
+                        help="also write a sentence for each important memory with a local language model (needs --llm-model)")
+    parser.add_argument("--llm-model", default=None, help="path to a GGUF chat model, run locally with llama.cpp")
+    parser.add_argument("--summary-max-entries", type=int, default=25, help="most memories to summarise per run")
     parser.add_argument("--sm-high-threshold", type=float, default=0.5, help="episode importance for the high tier")
     parser.add_argument("--sm-medium-threshold", type=float, default=0.2, help="episode importance for the medium tier")
     args = parser.parse_args(argv)

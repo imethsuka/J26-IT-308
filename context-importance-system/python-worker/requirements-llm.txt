@@ -1,0 +1,5 @@
+﻿# Optional: the local language model that writes memory summaries (adaptation/summarizer.py, scheduled_job --summarize).
+# Windows has no compiler on most PCs, so use the ready-made CPU wheel:
+#   pip install -r requirements-llm.txt --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu
+# Then put a GGUF chat model in %LOCALAPPDATA%\context-importance\models\llm (see docs/MEMORIES.md).
+llama-cpp-python>=0.3

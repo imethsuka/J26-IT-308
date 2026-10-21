@@ -323,3 +323,13 @@ embeds with the ONNX encoder and inserts. The cutoff is stored in a one-row tabl
 (Importance engine scope buttons, Live feed source filter, Overview "Data sources"). Re-running keeps the same cutoff and only
 adds what is missing. Merged 2026-10-21: 5,049 DRC records (08 to 19 Oct, all with embeddings), 1,016 overlapping DRC captures dropped.
 Their labels are NULL until the learning job runs. Tests: `tests/test_merge_drc.py`, `UI/ContextDashboard.Tests/DataScopeTests.cs`.
+
+## Memories page and summaries (2026-10-21; details in `docs/MEMORIES.md`)
+
+Dashboard page *Memories* (day-by-day list of `memory.db` entries; a sentence built from stored facts, or the model's summary when
+there is one). Behind it: stage 6 now sends page text through CAPRLM (`adaptation/caprlm_client.py`, `scheduled_job --privacy-url`,
+loopback only, fails closed: service down = no text kept) and stage 7 (`adaptation/summarizer.py`, `--summarize --llm-model <gguf>`)
+has a local llama.cpp model (default Qwen2.5-1.5B-Instruct Q4, Apache-2.0, `%LOCALAPPDATA%\context-importance\models\llm`) write
+`memory_entries.summary`. The dashboard passes the new flags only if `adapt.exe --help` lists them (an older adapt.exe rejects
+unknown flags and the whole run fails), so the installed app needs a rebuilt worker bundle to use them. Optional dependency:
+`requirements-llm.txt`. Summary quality is a smoke test on made-up pages only; no hand-rated sample yet.
