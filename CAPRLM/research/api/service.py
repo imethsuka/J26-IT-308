@@ -28,7 +28,10 @@ from shared.types import FilterResult, PrivacyContext, Source
 from research.detection import Detector, OcrUnavailableError
 from research.eval.run_comparison import RESULTS_PATH
 from research.filters import build_filters
+from research.model import RiskModel
 from research.model.training import load_or_train_default
+from research.profile_store import EVIDENCE_NEEDED, GROUPS, LEARNABLE_CATEGORIES, ProfileStore
+from research.review import level_taus, review
 
 log = logging.getLogger("caprlm.api")
 
@@ -77,9 +80,42 @@ class CompareResponse(BaseModel):
     ocr_text: str | None = None
 
 
+class ReviewRequest(BaseModel):
+    text: str
+    context: ContextIn
+    level: Literal["relaxed", "balanced", "strict"] | None = None   # None = the saved policy level
+    # entity id ("start:end") -> what the user chose for that entity in this review
+    overrides: dict[str, Literal["masked", "visible"]] = {}
+    record_activity: bool = False     # True once per captured text, so re-renders don't inflate stats
+
+
+class CorrectionIn(BaseModel):
+    category: str
+    decision: Literal["masked", "visible"]
+
+
+class GroupPolicyIn(BaseModel):
+    action: Literal["never", "tokenize", "mask"] | None = None
+    enabled: bool | None = None
+
+
+class LlmPolicyIn(BaseModel):
+    mask_before_send: bool | None = None
+    provider: str | None = None
+    model: str | None = None
+
+
+class PolicyUpdate(BaseModel):
+    level: Literal["relaxed", "balanced", "strict"] | None = None
+    groups: dict[str, GroupPolicyIn] = {}
+    llm: LlmPolicyIn | None = None
+
+
 class _State:
     detector: Detector
     filters: dict[str, PrivacyFilter]
+    model: RiskModel
+    store: ProfileStore
     trained_on: str | None
 
 
@@ -90,6 +126,8 @@ state = _State()
 async def lifespan(app: FastAPI):
     state.detector = Detector.default()
     model = load_or_train_default(state.detector)
+    state.model = model
+    state.store = ProfileStore()
     state.filters = build_filters(model, state.detector)
     state.trained_on = model.trained_on
     log.info("CAPRLM service ready (model %s, trained on %s)", model.version, model.trained_on)
@@ -144,6 +182,88 @@ def compare_image(req: CompareImageRequest) -> CompareResponse:
         # Nothing is filtered or returned: the screenshot's content stays blocked.
         raise HTTPException(status_code=503, detail=f"OCR unavailable — content blocked. {exc}")
     return CompareResponse(results=_run_all(text, req.context.to_ctx(Source.OCR)), ocr_text=text)
+
+
+@app.post("/review")
+def review_text(req: ReviewRequest) -> dict:
+    try:
+        result = review(req.text, req.context.to_ctx(), detector=state.detector, model=state.model,
+                        store=state.store, level=req.level, overrides=dict(req.overrides))
+    except Exception as exc:
+        # Fail closed: no entities, no text — the UI shows the error instead of a result.
+        log.error("review failed (%s)", type(exc).__name__)
+        raise HTTPException(status_code=503, detail=f"Review failed — content blocked. {type(exc).__name__}: {exc}")
+    if req.record_activity:
+        state.store.record_review(result["flagged"], result["masked"], result["utility_kept"])
+    return result
+
+
+@app.post("/corrections")
+def add_correction(body: CorrectionIn) -> dict:
+    if body.category not in LEARNABLE_CATEGORIES:
+        raise HTTPException(status_code=422, detail=f"unknown category: {body.category}")
+    state.store.add_correction(body.category, body.decision)
+    return _profile()
+
+
+@app.get("/profile")
+def profile() -> dict:
+    return _profile()
+
+
+@app.delete("/profile")
+def reset_profile() -> dict:
+    state.store.reset_profile()
+    return _profile()
+
+
+def _profile() -> dict:
+    rules = state.store.learned_rules()
+    return {"corrections": state.store.n_corrections(),
+            "rules": [{"category": c, **r} for c, r in sorted(rules.items())],
+            "evidence_needed": EVIDENCE_NEEDED}
+
+
+def _policy() -> dict:
+    pol = state.store.policy()
+    return {
+        "level": pol["level"], "taus": level_taus(state.model),
+        "groups": [{"id": g, "label": label, "categories": list(cats), **pol["groups"][g]}
+                   for g, (label, cats, _) in GROUPS.items()],
+        "llm": pol["llm"],
+    }
+
+
+@app.get("/policy")
+def get_policy() -> dict:
+    return _policy()
+
+
+@app.put("/policy")
+def put_policy(body: PolicyUpdate) -> dict:
+    try:
+        state.store.update_policy(
+            level=body.level,
+            groups={g: c.model_dump(exclude_none=True) for g, c in body.groups.items()},
+            llm=body.llm.model_dump(exclude_none=True) if body.llm else None)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    return _policy()
+
+
+@app.get("/stats")
+def stats() -> dict:
+    week = state.store.weekly()
+    reviews = sum(d["reviews"] for d in week)
+    rules = state.store.learned_rules()
+    return {
+        "flagged_7d": sum(d["flagged"] for d in week),
+        "redacted_7d": sum(d["redacted"] for d in week),
+        "utility_kept": round(sum(d["kept_sum"] for d in week) / reviews, 3) if reviews else None,
+        "reviews_7d": reviews,
+        "learned_rules": len(rules), "learnable_categories": len(LEARNABLE_CATEGORIES),
+        "weekly": [{k: d[k] for k in ("date", "weekday", "flagged", "redacted")} for d in week],
+    }
 
 
 @app.get("/eval-results")
