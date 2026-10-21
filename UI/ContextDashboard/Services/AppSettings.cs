@@ -20,6 +20,31 @@ public sealed class AppSettings
     public bool BackgroundLearning { get; set; } = true;
     /// <summary>Start capture (collector + worker) when the app opens. Off by default: capture counts input and takes screenshots, so it stays an explicit choice.</summary>
     public bool AutoStartCapture { get; set; }
+
+    // ---- Memories: privacy filter and local summaries (both only matter once screen text is on) --------------------------
+    /// <summary>Where CAPRLM's local service listens. The learning job only accepts a loopback address.</summary>
+    public const string PrivacyUrl = "http://127.0.0.1:8787";
+    /// <summary>Put page text through CAPRLM before it is kept. Replaces the unredacted developer option when both are set.</summary>
+    public bool UseCaprlmFilter { get; set; } = true;
+    /// <summary>Let a small local language model write a sentence for each important memory.</summary>
+    public bool SummariesEnabled { get; set; } = true;
+    /// <summary>The GGUF model file. Empty = the first <c>.gguf</c> in <c>%LOCALAPPDATA%\context-importance\models\llm</c>.</summary>
+    public string LlmModelPath { get; set; } = "";
+
+    /// <summary>Tests point this at a temp folder, so the answer does not depend on what is installed on the PC.</summary>
+    internal string? LlmSearchDir { get; set; }
+
+    public static string LlmDir => Path.Combine(DataDir, "models", "llm");
+
+    /// <summary>The model file to use, or null when there is none (then no summaries are written).</summary>
+    public string? ResolveLlmModel()
+    {
+        if (LlmModelPath.Length > 0) return File.Exists(LlmModelPath) ? LlmModelPath : null;
+        var dir = LlmSearchDir ?? LlmDir;
+        return Directory.Exists(dir)
+            ? Directory.EnumerateFiles(dir, "*.gguf").OrderBy(p => p, StringComparer.OrdinalIgnoreCase).FirstOrDefault()
+            : null;
+    }
     /// <summary>Label rule for the learning job: "v3" (came back within the horizon) or "kw" (Keep-Worthiness).</summary>
     public string LabelRule { get; set; } = "v3";
 

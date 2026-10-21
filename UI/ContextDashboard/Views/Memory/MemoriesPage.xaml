@@ -1,0 +1,200 @@
+<UserControl x:Class="ContextDashboard.Views.MemoriesPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:v="clr-namespace:ContextDashboard.Views"
+             FontFamily="Segoe UI" FontSize="13" Foreground="{StaticResource Ink}">
+  <UserControl.Resources>
+    <BooleanToVisibilityConverter x:Key="BoolToVisible" />
+    <!-- One row with a label, a value and a bar under it: time per app, key pages, top of mind. -->
+    <DataTemplate x:Key="BarRowTemplate" DataType="{x:Type v:BarRow}">
+      <Grid Margin="0,0,0,10">
+        <Grid.RowDefinitions><RowDefinition /><RowDefinition /></Grid.RowDefinitions>
+        <DockPanel>
+          <TextBlock DockPanel.Dock="Right" Text="{Binding Value}" FontFamily="Consolas" FontSize="11" Foreground="{StaticResource Muted}" Margin="12,0,0,0" />
+          <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" />
+        </DockPanel>
+        <ProgressBar Grid.Row="1" Maximum="1" Value="{Binding Share, Mode=OneWay}" Height="6" Margin="0,4,0,0"
+                     Foreground="{StaticResource Green}" Background="{StaticResource Track}" BorderThickness="0" />
+      </Grid>
+    </DataTemplate>
+
+    <DataTemplate x:Key="LineRowTemplate" DataType="{x:Type v:LineRow}">
+      <Grid Margin="0,0,0,9">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="54" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+        <TextBlock Text="{Binding When}" FontFamily="Consolas" FontSize="12" Foreground="{StaticResource Muted}" Margin="0,2,0,0" />
+        <StackPanel Grid.Column="1">
+          <TextBlock Text="{Binding Text}" TextWrapping="Wrap" />
+          <TextBlock Text="{Binding Meta}" FontFamily="Consolas" FontSize="10" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,2,0,0" />
+        </StackPanel>
+      </Grid>
+    </DataTemplate>
+
+    <!-- Left list: a day header, then that day's sessions. -->
+    <DataTemplate DataType="{x:Type v:TimelineDayItem}">
+      <DockPanel Margin="4,10,4,4">
+        <TextBlock DockPanel.Dock="Right" Text="{Binding CountText}" FontFamily="Consolas" FontSize="10" Foreground="{StaticResource Muted}" VerticalAlignment="Center" />
+        <TextBlock Text="{Binding Label}" FontWeight="SemiBold" />
+      </DockPanel>
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type v:TimelineSessionItem}">
+      <StackPanel Margin="4,2">
+        <DockPanel>
+          <Border DockPanel.Dock="Right" Style="{StaticResource Chip}" Background="{StaticResource InsetBg}" Visibility="{Binding HasTag, Converter={StaticResource BoolToVisible}}">
+            <TextBlock Text="{Binding Tag}" FontFamily="Consolas" FontSize="10" Foreground="{StaticResource Muted}" />
+          </Border>
+          <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Margin="0,0,8,0" />
+        </DockPanel>
+        <TextBlock Text="{Binding Summary}" Foreground="{StaticResource Muted}" FontSize="12" TextWrapping="Wrap" MaxHeight="52" TextTrimming="CharacterEllipsis" Margin="0,5,0,0" />
+        <DockPanel Margin="0,6,0,0">
+          <TextBlock DockPanel.Dock="Right" Text="{Binding Badge}" FontFamily="Consolas" FontSize="10" Foreground="{StaticResource Purple}" />
+          <TextBlock Text="{Binding TimeText}" FontFamily="Consolas" FontSize="10" Foreground="{StaticResource Muted}" />
+        </DockPanel>
+        <TextBlock Text="{Binding AppsText}" FontFamily="Consolas" FontSize="10" Foreground="{StaticResource Muted}" TextTrimming="CharacterEllipsis" Margin="0,2,0,0" />
+      </StackPanel>
+    </DataTemplate>
+
+    <!-- Right pane: a session. -->
+    <DataTemplate DataType="{x:Type v:SessionDetailVm}">
+      <StackPanel>
+        <TextBlock Text="{Binding Title}" FontSize="22" FontWeight="SemiBold" TextWrapping="Wrap" />
+        <TextBlock Text="{Binding Subtitle}" Style="{StaticResource MutedText}" Margin="0,4,0,14" />
+        <Border Style="{StaticResource Card}">
+          <StackPanel>
+            <TextBlock Text="{Binding SummaryLabel}" Style="{StaticResource CardLabel}" />
+            <TextBlock Text="{Binding Summary}" FontSize="15" TextWrapping="Wrap" Margin="0,6,0,8" />
+            <TextBlock Text="{Binding Coverage}" Style="{StaticResource MutedText}" />
+          </StackPanel>
+        </Border>
+        <UniformGrid Columns="2" Margin="0,0,-16,0">
+          <Border Style="{StaticResource Card}" Margin="0,0,16,16">
+            <StackPanel>
+              <TextBlock Text="Time per app" Style="{StaticResource CardTitle}" Margin="0,0,0,10" />
+              <ItemsControl ItemsSource="{Binding Apps}" ItemTemplate="{StaticResource BarRowTemplate}" />
+            </StackPanel>
+          </Border>
+          <Border Style="{StaticResource Card}" Margin="0,0,16,16">
+            <StackPanel>
+              <TextBlock Text="Key pages" Style="{StaticResource CardTitle}" Margin="0,0,0,10" />
+              <ItemsControl ItemsSource="{Binding Pages}" ItemTemplate="{StaticResource BarRowTemplate}" />
+            </StackPanel>
+          </Border>
+        </UniformGrid>
+        <Border Style="{StaticResource Card}">
+          <StackPanel>
+            <TextBlock Text="Memories in this session" Style="{StaticResource CardTitle}" Margin="0,0,0,10" />
+            <ItemsControl ItemsSource="{Binding Memories}" ItemTemplate="{StaticResource LineRowTemplate}" />
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </DataTemplate>
+
+    <!-- Right pane: a day (the "home" view). -->
+    <DataTemplate DataType="{x:Type v:DayDetailVm}">
+      <StackPanel>
+        <TextBlock Text="{Binding Title}" FontSize="22" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,0,0,14" />
+        <Border Style="{StaticResource Card}">
+          <StackPanel>
+            <TextBlock Text="{Binding RecapLabel}" Style="{StaticResource CardLabel}" />
+            <TextBlock Text="{Binding Recap}" FontSize="15" TextWrapping="Wrap" Margin="0,6,0,8" />
+            <TextBlock Text="{Binding Coverage}" Style="{StaticResource MutedText}" />
+          </StackPanel>
+        </Border>
+        <UniformGrid Columns="2" Margin="0,0,-16,0">
+          <Border Style="{StaticResource Card}" Margin="0,0,16,16">
+            <StackPanel>
+              <TextBlock Text="Time breakdown" Style="{StaticResource CardTitle}" Margin="0,0,0,10" />
+              <ItemsControl ItemsSource="{Binding Apps}" ItemTemplate="{StaticResource BarRowTemplate}" />
+            </StackPanel>
+          </Border>
+          <Border Style="{StaticResource Card}" Margin="0,0,16,16">
+            <StackPanel>
+              <TextBlock Text="What's top of mind" Style="{StaticResource CardTitle}" Margin="0,0,0,2" />
+              <TextBlock Text="Recurring pages, ranked by importance" Style="{StaticResource MutedText}" Margin="0,0,0,10" />
+              <ItemsControl ItemsSource="{Binding TopOfMind}" ItemTemplate="{StaticResource BarRowTemplate}" />
+            </StackPanel>
+          </Border>
+        </UniformGrid>
+        <Border Style="{StaticResource Card}">
+          <StackPanel>
+            <TextBlock Text="Sessions" Style="{StaticResource CardTitle}" Margin="0,0,0,10" />
+            <ItemsControl ItemsSource="{Binding Sessions}" ItemTemplate="{StaticResource LineRowTemplate}" />
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </DataTemplate>
+
+    <!-- Selection: a soft green outline, no default blue. -->
+    <Style x:Key="TimelineItem" TargetType="ListBoxItem">
+      <Setter Property="Padding" Value="10,8" />
+      <Setter Property="Margin" Value="0,0,0,6" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ListBoxItem">
+            <Border x:Name="Box" CornerRadius="12" BorderThickness="1" BorderBrush="Transparent" Background="Transparent" Padding="{TemplateBinding Padding}">
+              <ContentPresenter />
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Box" Property="Background" Value="#0F000000" />
+              </Trigger>
+              <Trigger Property="IsSelected" Value="True">
+                <Setter TargetName="Box" Property="Background" Value="{StaticResource CardBg}" />
+                <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource Green}" />
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+  </UserControl.Resources>
+
+  <Grid>
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="400" />
+      <ColumnDefinition Width="*" />
+    </Grid.ColumnDefinitions>
+
+    <!-- Timeline -->
+    <DockPanel Grid.Column="0" Margin="28,24,12,16">
+      <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+        <TextBlock Text="Memories" Style="{StaticResource PageTitle}" />
+        <TextBlock Text="Your sessions, day by day. Built while the PC is idle and plugged in." Style="{StaticResource MutedText}" Margin="0,2,0,10" />
+        <Border Style="{StaticResource Card}" Padding="14,12" Margin="0,0,0,10">
+          <StackPanel>
+            <TextBlock Text="{Binding WaitingText}" Style="{StaticResource MutedText}" />
+            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+              <ui:Button Content="Write summaries now" Click="OnWriteSummaries" IsEnabled="{Binding WriterIdle}" Appearance="Primary" />
+              <Button Content="Cancel" Click="OnCancelWriter" Margin="8,0,0,0"
+                      Visibility="{Binding WriterRunning, Converter={StaticResource BoolToVisible}}" />
+            </StackPanel>
+            <ProgressBar Height="5" Margin="0,10,0,0" Maximum="100" Value="{Binding WriterValue, Mode=OneWay}"
+                         IsIndeterminate="{Binding WriterIndeterminate}" Foreground="{StaticResource Green}" Background="{StaticResource Track}"
+                         BorderThickness="0" Visibility="{Binding WriterRunning, Converter={StaticResource BoolToVisible}}" />
+            <TextBlock Text="{Binding WriterStatus}" Style="{StaticResource MutedText}" Margin="0,8,0,0" />
+          </StackPanel>
+        </Border>
+        <ui:TextBox x:Name="SearchBox" PlaceholderText="Search sessions, apps or pages" TextChanged="OnSearchChanged" />
+        <TextBlock x:Name="CountText" Style="{StaticResource MutedText}" FontFamily="Consolas" FontSize="10" Margin="2,8,0,0" />
+      </StackPanel>
+      <ListBox x:Name="Timeline" Background="Transparent" BorderThickness="0" ItemContainerStyle="{StaticResource TimelineItem}"
+               SelectionChanged="OnTimelineSelected" ScrollViewer.HorizontalScrollBarVisibility="Disabled" />
+    </DockPanel>
+
+    <!-- Detail -->
+    <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
+      <Grid Margin="12,24,32,24">
+        <Border x:Name="EmptyCard" Style="{StaticResource Card}" Visibility="Collapsed" VerticalAlignment="Top">
+          <StackPanel>
+            <TextBlock x:Name="EmptyTitle" Style="{StaticResource CardTitle}" />
+            <TextBlock x:Name="EmptyText" Style="{StaticResource MutedText}" Margin="0,4,0,0" />
+          </StackPanel>
+        </Border>
+        <ContentControl x:Name="Detail" />
+      </Grid>
+    </ScrollViewer>
+  </Grid>
+</UserControl>

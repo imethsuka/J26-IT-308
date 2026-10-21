@@ -41,6 +41,12 @@
           <CheckBox x:Name="AutostartBox" Content="Start capture automatically when I sign in to Windows" Margin="0,8,0,0" Click="OnAutostartClicked" />
           <CheckBox Content="Run learning in the background (only when the PC is idle and plugged in)" Margin="0,8,0,0"
                     IsChecked="{Binding Settings.BackgroundLearning, Mode=TwoWay}" Click="OnSaveSettings" />
+          <TextBlock Text="MEMORIES (ONLY WHEN SCREEN TEXT IS ON)" Style="{StaticResource CardLabel}" Margin="0,16,0,0" />
+          <CheckBox Content="Put page text through the CAPRLM privacy filter before it is kept" Margin="0,6,0,0"
+                    IsChecked="{Binding Settings.UseCaprlmFilter, Mode=TwoWay}" Click="OnSaveSettings" />
+          <CheckBox Content="Write a sentence for each important memory with a small local language model" Margin="0,8,0,0"
+                    IsChecked="{Binding Settings.SummariesEnabled, Mode=TwoWay}" Click="OnSaveSettings" />
+          <TextBlock x:Name="ModelNote" Style="{StaticResource MutedText}" Margin="26,4,0,0" />
           <TextBlock Style="{StaticResource MutedText}" Margin="0,12,0,0"
                      Text="Capture reads keyboard and mouse activity counts and takes screenshots, so it is never started without you choosing it here or pressing Start capture. Closing this window ends the dashboard and the privacy service; capture keeps running in the background and is controlled from the tray icon." />
         </StackPanel>
