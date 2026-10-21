@@ -38,7 +38,7 @@ The author thinks in terms of `Deep-down Member 1 Architecture.drawio.png`. Map 
 | Model 2 ("learns long-term behaviour, teaches Model 1") | Not a neural network. It is the `adaptation/scheduled_job.py` pipeline: delayed labels → prototypes → retrain → drift → deploy gate |
 | "Adjust vector embedding" arrow | `adaptation/prototype_learning.py`. MobileCLIP is never fine-tuned; Model 2 learns prototypes that Model 1 compares against |
 | DB cylinder / SQL | `storage/`, `context_records` table in `context.db` |
-| "Capture to SSD" → Screenshot folder | **Not implemented.** The decision is recorded, not enforced, and frames are never written to disk |
+| "Capture to SSD" → Screenshot folder | `storage/screenshot_store.py` → `screenshots.db`: opt-in (`main.py --screenshots`). Off by default, frames stay in memory and the decision is only recorded |
 
 IMPLEMENTATION.md §10 explains where the diagram and the code differ, and why.
 
@@ -66,14 +66,20 @@ From Git Bash, use `./.venv/Scripts/python.exe` (no activation needed).
   `Ipc/WireFormat.cs`, Python `sensing/protocol.py`, and the README "IPC transport" section.
 - **Exclusion runs first and fails closed.** No title/URL/pixels are read for an excluded or
   unidentifiable context. Input hooks count events and never read key codes or cursor positions.
-- **Frames stay in memory.** Nothing writes screenshots to disk today. Adding the screenshot folder
-  is a deliberate design change, not a bug fix (see open questions).
+- **Frames stay in memory unless screenshots are on.** With `--screenshots` (the dashboard passes it only after its
+  own consent, separate from screen text) the worker keeps the frame behind each `save` decision in `screenshots.db`:
+  scaled JPEG, DPAPI-encrypted (own entropy), 30 days / 5 GB / JPEG quality 50 by default (dashboard Settings; passed as --shots-ttl-days/--shots-max-mb/--shots-quality). Discarded and excluded frames are never written. The
+  privacy filter does not touch images, so the consent text says so.
 - **The raw 512-d embedding never goes into the feature dict**, only the `vis_*` summaries. It is
   stored separately as a BLOB.
 - **Every non-excluded snapshot is stored**, whatever the decision. Labelling and training need the
-  discarded contexts too. The one exception: Windows shell surfaces (`pipeline.NON_CONTEXT_APPS`: `dwm`, `lockapp`,
-  `searchhost`, `shellhost`, ...) are not contexts and are skipped before embedding. `explorer` and
-  `ApplicationFrameHost` are real and still stored. Offline replays do not apply this list yet (small train/serve skew).
+  discarded contexts too. The one exception: Windows shell surfaces (`features/surfaces.py`: processes such as `dwm`,
+  `lockapp`, `searchhost`, and shell windows by title such as Explorer's "Task Switching" (Alt+Tab) and "Program Manager")
+  are not contexts and are skipped before embedding. `explorer` folders and `ApplicationFrameHost` are real and still
+  stored. Offline replays do not apply this list yet (small train/serve skew).
+- **Memories are not task switching.** Glances (under 10 s, no typing) get no memory entry and A→glance→A is one episode
+  (`adaptation/screen_memory.py`); older entries of that kind are *hidden* (`memory_entries.hidden`), never deleted. The
+  dashboard must leave out exactly the hidden entries the Python side leaves out, or session notes stop matching.
 - **Model and prototype versions are append-only** under `python-worker/models/versions/`. Never
   overwrite one; rollback depends on the history.
 - **Feature layout is pinned** in `models/vectorizer.py` (`FEATURE_COLUMNS`). Changing it invalidates
@@ -86,6 +92,29 @@ From Git Bash, use `./.venv/Scripts/python.exe` (no activation needed).
 ## Gotchas
 
 - The worker loads the active model and prototypes **at startup only**. Restart it after a deploy.
+- **Save cutoff and restart state (2026-10-24).** A deployed model keeps the top `keep_rate` (30%) of the last 3,000 live
+  scores (`pipeline.py`, `current_threshold`); the cutoff stored at deploy is only used for the first 200. It replaced a
+  fixed cutoff (0.970) that kept 30% of the held-out set but 1 to 4% live from 22 Oct. `SnapshotPipeline.restore_state()`
+  (called by `main.py`) rebuilds the visit log, app-switch history, saved-frame ring and score window from the DB, so a
+  restart no longer makes every context look new. A scoring failure is always a discard and stays out of the window.
+- **Shadow mode and the champion (2026-10-24).** Any model in `models/registry.py` can be the champion (the active
+  `model_versions` row; `algorithm` NULL = LightGBM). The worker also loads the newest version of every other algorithm
+  plus the rules (`pipeline.load_shadows`) and writes what each said about every screen to `model_decisions` (schema v4:
+  score, its own rolling cutoff, would-save before the repeat filter, latency). The champion gets a row too. Shadows are
+  never enforced; a failing one is skipped. The learning cycle trains every `registry.CHALLENGERS` model next to
+  LightGBM each run (stage `challengers`, `--no-challengers` to skip) and saves each as a version with the cycle's
+  prototypes. River continues from its newest version with only unseen labels. **The gate only auto-upgrades within the
+  champion's family**; changing family is manual only: dashboard Model benchmark page → `adapt.exe champion set <version>`
+  (`adaptation/champion.py`, checks the model loads first). Every change goes to `champion_events`. The dashboard grades
+  each family on live labels (`ContextDb.Benchmark`). Cost measured 24 Oct: ~19 ms per screen for all models, ~10 MB of
+  model files per cycle, ~8 `model_decisions` rows per screen.
+- **`migrate()` backs the database up first** (`backups/<name>.bak-before-v<N>-<time>.db`) whenever it is about to apply
+  a migration to a database that already has data.
+- **Revisit features are time-based** (`features.feature_assembly.VisitLog`, last 7 days of visits), not the last 200
+  snapshots, which at ~10 snapshots a minute was about 20 minutes live but half a day in the DRC history. Stored
+  `features_json` of older records still has the old values: the retrain and `eval.model_comparison` recompute them with
+  `refresh_revisit_features`, and leave out shell surfaces and the dashboard's own window (`surfaces.is_non_context`).
+  The offline replay (`offline/training.py`) uses a `VisitLog` too. Records now carry `model_version_id`.
 - If neither the ONNX model nor `MOBILECLIP_S0_CHECKPOINT` is found, the worker logs one warning and silently stores records
   **without embeddings**. Check the `w/ embedding` count in `report_storage` after a real session.
 - Labels need records ≥48h old **and** 48h of later data, so a fresh DB legitimately labels nothing.
@@ -139,6 +168,14 @@ this system): `collector.db` (tables `activity_events`, `browser_events`, `inter
   a storage budget), not F1 at 0.5. The rules and LightGBM are calibrated differently, and F1 at 0.5
   rewards keeping more. Local 8 to 19 Oct preview: rules won on F1, while LightGBM ranked better
   (AP 0.85 vs 0.75, recall@30% 0.46 vs 0.40). Vision (no eyes vs eyes) made no difference.
+- `Colab/04_compare_models_local.ipynb` is the charter task 6 comparison the PP1 panel asked for: ten contenders
+  (baselines, LightGBM, logistic regression, random forest, MLP, MobileCLIP-vector heads as transfer learning, River ARF
+  and daily LightGBM retraining as continual learning) on a snapshot of the live DB, using `offline/challengers.py`
+  (`fit(train_df)` / `score(df)`; continual contenders only learn labels 48 h after the context). Run 2026-10-24
+  (test 20 to 21 Oct, random AP 0.71): logistic regression 0.895, LightGBM 0.881, random forest 0.878, rules 0.815;
+  over 4 rolling periods the top three are within 0.01 AP. Browser pages: 25% important in the DRC training rows,
+  68% in live test rows, so every learner discards them (data drift, not model choice). Optional last step runs
+  `scheduled_job` on the live DB after a backup.
 
 ## Status (as of 2026-10-18; re-verify before relying on it)
 
@@ -190,7 +227,7 @@ in the snapshot header (protocol v2, `text` object); the worker puts them in a *
 - `Content/ForegroundScreenTextSource.cs` reads only while the context gate allows it, never for an excluded or
   unidentified context, and drops the text if the foreground changed during the read. `SnapshotPublisher` also
   never sends text with an excluded context.
-- `storage/raw_buffer.py`: zlib then Windows DPAPI (current user), TTL 3 days, text cap 200 MB (lowest score dropped first,
+- `storage/raw_buffer.py`: zlib then Windows DPAPI (current user), TTL 7 days by default (dashboard Settings, passed as --raw-ttl-days; was 3 before 2026-10-24), text cap 200 MB (lowest score dropped first,
   metadata kept). Never in `context.db`; created on the first capture with text. If the text can't be encrypted it is not stored.
   Don't log or print screen text (`ScreenText.content` is excluded from `repr`).
 - `features/text_merge.py` (one copy per page from overlapping captures) and `adaptation/episodes.py` are pure and in-memory.

@@ -37,7 +37,7 @@ Three separate SQLite files, none of them mixed:
 | File | Holds | Who reads it |
 |---|---|---|
 | `context.db` | One scored row per context: app, domain, title, features, decision. **No text.** | worker, dashboard, training |
-| `raw_buffer.db` | The raw screen text, encrypted, kept at most 3 days | only the nightly job |
+| `raw_buffer.db` | The raw screen text, encrypted, kept 7 days by default (Settings, 1 to 90) | only the nightly job |
 | `memory.db` | Filtered merged pages, episodes, memory entries | Members 3 and 4 |
 
 All three sit in the same folder: `%LOCALAPPDATA%\context-importance\` for the installed app, or `python-worker\` when
@@ -59,7 +59,7 @@ running from the repo. `raw_buffer.db` and `memory.db` are only created when the
 - `pipeline.py` stores the normal record in `context.db`, then hands the text to `storage/raw_buffer.py`.
 - The text is compressed (zlib) and encrypted with **Windows DPAPI** (current user). If it cannot be encrypted, it is not
   stored. The table is `raw_captures`; the text is in the single column `text_blob`.
-- Limits: rows older than 3 days are deleted. If the stored text passes 200 MB, the text of the lowest-scored rows is
+- Limits: rows older than the keep time (7 days by default, set in Settings) are deleted. If the stored text passes 200 MB, the text of the lowest-scored rows is
   dropped first (the row and its metadata stay).
 - Losing a capture's text never loses its record in `context.db`, and the text is never written to a log.
 
@@ -113,6 +113,17 @@ Activity: 14 captures, 120 scrolls, 12 key presses - visit 2 of this page
 Text: 340 new words this visit; the page has 1250 words in total
 Importance: 0.82 (high)
 ```
+
+### 3.8 History slider (dashboard **History** page)
+- The slider runs over every record in `context.db` for one day. For the moment under the thumb it shows the screenshot
+  (if screenshots are on and Model 1 saved that moment, or an earlier moment of the same window) and the stored page with
+  what was on screen highlighted.
+- The highlight comes from `memory.db` table `moments`: one row per capture whose filtered text went into a page, with
+  *anchors* (hashes of 8-word runs, `features/text_merge.capture_anchors`), never words. Every time a page is rewritten
+  (a new visit, a re-filter) the anchors are looked up again, so the position follows the text as it grows.
+- Text only appears after the nightly job: until then a moment's text is in the 3-day raw buffer, which the dashboard
+  never opens.
+- Screenshots (`storage/screenshot_store.py`, `screenshots.db`) are a separate opt-in with their own consent text.
 
 ## 4. Opt-in and consent
 

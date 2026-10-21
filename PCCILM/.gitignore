@@ -66,3 +66,6 @@ packaging/build/
 packaging/dist/
 packaging/stage/
 packaging/installer/
+
+# llama.cpp server binaries (packaging/fetch_llama.ps1 downloads them; pinned and checksummed there)
+packaging/llm-runtime/

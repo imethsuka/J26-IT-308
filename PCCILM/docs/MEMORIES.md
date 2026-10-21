@@ -5,7 +5,7 @@ two-line summary, time, apps); click a session for its TLDR, time per app, key p
 for its recap, time breakdown and what is top of mind.
 
 ```
-raw_buffer.db   encrypted page text, 3 days            (written by the worker, screen text opt-in)
+raw_buffer.db   encrypted page text, 7 days (Settings)         (written by the worker, screen text opt-in)
       │  stage 6, adaptation/screen_memory.py: closed episodes only, idle + AC power
       ▼
 CAPRLM filter   POST /filter on this PC                 masks emails, ids, salaries, passwords before anything is kept
@@ -39,7 +39,7 @@ Default: **Qwen2.5-1.5B-Instruct, Q4_K_M** (`qwen2.5-1.5b-instruct-q4_k_m.gguf`,
 | Size | 1.1 GB on disk; measured peak memory 1.9 GB while running; no GPU needed |
 | Licence | Apache-2.0, so it can be shipped inside the installer |
 | Fit | follows short instructions ("two plain sentences, only from the text") well enough for this job |
-| Runtime | llama.cpp through a ready-made Windows wheel (`requirements-llm.txt`); no compiler needed |
+| Runtime | llama.cpp's prebuilt `llama-server.exe` (Vulkan build, `packaging/fetch_llama.ps1`), started only while memories are written; the in-process wheel (`requirements-llm.txt`) is the fallback in a dev setup without it |
 
 Measured on this PC (i5-11400H, 6 cores, CPU only): the model loads in about 2 s and writes a memory in about 3 s, so the
 default 25 memories per run take about 1.5 minutes. Checked by eye on six made-up pages and one end-to-end run on made-up
@@ -52,6 +52,45 @@ or a Qwen2.5-3B/Llama-3.2-3B GGUF (check the licence before shipping those). Any
 
 Small models can state things the page does not say. The prompt forbids it and the facts are kept beside the sentence, but
 nobody has measured how often it happens: rate a sample by hand before claiming the summaries are good.
+
+## What is not a memory, and what the model is not asked
+
+Changed 2026-10-24 after reading every sentence, note and recap written so far (222 sentences, 31 notes, 4 recaps):
+
+| Seen | Change |
+|---|---|
+| 45 "memories" of the Alt+Tab switcher ("Task Switching"), plus Snap Assist, overlays, sign-in brokers | Shell surfaces by app *and* title (`features/surfaces.py`): never stored, never remembered |
+| 67 % of episodes under 5 s; A, a glance at B, back to A became "visit 1" and "visit 2" | Glances get no entry; A→glance→A is one episode; time on a page runs until the next window |
+| "You visited page 32" (from "visit number 32" in the prompt) | The prompt has no visit number and no browser/profile suffix in the title |
+| Invented content on near-empty pages | No model call under 40 real words: the entry keeps its fact-built sentence |
+| "You: 1. Which ContextDashboard is the base?" (page text pasted back) | A sentence must start "You <verb>" and must not copy 10 words in a row from the page |
+| "C# project" became "C project" | Only Markdown marks are removed; `#` inside a word stays |
+| Session notes listed apps and minutes; every day recap copied one session note | Pages ranked by time, with an excerpt when they have no sentence; the prompt asks for the subject; a recap that copies a note is replaced by one built from the session titles |
+
+Old entries of the first two kinds are hidden, not deleted (`adaptation/memory_tidy.py`, `MemoryStore.unhide_all`). Notes
+carry `note_version`; notes from an older version are rewritten a few per run (`rollups.NOTES_VERSION`).
+
+## Where it runs: GPU when it can, CPU otherwise
+
+`adaptation/llm_runtime.py` picks the device every time the model starts:
+
+- **On AC with a dedicated GPU** (NVIDIA, AMD Radeon RX, Intel Arc A/B) whose free memory holds the model: the GPU, through
+  Vulkan, so no CUDA install is needed. Integrated graphics (Intel UHD/Iris, AMD "Radeon Graphics") are skipped.
+- **On battery, or no usable GPU** (gaming laptops often switch the dedicated GPU off when unplugged): the CPU.
+- **The GPU fails** to start or mid-run: restarted on the CPU and the request retried.
+- It runs at low priority on a third of the cores. The background job starts it only when the PC is idle, on AC, and
+  lightly loaded (CPU under 35 %, enough free RAM), and **pauses** it when the user is back or the PC is unplugged. The
+  server is stopped after every run, so nothing stays in RAM or VRAM in between.
+
+Measured 2026-10-24 on the author's laptop (i5-11400H, RTX 2050 4 GB), Qwen2.5-1.5B Q4_K_M, made-up pages of about
+1,500 tokens, 5 memories per start:
+
+| Device | Start | Per memory |
+|---|---|---|
+| RTX 2050 (Vulkan) | ~5 s | ~1.4 s (the first after a start up to ~9 s) |
+| CPU, 4 threads, low priority | ~4 s | ~40 s |
+
+The CPU figure is much slower than the earlier "about 3 s" above: that was all cores, in-process, on shorter pages.
 
 ## Running it
 
