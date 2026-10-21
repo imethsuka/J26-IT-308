@@ -20,7 +20,11 @@ import logging
 from pathlib import Path
 
 from app_paths import default_db_path
-from pipeline import SnapshotPipeline, load_active_scorer
+from models.rule_based import RuleBasedImportanceScorer
+from pipeline import (
+    DEFAULT_DECISION_THRESHOLD, DEFAULT_REDUNDANCY_SIMILARITY, DEFAULT_REDUNDANCY_WINDOW_S,
+    SnapshotPipeline, active_decision_threshold, derive_budget_threshold, load_active_scorer,
+)
 from sensing.listener import create_listener
 from storage.database import connect, migrate
 from storage.raw_buffer import DEFAULT_MAX_TEXT_MB, DEFAULT_TTL_DAYS, RawBuffer, raw_buffer_path_for
@@ -38,8 +42,17 @@ def main() -> None:
              "records are still scored and stored, with neutral visual features",
     )
     parser.add_argument(
-        "--decision-threshold", type=float, default=0.5,
-        help="predict_proba threshold for the stored save/discard decision",
+        "--decision-threshold", type=float, default=None,
+        help="predict_proba threshold for the stored save/discard decision (default: the one chosen from the "
+             f"keep-rate budget when the active model was deployed, else {DEFAULT_DECISION_THRESHOLD})",
+    )
+    parser.add_argument(
+        "--redundancy-window", type=float, default=DEFAULT_REDUNDANCY_WINDOW_S,
+        help="seconds after a save during which the same screen is not saved again (0 = off)",
+    )
+    parser.add_argument(
+        "--redundancy-similarity", type=float, default=DEFAULT_REDUNDANCY_SIMILARITY,
+        help="cosine similarity of two frames above which they count as the same screen",
     )
     parser.add_argument(
         "--raw-db", default=None,
@@ -67,12 +80,21 @@ def main() -> None:
 
     scorer, prototypes = load_active_scorer(conn)
     logger.info("scoring with %s", scorer.name)
+    threshold = args.decision_threshold
+    if threshold is None:
+        threshold = active_decision_threshold(conn)
+    if threshold is None and not isinstance(scorer, RuleBasedImportanceScorer):
+        threshold = derive_budget_threshold(conn, scorer)  # a model deployed before thresholds were stored
+    if threshold is None:
+        threshold = DEFAULT_DECISION_THRESHOLD
+    logger.info("save threshold %.4f, redundancy window %.0fs", threshold, args.redundancy_window)
     raw_buffer = None if args.no_screen_text else RawBuffer(
         args.raw_db or raw_buffer_path_for(args.db), ttl_days=args.raw_ttl_days, max_text_mb=args.raw_max_mb,
     )
     pipeline = SnapshotPipeline(
         conn, scorer, prototypes=prototypes, embed=not args.no_embedding,
-        decision_threshold=args.decision_threshold, raw_buffer=raw_buffer,
+        decision_threshold=threshold, raw_buffer=raw_buffer,
+        redundancy_window_s=args.redundancy_window, redundancy_similarity=args.redundancy_similarity,
     )
     if pipeline.embedding_enabled:
         logger.info("loading the MobileCLIP encoder")

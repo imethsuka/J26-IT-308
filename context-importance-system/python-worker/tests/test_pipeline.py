@@ -216,3 +216,87 @@ def test_real_apps_and_explorer_are_still_stored(conn) -> None:
         h["context"]["app"] = app
         pipeline(read_message(io.BytesIO(encode_message(h, mock_payload()))))
     assert count_context_records(conn) == 3
+
+
+def test_own_dashboard_window_is_not_stored(conn) -> None:
+    pipeline = SnapshotPipeline(conn, AlwaysSave(), embed=False)
+    h = header(1)
+    h["context"]["app"] = "ContextDashboard.exe"
+    pipeline(read_message(io.BytesIO(encode_message(h, mock_payload()))))
+    assert count_context_records(conn) == 0
+
+
+# --------------------------------------------------------------------------- redundancy gate
+
+
+def decisions(conn) -> list[str]:
+    return [r.decision for r in list_context_records(conn)]
+
+
+def test_same_screen_again_within_the_window_is_discarded_but_stored(conn) -> None:
+    pipeline = SnapshotPipeline(conn, AlwaysSave(), embed=False)
+    for seq, sec in enumerate([0, 5, 20, 59], start=1):
+        pipeline(snapshot(seq, seconds=sec))
+    assert decisions(conn) == ["save", "discard", "discard", "discard"]  # every snapshot is still stored
+
+
+def test_same_screen_after_the_window_is_saved_again(conn) -> None:
+    pipeline = SnapshotPipeline(conn, AlwaysSave(), embed=False)
+    pipeline(snapshot(1, seconds=0))
+    pipeline(snapshot(2, seconds=61))
+    assert decisions(conn) == ["save", "save"]
+
+
+def test_a_different_title_is_not_redundant(conn) -> None:
+    pipeline = SnapshotPipeline(conn, AlwaysSave(), embed=False)
+    pipeline(snapshot(1, seconds=0, title="Inbox"))
+    pipeline(snapshot(2, seconds=5, title="Report draft"))
+    assert decisions(conn) == ["save", "save"]
+
+
+def test_window_zero_turns_the_gate_off(conn) -> None:
+    pipeline = SnapshotPipeline(conn, AlwaysSave(), embed=False, redundancy_window_s=0)
+    pipeline(snapshot(1, seconds=0))
+    pipeline(snapshot(2, seconds=5))
+    assert decisions(conn) == ["save", "save"]
+
+
+def test_near_identical_frame_in_another_window_title_is_redundant(conn) -> None:
+    pipeline = SnapshotPipeline(conn, AlwaysSave(), embed=False)
+    vec = np.ones(512, dtype=np.float32)
+    pipeline._last_saved = (T0, "chrome", "inbox", vec)
+    ts = T0 + timedelta(seconds=10)
+    assert pipeline._is_redundant(ts, "chrome", "inbox (2)", vec * 3) is True          # same direction, scaled
+    other = np.zeros(512, dtype=np.float32)
+    other[0] = 1.0
+    assert pipeline._is_redundant(ts, "chrome", "inbox (2)", other) is False           # a different screen
+    assert pipeline._is_redundant(ts, "chrome", "inbox (2)", None) is False            # no frame: titles decide
+
+
+def test_discarded_snapshots_do_not_reset_the_redundancy_clock(conn) -> None:
+    # A save at 0 s; repeats at 40 s are discarded and must not extend the window, so 61 s saves again.
+    pipeline = SnapshotPipeline(conn, AlwaysSave(), embed=False)
+    for seq, sec in enumerate([0, 40, 61], start=1):
+        pipeline(snapshot(seq, seconds=sec))
+    assert decisions(conn) == ["save", "discard", "save"]
+
+
+def test_derive_budget_threshold_uses_the_models_own_scores(conn) -> None:
+    from pipeline import derive_budget_threshold
+
+    class Rising(ImportanceScorer):
+        """Scores 0, 1, 2, ... in the order it is asked, so the top 30% is known exactly."""
+
+        def __init__(self) -> None:
+            self.n = -1
+
+        def predict_proba(self, features) -> float:
+            self.n += 1
+            return float(self.n)
+
+    pipeline = SnapshotPipeline(conn, RuleBasedImportanceScorer(), embed=False)
+    assert derive_budget_threshold(conn, Rising()) is None        # too few records to say
+    for seq in range(1, 241):
+        pipeline(snapshot(seq, seconds=seq * 100, title=f"page {seq}"))
+    t = derive_budget_threshold(conn, Rising(), keep_rate=0.3)
+    assert t is not None and sum(i >= t for i in range(240)) == pytest.approx(72, abs=2)
