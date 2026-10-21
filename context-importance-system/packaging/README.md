@@ -3,7 +3,7 @@
 Builds one installable app: dashboard + tray, collector, frozen worker (no torch), and the ONNX MobileCLIP model.
 
 ```
-packaging\stage\ContextImportance\
+<repo>\Builds\ContextImportance\      (the one fixed place; each build replaces it, BUILD_INFO.txt says when)
   ContextDashboard.exe (+ runtime)   window and tray
   collector\                         C# collector, self-contained
   worker\                            worker.exe (capture-time) and adapt.exe (Model 2 learning job)

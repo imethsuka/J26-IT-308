@@ -1,5 +1,7 @@
 <#
-Builds the installable app folder: packaging\stage\ContextImportance\
+Builds the installable app folder, always at the same place:
+
+    <repo>\Builds\ContextImportance\        (ContextDashboard.exe in there is the app; BUILD_INFO.txt says when/what)
 
     ContextDashboard.exe (+ runtime)   the window and tray (root ContextDashboard\ project: Memory + Privacy modules)
     caprlm\                            CAPRLM privacy service (frozen Python) + Tesseract OCR; started by the dashboard
@@ -15,14 +17,16 @@ param(
     [string]$Onnx = "$env:LOCALAPPDATA\context-importance\mobileclip_s0_image.onnx",
     [switch]$SkipWorker,
     [switch]$SkipCaprlm,
-    [string]$StageName = 'ContextImportance',
+    [string]$OutDir,   # default: <repo>\Builds\ContextImportance. It is wiped and rebuilt, so there is only ever one build.
     [string]$Rid = 'win-x64'
 )
 $ErrorActionPreference = 'Stop'
 $packaging = $PSScriptRoot
 $system = Split-Path $packaging
 $repo = Split-Path $system
-$stage = Join-Path $packaging (Join-Path 'stage' $StageName)
+if (-not $OutDir) { $OutDir = Join-Path $repo 'Builds\ContextImportance' }
+$stage = [IO.Path]::GetFullPath($OutDir)
+if ($stage.TrimEnd('\').Length -le 3 -or $stage -eq $repo) { throw "refusing to wipe $stage" }
 
 if (-not (Test-Path $Onnx)) { throw "ONNX model not found: $Onnx. Export it first: python -m features.onnx_export" }
 
@@ -59,6 +63,11 @@ Copy-Item (Join-Path $caprlmBuild 'dist\caprlm-service') (Join-Path $stage 'capr
 Write-Host '== model'
 New-Item -ItemType Directory -Force (Join-Path $stage 'models') | Out-Null
 Copy-Item $Onnx (Join-Path $stage 'models\mobileclip_s0_image.onnx')
+
+$commit = (git -C $repo rev-parse --short HEAD 2>$null)
+$dirty = if (git -C $repo status --porcelain 2>$null) { ' (uncommitted changes)' } else { '' }
+@("Built:  $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')", "Commit: $commit$dirty", "Folder: $stage", "Run:    $stage\ContextDashboard.exe") |
+    Set-Content (Join-Path $stage 'BUILD_INFO.txt') -Encoding utf8
 
 $size = (Get-ChildItem $stage -Recurse -File | Measure-Object Length -Sum).Sum / 1MB
 '{0}: {1:N0} MB' -f $stage, $size

@@ -1,5 +1,5 @@
 ; Inno Setup script (https://jrsoftware.org/isinfo.php). Build with:  iscc packaging\ContextImportance.iss
-; Run packaging\build_bundle.ps1 first: it creates stage\ContextImportance\ that this packs.
+; Run packaging\build_bundle.ps1 first: it creates <repo>\Builds\ContextImportance\ that this packs.
 ; Per-user install: no administrator rights, nothing outside the user's profile.
 
 [Setup]
@@ -21,7 +21,7 @@ UninstallDisplayName=Context Importance
 DisableProgramGroupPage=yes
 
 [Files]
-Source: "stage\ContextImportance\*"; DestDir: "{app}"; Flags: recursesubdirs ignoreversion createallsubdirs
+Source: "..\..\Builds\ContextImportance\*"; DestDir: "{app}"; Flags: recursesubdirs ignoreversion createallsubdirs
 
 [Icons]
 Name: "{userprograms}\Context Importance"; Filename: "{app}\ContextDashboard.exe"
