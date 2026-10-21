@@ -15,6 +15,7 @@ text is explicitly out of scope for this member (see ../../CONTRIBUTING.md).
 from __future__ import annotations
 
 import gc
+import logging
 import os
 import threading
 import warnings
@@ -32,8 +33,11 @@ INPUT_SIZE = 256  # MobileCLIP-S0 preprocessing resizes the short side to 256 an
 ImageLike = Union["Image.Image", np.ndarray]
 
 _ENV_CHECKPOINT = "MOBILECLIP_S0_CHECKPOINT"
+_ENV_BACKEND = "MOBILECLIP_BACKEND"
 
-_default_encoder: "MobileClipImageEncoder | None" = None
+logger = logging.getLogger(__name__)
+
+_default_encoder = None
 _default_lock = threading.Lock()
 
 
@@ -100,18 +104,42 @@ def load_image_encoder(
     return MobileClipImageEncoder(model, preprocess, torch_device)
 
 
-def default_encoder() -> MobileClipImageEncoder:
-    """The process-wide default encoder (CPU, checkpoint from env), loaded on first call.
+def default_encoder():
+    """The process-wide default encoder (CPU), loaded on first call.
 
-    Raises if it cannot be loaded (missing checkpoint, torch/mobileclip not installed); a later call
-    retries, so callers that embed every frame should stop calling after a failure.
+    Prefers the ONNX Runtime encoder (``features.onnx_encoder``: ~150 MB peak instead of ~1.1 GB, no torch)
+    when its model file is found, otherwise the torch encoder (checkpoint from env). Set
+    ``MOBILECLIP_BACKEND`` to ``onnx`` or ``torch`` to force one; ``auto`` (default) falls back to torch if
+    ONNX cannot be loaded. Both return the same 512-d unit vectors (``eval/verify_onnx_encoder.py``).
+
+    Raises if neither can be loaded; a later call retries, so callers that embed every frame should stop
+    calling after a failure.
     """
     global _default_encoder
     if _default_encoder is None:
         with _default_lock:
             if _default_encoder is None:
-                _default_encoder = load_image_encoder()
+                _default_encoder = _load_default()
     return _default_encoder
+
+
+def _load_default():
+    backend = os.environ.get(_ENV_BACKEND, "auto").strip().lower()
+    if backend not in ("auto", "onnx", "torch"):
+        raise ValueError(f"{_ENV_BACKEND} must be auto, onnx or torch, not {backend!r}")
+    if backend in ("auto", "onnx"):
+        try:
+            from .onnx_encoder import default_onnx_encoder
+
+            encoder = default_onnx_encoder()
+            logger.info("MobileCLIP encoder: ONNX Runtime (%s)", encoder.path)
+            return encoder
+        except Exception as exc:  # no model file, or onnxruntime missing
+            if backend == "onnx":
+                raise
+            logger.info("ONNX encoder not used (%s: %s); falling back to torch", type(exc).__name__, exc)
+    logger.info("MobileCLIP encoder: torch")
+    return load_image_encoder()
 
 
 def embed_frame(image: ImageLike) -> np.ndarray:
