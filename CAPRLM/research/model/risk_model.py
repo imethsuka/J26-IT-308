@@ -107,6 +107,28 @@ class RiskModel:
         classes = [str(c) for c in self.pipeline.classes_]
         return [decide(p, classes, self.config.none_threshold) for p in proba]
 
+    def risk_scores(self, pairs: list[Pair]) -> list[tuple[float, str]]:
+        """Per span: (risk, protected_tier). risk = 1 - P(none), the model's own estimate that
+        the span needs protecting; protected_tier is its most likely non-none tier, i.e. what
+        the span becomes if it is protected."""
+        if not self.fitted:
+            raise RuntimeError("RiskModel is not fitted")
+        if not pairs:
+            return []
+        proba = self.pipeline.predict_proba([featurize(c, x, self.config.features) for c, x in pairs])
+        classes = [str(c) for c in self.pipeline.classes_]
+        out: list[tuple[float, str]] = []
+        for p in proba:
+            if "none" not in classes:
+                out.append((1.0, classes[int(np.argmax(p))]))
+                continue
+            i_none = classes.index("none")
+            masked = p.copy()
+            masked[i_none] = -1.0
+            tier = classes[int(np.argmax(masked))] if len(classes) > 1 else "medium"
+            out.append((float(1.0 - p[i_none]), tier))
+        return out
+
     def save(self, path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         joblib.dump(self, path)
