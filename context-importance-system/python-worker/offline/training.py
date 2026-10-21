@@ -182,6 +182,7 @@ class _Rec:
     app: str | None
     domain: str | None
     title: str | None
+    features: dict | None = None  # the KW label reads typing counts from here
 
 
 def add_labels(
@@ -202,7 +203,7 @@ def add_labels(
     constructor = constructor or LabelConstructor(
         label_delay=label_delay, label_horizon=label_horizon, title_normalizer=title_normalizer
     )
-    records = [_Rec(r.id, r.ts, _text(r.app), _text(r.domain), _text(r.title)) for r in df.itertuples()]
+    records = [_Rec(r.id, r.ts, _text(r.app), _text(r.domain), _text(r.title), r.features) for r in df.itertuples()]
     out = df.copy()
     if not records:
         return out.assign(label=pd.array([], dtype="Int64"), revisited=None, continued=None, label_version=None)
@@ -295,6 +296,22 @@ def train_model1(
 # =============================================================================================
 # 6b. Experiments: ablations, MobileCLIP screen categories, rolling evaluation
 # =============================================================================================
+
+def with_user_features(df: pd.DataFrame, profile) -> pd.DataFrame:
+    """Copy of ``df`` whose ``features`` gain the ``usr_*`` columns learned by Model 2's user profile.
+
+    Opt-in: train with ``extra_feature_columns=USER_FEATURE_COLUMNS``; such a model is for offline
+    experiments, as the live worker does not compute them. Fit ``profile`` on the training split only.
+    """
+    from adaptation.user_profile import user_features
+
+    ordered = df.sort_values("ts")
+    extra = user_features(profile, ordered[["app", "features"]].to_dict("records"))
+    by_index = dict(zip(ordered.index, extra))
+    out = df.copy()
+    out["features"] = [{**features, **by_index[i]} for i, features in zip(df.index, df["features"])]
+    return out
+
 
 def without_vision(df: pd.DataFrame) -> pd.DataFrame:
     """Copy of ``df`` with every visual feature (``vis_*``, incl. categories) blanked: the "no eyes" ablation."""
