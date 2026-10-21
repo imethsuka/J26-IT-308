@@ -28,6 +28,19 @@
     "bufferCapacity": 1
   },
 
+  // Visible text and large images of the foreground window, read through UI Automation.
+  // Off by default: it reads screen content, which participants' consent must cover first.
+  // When on, the text is sent to the worker, which keeps it encrypted in raw_buffer.db (not context.db).
+  // Excluded apps/domains, password fields and the field being typed into are never read.
+  "screenContent": {
+    "enabled": false,
+    "maxChars": 50000,
+    "maxNodes": 3000,
+    "timeBudgetMs": 400,
+    // Images smaller than this on either side (icons, logos, avatars) are ignored.
+    "minImageSide": 64
+  },
+
   "ipc": {
     "enabled": true,
     // "namedpipe" (preferred, current-user only) or "tcp" (loopback fallback).

@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>CsharpCollector</RootNamespace>
+    <!-- Brings in System.Windows.Automation (UIAutomationClient) for reading browser address bars. -->
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="CsharpCollector.Tests" />
+    <InternalsVisibleTo Include="CsharpCollector.Benchmarks" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="collector.config.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>
