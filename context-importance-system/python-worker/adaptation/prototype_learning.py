@@ -26,7 +26,9 @@ import numpy as np
 
 # Must match models.lightgbm_model.DEFAULT_VERSIONS_DIR (kept independent to avoid importing
 # lightgbm/pandas just to load prototypes).
-DEFAULT_VERSIONS_DIR = Path(__file__).resolve().parent.parent / "models" / "versions"
+from app_paths import versions_dir as _versions_dir
+
+DEFAULT_VERSIONS_DIR = _versions_dir()
 
 PROTOTYPES_ARRAY_FILE = "prototypes.npy"
 PROTOTYPES_META_FILE = "prototypes.json"

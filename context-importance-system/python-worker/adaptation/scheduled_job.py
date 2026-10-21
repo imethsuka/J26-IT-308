@@ -7,6 +7,7 @@ Runs the maintenance pipeline in a fixed order, gated on the host being idle and
     3. Model 1 retrain       (models.ImportanceModel.train)       -> Phase 8
     4. drift check           (adaptation.drift_detection)         -> Phase 11
     5. validation gate       (adaptation.deployment)              -> Phase 12
+    6. screen memory         (adaptation.screen_memory)           -> optional, independent of 1-5 (--screen-memory)
 
 It can be run one-shot from Windows Task Scheduler, or as a daemon with ``--loop`` that polls until
 the host is idle. Every run emits a structured JSON summary (duration, contexts labelled, drift,
@@ -35,6 +36,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable
 
+from app_paths import default_run_log_path
 from models.lightgbm_model import DEFAULT_VERSIONS_DIR, ImportanceModel
 from models.rule_based import RuleBasedImportanceScorer
 
@@ -60,6 +62,8 @@ LoadIncumbentFn = Callable[[str], "Any | None"]
 class CycleConfig:
     label_delay: timedelta = DEFAULT_LABEL_DELAY
     label_horizon: timedelta = DEFAULT_LABEL_HORIZON
+    # 'v3' (came back within the horizon, the default) or 'kw' (Keep-Worthiness, adaptation/kw_labels.py).
+    label_rule: str = "v3"
     session_gap: timedelta = DEFAULT_SESSION_GAP
     retrieval_fn: RetrievalFn | None = None
     prototype_k: int = 8
@@ -74,6 +78,8 @@ class CycleConfig:
     require_ac: bool = True
     # Skip the retrain when nothing was labelled since the latest candidate was trained.
     require_new_labels: bool = True
+    # Optional stage 6: turn buffered screen text into memory entries (adaptation.screen_memory.ScreenMemoryJob).
+    screen_memory: Any = None
 
 
 @dataclass
@@ -124,7 +130,26 @@ def run_if_ready(
         summary.skip_reason = readiness.reason
         return summary.finalize(datetime.now(timezone.utc))
 
-    return run_cycle(conn, config, now=now, base_summary=summary, load_incumbent_fn=load_incumbent_fn)
+    summary = run_cycle(conn, config, now=now, base_summary=summary, load_incumbent_fn=load_incumbent_fn)
+    if config.screen_memory is not None:
+        _run_screen_memory_stage(config, summary, now)
+    return summary
+
+
+def _run_screen_memory_stage(config: CycleConfig, summary: RunSummary, now: datetime | None) -> None:
+    """Stage 6. Independent of the learning stages: its failure never changes their outcome, and theirs never skips it."""
+    from .screen_memory import run_screen_memory
+
+    try:
+        report = run_screen_memory(config.screen_memory, now=now)
+        summary.stages["screen_memory"] = report
+        logger.info(
+            "screen memory: %d entries from %d captures (tiers %s), %d episode(s) still open",
+            report["entries_written"], report["captures_read"], report["tiers"], report["episodes_left_open"],
+        )
+    except Exception as exc:
+        logger.exception("screen memory stage failed")
+        summary.stages["screen_memory"] = {"error": f"{type(exc).__name__}: {exc}"}
 
 
 def run_cycle(
@@ -155,10 +180,16 @@ def run_cycle(
 
     try:
         # --- Stage 1: label construction ------------------------------------------------------
-        constructor = LabelConstructor(
+        constructor_class = LabelConstructor
+        constructor_args = {"threshold": config.threshold}
+        if config.label_rule == "kw":
+            from adaptation.kw_labels import DEFAULT_KW_PARAMS, KWLabelConstructor
+
+            constructor_class = KWLabelConstructor
+            constructor_args = {"threshold": DEFAULT_KW_PARAMS.threshold}  # KW has its own scale
+        constructor = constructor_class(
             label_delay=config.label_delay, label_horizon=config.label_horizon,
-            session_gap=config.session_gap,
-            retrieval_fn=config.retrieval_fn, threshold=config.threshold,
+            session_gap=config.session_gap, retrieval_fn=config.retrieval_fn, **constructor_args,
         )
         labelled = label_pending_records(conn, constructor, now=logical_now, write=True)
         newly_labelled_ids = [rid for rid, _ in labelled]
@@ -374,6 +405,7 @@ def _build_config(args: argparse.Namespace) -> CycleConfig:
     return CycleConfig(
         label_delay=timedelta(hours=args.label_delay_hours),
         label_horizon=timedelta(hours=args.label_horizon_hours),
+        label_rule=args.label_rule,
         prototype_k=args.prototype_k,
         min_train_rows=args.min_train_rows,
         holdout_fraction=args.holdout_fraction,
@@ -382,13 +414,37 @@ def _build_config(args: argparse.Namespace) -> CycleConfig:
         require_ac=not args.no_require_ac,
         versions_dir=Path(args.versions_dir) if args.versions_dir else DEFAULT_VERSIONS_DIR,
         require_new_labels=not args.retrain_without_new_labels,
+        screen_memory=_build_screen_memory(args),
+    )
+
+
+def _build_screen_memory(args: argparse.Namespace):
+    """The optional screen-memory stage, or None. Files sit beside ``--db`` unless given."""
+    if not args.screen_memory:
+        return None
+    from storage.memory_store import MemoryStore, memory_path_for
+    from storage.raw_buffer import RawBuffer, raw_buffer_path_for
+
+    from .privacy import PassThroughFilter
+    from .screen_memory import ScreenMemoryConfig, ScreenMemoryJob
+
+    privacy_filter = None
+    if args.dev_passthrough_filter:
+        logger.warning("DEV ONLY: the pass-through privacy filter stores screen text unredacted; use it on your own data only")
+        privacy_filter = PassThroughFilter()
+    return ScreenMemoryJob(
+        raw=RawBuffer(args.raw_db or raw_buffer_path_for(args.db)),
+        memory=MemoryStore(args.memory_db or memory_path_for(args.db)),
+        config=ScreenMemoryConfig(
+            high_threshold=args.sm_high_threshold, medium_threshold=args.sm_medium_threshold, privacy_filter=privacy_filter,
+        ),
     )
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--db", required=True, help="path to the SQLite context store")
-    parser.add_argument("--summary-log", default="adaptation_runs.jsonl", help="JSONL file to append run summaries to")
+    parser.add_argument("--summary-log", default=default_run_log_path(), help="JSONL file to append run summaries to")
     parser.add_argument("--force", action="store_true", help="run even if the host is not idle / on battery")
     parser.add_argument("--loop", action="store_true", help="poll until idle and keep running (daemon mode)")
     parser.add_argument("--poll-seconds", type=float, default=300.0, help="poll interval in --loop mode")
@@ -398,6 +454,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="wall-clock age before a record is eligible for labelling")
     parser.add_argument("--label-horizon-hours", type=float, default=48.0,
                         help="how far forward revisit/continuation may look; also the train/holdout embargo")
+    parser.add_argument("--label-rule", choices=["v3", "kw"], default="v3",
+                        help="v3: came back within the horizon (default). kw: Keep-Worthiness label")
     parser.add_argument("--prototype-k", type=int, default=8)
     parser.add_argument("--min-train-rows", type=int, default=20)
     parser.add_argument("--holdout-fraction", type=float, default=0.2)
@@ -405,6 +463,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--versions-dir", default=None)
     parser.add_argument("--retrain-without-new-labels", action="store_true",
                         help="retrain even if nothing was labelled since the last candidate")
+    parser.add_argument("--screen-memory", action="store_true",
+                        help="also turn buffered screen text into memory entries (needs the collector's screenContent on)")
+    parser.add_argument("--raw-db", default=None, help="raw screen-text buffer (default: raw_buffer.db beside --db)")
+    parser.add_argument("--memory-db", default=None, help="memory store (default: memory.db beside --db)")
+    parser.add_argument("--dev-passthrough-filter", action="store_true",
+                        help="DEV ONLY: use no redaction. Without a privacy filter no screen text is stored")
+    parser.add_argument("--sm-high-threshold", type=float, default=0.5, help="episode importance for the high tier")
+    parser.add_argument("--sm-medium-threshold", type=float, default=0.2, help="episode importance for the medium tier")
     args = parser.parse_args(argv)
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
