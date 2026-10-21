@@ -1,0 +1,153 @@
+<UserControl x:Class="CAPRLMComparison.Views.PolicyPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:sp="clr-namespace:ScottPlot.WPF;assembly=ScottPlot.WPF"
+             FontFamily="Segoe UI" FontSize="13" Foreground="{StaticResource Ink}">
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <Grid Margin="32,24,32,16">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="*" />
+      </Grid.RowDefinitions>
+
+      <DockPanel Grid.Row="0" Margin="0,0,0,18">
+        <ui:Button DockPanel.Dock="Right" Content="Refresh" Click="OnRefresh" VerticalAlignment="Top" />
+        <StackPanel>
+          <TextBlock Text="Policy &amp; Risk" FontSize="24" FontWeight="SemiBold" />
+          <TextBlock Text="Adaptive privacy policy and leakage resistance" Style="{StaticResource MutedText}" Margin="0,2,0,0" />
+        </StackPanel>
+      </DockPanel>
+
+      <Border Grid.Row="1" x:Name="StatusBanner" CornerRadius="10" Padding="14,10" Margin="0,0,0,16" Visibility="Collapsed">
+        <TextBlock x:Name="StatusText" TextWrapping="Wrap" />
+      </Border>
+
+      <!-- Stat tiles -->
+      <UniformGrid Grid.Row="2" Columns="4" Margin="0,0,-16,0">
+        <Border Style="{StaticResource Card}" Margin="0,0,16,16" Padding="18,14">
+          <StackPanel>
+            <TextBlock Text="FLAGGED 7D" FontFamily="Consolas" FontSize="11" Foreground="{StaticResource Muted}" />
+            <TextBlock x:Name="FlaggedStat" Text="—" FontSize="28" FontWeight="SemiBold" Margin="0,4,0,0" />
+          </StackPanel>
+        </Border>
+        <Border Style="{StaticResource Card}" Margin="0,0,16,16" Padding="18,14">
+          <StackPanel>
+            <TextBlock Text="REDACTED" FontFamily="Consolas" FontSize="11" Foreground="{StaticResource Muted}" />
+            <TextBlock x:Name="RedactedStat" Text="—" FontSize="28" FontWeight="SemiBold" Margin="0,4,0,0" />
+          </StackPanel>
+        </Border>
+        <Border Style="{StaticResource Card}" Margin="0,0,16,16" Padding="18,14">
+          <StackPanel>
+            <TextBlock Text="LEARNED RULES" FontFamily="Consolas" FontSize="11" Foreground="{StaticResource Muted}" />
+            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+              <TextBlock x:Name="RulesStat" Text="—" FontSize="28" FontWeight="SemiBold" />
+              <TextBlock x:Name="RulesOf" FontSize="14" Foreground="{StaticResource Green}" VerticalAlignment="Bottom" Margin="4,0,0,4" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+        <Border Style="{StaticResource Card}" Margin="0,0,16,16" Padding="18,14">
+          <StackPanel>
+            <TextBlock Text="UTILITY KEPT" FontFamily="Consolas" FontSize="11" Foreground="{StaticResource Muted}" />
+            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+              <TextBlock x:Name="UtilityStat" Text="—" FontSize="28" FontWeight="SemiBold" />
+              <TextBlock x:Name="UtilityUnit" FontSize="14" Foreground="{StaticResource Green}" VerticalAlignment="Bottom" Margin="4,0,0,4" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+      </UniformGrid>
+
+      <Grid Grid.Row="3">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="1.15*" />
+          <ColumnDefinition Width="20" />
+          <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Category policy -->
+        <Border Grid.Column="0" Style="{StaticResource Card}" VerticalAlignment="Top">
+          <StackPanel>
+            <DockPanel>
+              <Border DockPanel.Dock="Right" Style="{StaticResource Chip}" Background="{StaticResource GreenSoft}">
+                <TextBlock x:Name="EnforcedChip" Text="—" FontFamily="Consolas" FontSize="11" Foreground="{StaticResource Green}" />
+              </Border>
+              <TextBlock Text="Sensitivity categories" Style="{StaticResource CardTitle}" />
+            </DockPanel>
+            <TextBlock Text="An enforced category is always handled the way you choose; a paused one is left to the risk model."
+                       Style="{StaticResource MutedText}" Margin="0,4,0,6" />
+
+            <ItemsControl x:Name="GroupList">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Border BorderBrush="{StaticResource CardBorder}" BorderThickness="0,1,0,0" Padding="0,12">
+                    <Grid>
+                      <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="12" />
+                        <ColumnDefinition Width="Auto" />
+                      </Grid.ColumnDefinitions>
+                      <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Label}" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding Categories}" Style="{StaticResource MutedText}" FontFamily="Consolas" FontSize="10" />
+                      </StackPanel>
+                      <ComboBox Grid.Column="1" Width="136" Tag="{Binding Id}" SelectedValuePath="Tag"
+                                SelectedValue="{Binding Action, Mode=OneWay}" SelectionChanged="OnActionChanged"
+                                VerticalAlignment="Center">
+                        <ComboBoxItem Tag="never" Content="Never store" />
+                        <ComboBoxItem Tag="tokenize" Content="Tokenize" />
+                        <ComboBoxItem Tag="mask" Content="Mask" />
+                      </ComboBox>
+                      <ui:ToggleSwitch Grid.Column="3" IsChecked="{Binding Enabled, Mode=OneWay}" Tag="{Binding Id}"
+                                       Click="OnEnabledClicked" VerticalAlignment="Center" />
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <!-- Connected LLM API -->
+            <Border BorderBrush="{StaticResource CardBorder}" BorderThickness="0,1,0,0" Padding="0,12,0,0">
+              <StackPanel>
+                <DockPanel>
+                  <ui:ToggleSwitch DockPanel.Dock="Right" x:Name="MaskSendToggle" Click="OnMaskSendClicked" VerticalAlignment="Center" />
+                  <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="Connected LLM API" FontWeight="SemiBold" />
+                    <TextBlock Text="Mask before send" Style="{StaticResource MutedText}" FontFamily="Consolas" FontSize="10" />
+                  </StackPanel>
+                </DockPanel>
+                <Grid Margin="0,10,0,0">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" /><ColumnDefinition Width="8" /><ColumnDefinition Width="*" />
+                  </Grid.ColumnDefinitions>
+                  <ui:TextBox Grid.Column="0" x:Name="ProviderBox" PlaceholderText="Provider (e.g. Anthropic)" LostFocus="OnLlmFieldCommitted" />
+                  <ui:TextBox Grid.Column="2" x:Name="ModelBox" PlaceholderText="Model" LostFocus="OnLlmFieldCommitted" />
+                </Grid>
+                <TextBlock Text="Used for the outbound-payload preview on Privacy review. Nothing is sent from this app."
+                           Style="{StaticResource MutedText}" Margin="0,6,0,0" />
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </Border>
+
+        <!-- Weekly activity -->
+        <Border Grid.Column="2" Style="{StaticResource Card}" VerticalAlignment="Top">
+          <StackPanel>
+            <TextBlock Text="Weekly privacy activity" Style="{StaticResource CardTitle}" />
+            <TextBlock Text="Flagged vs. redacted entities, last 7 days" Style="{StaticResource MutedText}" Margin="0,4,0,8" />
+            <sp:WpfPlot x:Name="WeekPlot" Height="270" />
+            <StackPanel Orientation="Horizontal" Margin="8,6,0,0">
+              <Ellipse Width="9" Height="9" Fill="#D9D5C7" VerticalAlignment="Center" />
+              <TextBlock Text="flagged" Style="{StaticResource MutedText}" Margin="6,0,18,0" />
+              <Ellipse Width="9" Height="9" Fill="{StaticResource Green}" VerticalAlignment="Center" />
+              <TextBlock Text="redacted" Style="{StaticResource MutedText}" Margin="6,0,0,0" />
+            </StackPanel>
+            <TextBlock x:Name="ChartNote" Style="{StaticResource MutedText}" Margin="8,10,0,0" />
+          </StackPanel>
+        </Border>
+      </Grid>
+    </Grid>
+  </ScrollViewer>
+</UserControl>
