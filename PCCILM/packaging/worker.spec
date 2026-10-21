@@ -5,7 +5,10 @@ from pathlib import Path
 SRC = str(Path(SPECPATH).parent / "python-worker")
 EXCLUDES = ["torch", "torchvision", "mobileclip", "timm", "open_clip", "tkinter", "matplotlib", "IPython",
             "notebook", "jupyter", "pytest", "onnx", "tensorboard", "scipy.tests", "sklearn.tests", "pandas.tests"]
-HIDDEN = ["lightgbm", "sklearn.cluster", "sklearn.utils._typedefs", "river.drift", "onnxruntime"]
+HIDDEN = ["lightgbm", "sklearn.cluster", "sklearn.utils._typedefs", "river.drift", "onnxruntime",
+          # challenger models (models/challengers.py), imported lazily
+          "sklearn.linear_model", "sklearn.ensemble", "sklearn.neural_network", "sklearn.pipeline",
+          "sklearn.preprocessing", "river.forest", "river.tree", "joblib"]
 
 def analysis(entry):
     return Analysis([str(Path(SPECPATH) / entry)], pathex=[SRC], hiddenimports=HIDDEN, excludes=EXCLUDES, noarchive=False)

@@ -55,6 +55,17 @@ if (-not $SkipWorker) {
 }
 Copy-Item (Join-Path $packaging 'dist\worker') (Join-Path $stage 'worker') -Recurse
 
+Write-Host '== llm (llama.cpp server for memory summaries: dedicated GPU via Vulkan, else CPU)'
+& (Join-Path $packaging 'fetch_llama.ps1')
+$llm = Join-Path $stage 'llm'
+New-Item -ItemType Directory -Force $llm | Out-Null
+$runtime = Join-Path $packaging 'llm-runtime'
+# Only the server and its libraries: the other llama.cpp tools (bench, quantize, cli, ...) bring their own *-impl.dll.
+Get-ChildItem $runtime -File | Where-Object {
+    $_.Name -in @('llama-server.exe', 'llama-server-impl.dll', 'RELEASE.txt') -or $_.Name -like 'LICENSE*' -or
+    ($_.Extension -eq '.dll' -and $_.Name -notlike '*-impl.dll')
+} | Copy-Item -Destination $llm
+
 Write-Host '== caprlm (privacy service)'
 $caprlmBuild = Join-Path $repo 'CAPRLM\packaging'
 if (-not $SkipCaprlm) { & (Join-Path $caprlmBuild 'build_service.ps1'); if ($LASTEXITCODE) { throw 'caprlm build failed' } }
