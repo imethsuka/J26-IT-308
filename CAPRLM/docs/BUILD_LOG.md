@@ -272,3 +272,17 @@ Tested: executed end to end locally with `jupyter nbconvert --execute` (not yet 
 - `packaging/` freezes the service with PyInstaller (`build_service.ps1`, `caprlm_service.spec`, `service_entry.py`) and copies the
   Tesseract binary beside it. Installed, the risk model and `profile.json` live in `%LOCALAPPDATA%\context-importance\caprlm`
   (`CAPRLM_MODEL_PATH`, `CAPRLM_STATE_PATH`), never next to the program.
+
+## Showing how the model works
+
+* `research/model/explain.py` reads the logistic regression's own weights (no separate explainer): for a tier, a feature's weight is
+  `coef[tier] - coef[none]`. `global_effects` = what raises each tier most; `explain_pairs` = why one span got its score, grouped by kind
+  of evidence (what it is, where it appears, words around it, how the text looks, the page) so it stays readable. Only linear models
+  are explainable; others return None and the pages show nothing.
+* `/review` entities now carry `why`; `/model-info` returns the model's version, training data, feature count and per-tier effects;
+  `/model-curve` (`research/eval/curve.py`) sweeps the risk threshold over the held-out test scenarios and gives precision/recall per
+  protection level and per entity category (computed once, cached). It scores only spans the detectors find; detection misses are in
+  results.json. Same small, unaudited, LLM-labelled data as the charts, so the same caveat applies; per-category counts are tiny (2 to 41).
+* UI: Metrics gets "How the model decides", "Trade-off by protection level" and "Recall by kind of entity"; Privacy review shows the
+  top reasons under each entity. Tests: `research/tests/test_explain.py`.
+* Measured on the saved model: Balanced catches 96% of sensitive spans with 80% precision; Relaxed 89% / 90%; Strict 97% / 78%.

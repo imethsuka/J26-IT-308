@@ -19,6 +19,7 @@ from shared.types import PrivacyContext
 from research.caprlm_filter import DEFAULT_TIER_ACTIONS
 from research.detection import Detector
 from research.model import RiskModel
+from research.model.explain import explain_pairs
 from research.profile_store import GROUPS, LEVELS, ProfileStore, group_of
 
 log = logging.getLogger(__name__)
@@ -85,12 +86,15 @@ def review(text: str, ctx: PrivacyContext, *, detector: Detector, model: RiskMod
     overrides = overrides or {}
 
     cands = detector.detect(text)
-    scores = model.risk_scores([(c, ctx) for c in cands])
+    pairs = [(c, ctx) for c in cands]
+    scores = model.risk_scores(pairs)
+    # the model's own reasons for each score, from its learned weights; None when the model is not a linear one
+    why = explain_pairs(model, pairs, [t for _, t in scores]) or [[] for _ in cands]
 
     entities: list[dict] = []
     replacements: list[tuple[int, int, str, str]] = []   # start, end, replacement, kind
     token_ids: dict[tuple[str, str], int] = {}
-    for c, (risk, tier) in zip(cands, scores):
+    for c, (risk, tier), reasons in zip(cands, scores, why):
         eid = f"{c.start}:{c.end}"
         d = _decide(c.category, risk, tier, eid, tau=tau, policy=policy, rules=rules, overrides=overrides)
         token = None
@@ -113,6 +117,7 @@ def review(text: str, ctx: PrivacyContext, *, detector: Detector, model: RiskMod
             # The original value is returned only for entities left visible (it is already in
             # the output); a masked entity travels as its token alone.
             "token": token, "value": None if d.masked else c.surface(text),
+            "why": reasons,
         })
 
     redacted_text, segments = _render(text, replacements)
