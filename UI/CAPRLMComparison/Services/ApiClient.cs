@@ -35,8 +35,6 @@ public sealed class ApiClient : IDisposable
     public Task<CompareResponse> CompareImageAsync(byte[] image, ContextDto context) =>
         PostAsync<CompareResponse>("/compare-image", new { image_base64 = Convert.ToBase64String(image), context });
 
-    public Task<EvalResults> GetEvalResultsAsync() => SendAsync<EvalResults>(HttpMethod.Get, "/eval-results");
-
     public Task<ReviewResult> ReviewAsync(string text, ContextDto context, string? level,
                                           IReadOnlyDictionary<string, string> overrides, bool recordActivity) =>
         SendAsync<ReviewResult>(HttpMethod.Post, "/review",
@@ -53,6 +51,11 @@ public sealed class ApiClient : IDisposable
 
     /// <summary>Partial update: only the fields present in <paramref name="update"/> change.</summary>
     public Task<PolicyDto> UpdatePolicyAsync(object update) => SendAsync<PolicyDto>(HttpMethod.Put, "/policy", update);
+
+    public Task<ModelInfoDto> GetModelInfoAsync() => SendAsync<ModelInfoDto>(HttpMethod.Get, "/model-info");
+
+    /// <summary>Slow the first time (the service scores the test scenarios once), then instant.</summary>
+    public Task<CurveDto> GetModelCurveAsync() => SendAsync<CurveDto>(HttpMethod.Get, "/model-curve");
 
     public Task<StatsDto> GetStatsAsync() => SendAsync<StatsDto>(HttpMethod.Get, "/stats");
 

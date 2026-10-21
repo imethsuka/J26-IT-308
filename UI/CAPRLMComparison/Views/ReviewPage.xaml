@@ -3,6 +3,9 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
              FontFamily="Segoe UI" FontSize="13" Foreground="{StaticResource Ink}">
+  <UserControl.Resources>
+    <BooleanToVisibilityConverter x:Key="BoolToVisible" />
+  </UserControl.Resources>
   <ScrollViewer VerticalScrollBarVisibility="Auto">
     <Grid Margin="32,24,32,16">
       <Grid.RowDefinitions>
@@ -165,6 +168,8 @@
                           <TextBlock Text="{Binding Display}" FontFamily="Consolas" FontSize="14" Margin="0,3,0,2"
                                      TextWrapping="Wrap" Foreground="{Binding DisplayBrush}" />
                           <TextBlock Text="{Binding Reason}" Style="{StaticResource MutedText}" FontSize="11" />
+                          <TextBlock Text="{Binding WhyText}" Style="{StaticResource MutedText}" FontSize="11" Margin="0,4,0,0"
+                                     Visibility="{Binding HasWhy, Converter={StaticResource BoolToVisible}}" />
                         </StackPanel>
                         <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center">
                           <ui:ToggleSwitch IsChecked="{Binding IsMasked, Mode=OneWay}" Tag="{Binding Id}" Click="OnEntityToggled" />

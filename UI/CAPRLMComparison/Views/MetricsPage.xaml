@@ -11,17 +11,11 @@
       <RowDefinition Height="*" />
     </Grid.RowDefinitions>
 
-    <!-- Dataset banner: shown for every result, and loud for a placeholder. It is the first thing on the page. -->
-    <Border Grid.Row="0" x:Name="DatasetBanner" CornerRadius="8" Padding="16,12" Visibility="Collapsed">
-      <DockPanel>
-        <ui:Button DockPanel.Dock="Right" Content="Refresh" Click="OnRefresh" VerticalAlignment="Top" />
-        <StackPanel>
-          <TextBlock x:Name="DatasetTitle" FontSize="16" FontWeight="Bold" TextWrapping="Wrap" />
-          <TextBlock x:Name="DatasetWarning" TextWrapping="Wrap" Margin="0,4,0,0" />
-          <TextBlock x:Name="DatasetMeta" TextWrapping="Wrap" Margin="0,8,0,0" FontSize="12" />
-        </StackPanel>
-      </DockPanel>
-    </Border>
+    <!-- What these views are made from. Always shown: the data behind them is synthetic and unaudited. -->
+    <DockPanel Grid.Row="0" x:Name="LiveNote" Visibility="Collapsed">
+      <ui:Button DockPanel.Dock="Right" Content="Refresh" Click="OnRefresh" />
+      <TextBlock Text="Computed live from the current model" VerticalAlignment="Center" Foreground="#7A7F78" />
+    </DockPanel>
 
     <!-- Error / loading: always explicit, never a blank page. -->
     <Border Grid.Row="1" x:Name="StatusBanner" CornerRadius="6" Padding="12,8" Margin="0,0,0,0" Visibility="Collapsed">
@@ -33,20 +27,54 @@
 
     <ScrollViewer Grid.Row="2" Margin="0,12,0,0" VerticalScrollBarVisibility="Auto">
       <StackPanel>
-        <UniformGrid x:Name="ChartGrid" Columns="3" Visibility="Collapsed" />
-        <Border x:Name="NotesPanel" Visibility="Collapsed" Margin="0,12,0,0" Padding="14" Background="White"
-                BorderBrush="#E1E5EA" BorderThickness="1" CornerRadius="8">
-          <StackPanel>
-            <TextBlock Text="How to read these numbers" FontWeight="SemiBold" />
-            <ItemsControl x:Name="NotesList" Margin="0,6,0,0">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate>
-                  <TextBlock Text="{Binding}" TextWrapping="Wrap" Foreground="#4B5563" Margin="0,2,0,2" />
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-          </StackPanel>
-        </Border>
+        <StackPanel x:Name="ExplainPanel" Visibility="Collapsed">
+          <TextBlock x:Name="ExplainNote" TextWrapping="Wrap" Foreground="#4B5563" Margin="0,0,0,8" Visibility="Collapsed" />
+
+          <Border Background="White" BorderBrush="#E1E5EA" BorderThickness="1" CornerRadius="8" Padding="16" Margin="0,0,0,12">
+            <StackPanel>
+              <TextBlock Text="How the model decides" FontSize="15" FontWeight="SemiBold" />
+              <TextBlock x:Name="EffectsIntro" TextWrapping="Wrap" Foreground="#4B5563" Margin="0,4,0,10" />
+              <UniformGrid x:Name="EffectsGrid" Columns="3" />
+            </StackPanel>
+          </Border>
+
+          <UniformGrid Columns="2" Margin="0,0,-8,0">
+            <Border Background="White" BorderBrush="#E1E5EA" BorderThickness="1" CornerRadius="8" Padding="16" Margin="0,0,8,12">
+              <StackPanel>
+                <TextBlock Text="Trade-off by protection level" FontSize="15" FontWeight="SemiBold" />
+                <TextBlock x:Name="CurveIntro" TextWrapping="Wrap" Foreground="#4B5563" Margin="0,4,0,6" />
+                <sp:WpfPlot x:Name="CurvePlot" Height="260" />
+                <ItemsControl x:Name="PresetLines" Margin="0,8,0,0">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate><TextBlock Text="{Binding}" FontSize="12" Margin="0,2,0,0" TextWrapping="Wrap" /></DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </Border>
+            <Border Background="White" BorderBrush="#E1E5EA" BorderThickness="1" CornerRadius="8" Padding="16" Margin="0,0,8,12">
+              <StackPanel>
+                <TextBlock Text="Recall by kind of entity" FontSize="15" FontWeight="SemiBold" />
+                <TextBlock x:Name="CategoryIntro" TextWrapping="Wrap" Foreground="#4B5563" Margin="0,4,0,10" />
+                <ItemsControl x:Name="CategoryList">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <Grid Margin="0,0,0,7">
+                        <Grid.ColumnDefinitions>
+                          <ColumnDefinition Width="140" /><ColumnDefinition Width="*" /><ColumnDefinition Width="92" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="{Binding Label}" FontSize="12" VerticalAlignment="Center" />
+                        <ProgressBar Grid.Column="1" Maximum="1" Value="{Binding Share, Mode=OneWay}" Height="8" Margin="6,0"
+                                     Foreground="#3F7D5E" Background="#E8E5DB" BorderThickness="0" />
+                        <TextBlock Grid.Column="2" Text="{Binding ValueText}" FontFamily="Consolas" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </Border>
+          </UniformGrid>
+        </StackPanel>
+
       </StackPanel>
     </ScrollViewer>
   </Grid>
