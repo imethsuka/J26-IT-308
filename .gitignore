@@ -1,0 +1,12 @@
+
+# Local connection strings / credentials: never commit.
+DB file Migration
+*.secret
+
+# build output and local stuff
+bin/
+obj/
+.pytest_cache/
+__pycache__/
+.venv/
+.vs/
