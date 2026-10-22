@@ -13,7 +13,7 @@ public sealed record AppBar(string App, long Records, long Saved, double Share);
 /// What the window shows. Reads happen off the UI thread, and only while the window exists: there is
 /// no background work in this process once it is closed.
 /// </summary>
-public sealed class MainViewModel : INotifyPropertyChanged
+public sealed partial class MainViewModel : INotifyPropertyChanged
 {
     private readonly ContextDb _db;
     private readonly ServiceControl _services;
@@ -40,12 +40,12 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public bool KeepUnredacted => Settings.ScreenTextKeepUnredacted;
     public bool ScreenIdle => !_screenBusy;
     public string ScreenStateText => Settings.ScreenTextActive
-        ? "On. The words visible in your active window are being captured, encrypted, for up to 3 days."
+        ? $"On. The words visible in your active window are being captured, encrypted, for up to {Settings.ScreenTextKeepDaysEffective} days."
         : "Off. Nothing on your screen is read as text.";
     public string FilterText => !Settings.ScreenTextActive ? ""
         : Settings.ScreenTextKeepUnredacted
             ? "Developer mode: no privacy filter, so memory entries are built from unredacted text."
-            : "No privacy filter is installed yet, so memory entries hold only the app, site, title and counts. The captured text is deleted after 3 days.";
+            : $"No privacy filter is installed yet, so memory entries hold only the app, site, title and counts. The captured text is deleted after {Settings.ScreenTextKeepDaysEffective} days.";
     public string RawBufferText { get => _rawText; private set => Set(ref _rawText, value); }
     public string MemoryStatsText { get => _memoryText; private set => Set(ref _memoryText, value); }
     public string ScreenStatus { get => _screenStatus; private set => Set(ref _screenStatus, value); }
@@ -74,6 +74,24 @@ public sealed class MainViewModel : INotifyPropertyChanged
         Settings.Save();
         NotifyScreenText();
         await ApplyScreenTextChangeAsync(on ? "Developer mode is on." : "Developer mode is off.");
+    }
+
+    public bool ScreenshotsActive => Settings.ScreenshotsActive;
+
+    /// <summary>Opt in to screenshots (the caller has shown <see cref="AppSettings.ScreenshotsConsentText"/>) or out.
+    /// Capture restarts to apply it. Returns what happened, for the History page.</summary>
+    public async Task<string> SetScreenshotsAsync(bool on)
+    {
+        if (on) Settings.OptInScreenshots(DateTimeOffset.Now);
+        else Settings.OptOutScreenshots();
+        Settings.Save();
+        Notify(nameof(ScreenshotsActive));
+        var what = on ? "Screenshots are on." : "Screenshots are off.";
+        if (on && !await Task.Run(() => _services.WorkerSupports("--screenshots"))) // runs the worker's --help once per build
+            return what + " The installed worker is an older build that cannot keep screenshots yet: rebuild the bundle "
+                        + "(packaging\\build_bundle.ps1).";
+        await ApplyScreenTextChangeAsync(what);
+        return ScreenStatus;
     }
 
     private async Task ApplyScreenTextChangeAsync(string what)
@@ -170,12 +188,13 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public bool CollectorRunning { get => _collectorRunning; private set => Set(ref _collectorRunning, value); }
     public bool WorkerRunning { get => _workerRunning; private set => Set(ref _workerRunning, value); }
 
-    private string _records = "–", _saveRate = "–", _embedding = "–", _lastCapture = "–", _disk = "–";
+    private string _records = "–", _saveRate = "–", _saveRateAll = "", _embedding = "–", _lastCapture = "–", _disk = "–";
     private string _activeModel = "–", _drc = "", _warning = "", _status = "";
     private IReadOnlyList<HourBucket> _hours = [];
 
     public string RecordsText { get => _records; private set => Set(ref _records, value); }
     public string SaveRateText { get => _saveRate; private set => Set(ref _saveRate, value); }
+    public string SaveRateAllTimeText { get => _saveRateAll; private set => Set(ref _saveRateAll, value); }
     public string EmbeddingText { get => _embedding; private set => Set(ref _embedding, value); }
     public string LastCaptureText { get => _lastCapture; private set => Set(ref _lastCapture, value); }
     public string DiskText { get => _disk; private set => Set(ref _disk, value); }
@@ -350,7 +369,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
         var sum = s.Summary;
         RecordsText = sum.Records.ToString("N0");
-        SaveRateText = sum.Records == 0 ? "–" : $"{sum.SaveRate:P0} saved";
+        SaveRateText = sum.RecentRecords == 0 ? "–" : $"{sum.RecentSaveRate:P0} saved";
+        SaveRateAllTimeText = sum.Records == 0 ? "" : $"last 24 h · {sum.SaveRate:P0} all time";
         EmbeddingText = sum.Records == 0 ? "–" : $"{sum.WithEmbedding:N0} of {sum.Records:N0}";
         LastCaptureText = sum.LastCapture is { } last ? Ago(DateTimeOffset.Now - last) : "never";
         DiskText = FormatBytes(sum.BytesOnDisk);
@@ -372,7 +392,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         LearnerText = s.LearnerRunning
             ? "Background learning is on: it runs when the PC is idle and plugged in."
             : Settings.BackgroundLearning ? "Background learning starts with capture." : "Background learning is off (Settings).";
-        var expected = active is null ? "rules-1.0" : $"lightgbm-{active.Version}";
+        var expected = active is null ? "rules-1.0" : $"{(active.Algorithm.Length > 0 ? active.Algorithm : "lightgbm")}-{active.Version}";
         RestartText = s.Worker && s.WorkerScoring is { } scoring && scoring != expected
             ? $"A new model is active ({(active is null ? "the rules" : active.Version)}) but the running worker still uses {scoring}. Restart capture to use it."
             : "";
@@ -398,6 +418,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
                    + "MobileCLIP model (mobileclip_s0_image.onnx in %LOCALAPPDATA%/context-importance, or the .pt checkpoint in Settings).";
         if (sum.Records >= 20 && noModel && sum.SaveRate > 0.7)
             return $"The rule-based baseline is saving {sum.SaveRate:P0} of contexts, so it is not selective yet. A trained model needs labelled data.";
+        if (sum.RecentRecords >= 200 && !noModel && sum.RecentSaveRate < 0.05)
+            return $"The model saved only {sum.RecentSaveRate:P1} of screens in the last 24 hours. A worker started before the rolling cutoff "
+                   + "was added keeps a fixed cutoff; restart capture.";
         return "";
     }
 

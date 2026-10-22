@@ -33,6 +33,37 @@
 
       <Border Style="{StaticResource Card}">
         <StackPanel>
+          <TextBlock Text="How long captured data is kept" Style="{StaticResource CardTitle}" Margin="0,0,0,4" />
+          <TextBlock Style="{StaticResource MutedText}" Margin="0,0,0,10" TextWrapping="Wrap"
+                     Text="Quality applies to new screenshots only: lower is smaller and blurrier. The worker deletes screen text and screenshots past these limits, oldest first. A shorter limit deletes the older items at the next clean-up, and deleted items cannot be brought back. Context records, labels and model decisions are never deleted." />
+          <WrapPanel>
+            <StackPanel Margin="0,0,24,0">
+              <TextBlock Text="SCREEN TEXT, DAYS (1 TO 90, DEFAULT 7)" Style="{StaticResource CardLabel}" />
+              <TextBox Text="{Binding Settings.ScreenTextKeepDays, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="120" HorizontalAlignment="Left" Margin="0,3,0,0" />
+            </StackPanel>
+            <StackPanel Margin="0,0,24,0">
+              <TextBlock Text="SCREENSHOTS, DAYS (1 TO 365, DEFAULT 30)" Style="{StaticResource CardLabel}" />
+              <TextBox Text="{Binding Settings.ScreenshotsKeepDays, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="120" HorizontalAlignment="Left" Margin="0,3,0,0" />
+            </StackPanel>
+            <StackPanel Margin="0,0,24,0">
+              <TextBlock Text="SCREENSHOTS, MOST SPACE IN MB (500 TO 200,000, DEFAULT 5,000)" Style="{StaticResource CardLabel}" />
+              <TextBox Text="{Binding Settings.ScreenshotsMaxMb, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="120" HorizontalAlignment="Left" Margin="0,3,0,0" />
+            </StackPanel>
+            <StackPanel>
+              <TextBlock Text="SCREENSHOT QUALITY, % (10 TO 95, DEFAULT 50)" Style="{StaticResource CardLabel}" />
+              <TextBox Text="{Binding Settings.ScreenshotsQuality, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="120" HorizontalAlignment="Left" Margin="0,3,0,0" />
+            </StackPanel>
+          </WrapPanel>
+          <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+            <Button Content="Save and apply" Click="OnSaveRetention" Margin="0,0,8,0" />
+            <Button Content="Defaults" Click="OnRetentionDefaults" />
+          </StackPanel>
+          <TextBlock Text="{Binding RetentionText}" Style="{StaticResource MutedText}" Margin="0,8,0,0" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
+
+      <Border Style="{StaticResource Card}">
+        <StackPanel>
           <TextBlock Text="What starts on its own" Style="{StaticResource CardTitle}" Margin="0,0,0,10" />
           <CheckBox Content="Start the privacy service and the importance models when this app opens (capture itself stays opt-in below)"
                     IsEnabled="False" IsChecked="True" />
@@ -46,7 +77,11 @@
                     IsChecked="{Binding Settings.UseCaprlmFilter, Mode=TwoWay}" Click="OnSaveSettings" />
           <CheckBox Content="Write a sentence for each important memory with a small local language model" Margin="0,8,0,0"
                     IsChecked="{Binding Settings.SummariesEnabled, Mode=TwoWay}" Click="OnSaveSettings" />
-          <TextBlock x:Name="ModelNote" Style="{StaticResource MutedText}" Margin="26,4,0,0" />
+          <StackPanel Orientation="Horizontal" Margin="26,6,0,0">
+            <TextBlock Text="Model" VerticalAlignment="Center" Margin="0,0,8,0" />
+            <ComboBox x:Name="ModelBox" MinWidth="320" DisplayMemberPath="Label" SelectionChanged="OnModelChosen" />
+          </StackPanel>
+          <TextBlock x:Name="ModelNote" Style="{StaticResource MutedText}" Margin="26,4,0,0" TextWrapping="Wrap" />
           <TextBlock Style="{StaticResource MutedText}" Margin="0,12,0,0"
                      Text="Capture reads keyboard and mouse activity counts and takes screenshots, so it is never started without you choosing it here or pressing Start capture. Closing this window ends the dashboard and the privacy service; capture keeps running in the background and is controlled from the tray icon." />
         </StackPanel>

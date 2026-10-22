@@ -23,9 +23,11 @@ public sealed class MemoryModule : IModule
         [
             Page("engine", "Importance engine", SymbolRegular.BrainCircuit24, () => new EnginePage()),
             Page("memories", "Memories", SymbolRegular.Book24, () => new MemoriesPage()),
+            Page("history", "History", SymbolRegular.History24, () => new HistoryPage()),
             Page("overview", "Overview", SymbolRegular.Home24, () => new OverviewPage()),
             Page("feed", "Live feed", SymbolRegular.DocumentBulletList24, () => new LiveFeedPage()),
             Page("models", "Models", SymbolRegular.Cube24, () => new ModelsPage()),
+            Page("benchmark", "Model benchmark", SymbolRegular.DataBarVertical24, () => new BenchmarkPage()),
             Page("screen", "Screen text", SymbolRegular.TextT24, () => new ScreenTextPage()),
             Page("settings", "Settings", SymbolRegular.Settings24, () => new SettingsPage()),
         ];

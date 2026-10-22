@@ -1,0 +1,99 @@
+<UserControl x:Class="ContextDashboard.Views.BenchmarkPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:v="clr-namespace:ContextDashboard.Views"
+             FontFamily="Segoe UI" FontSize="13" Foreground="{StaticResource Ink}">
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel Margin="32,24,32,24">
+      <DockPanel Margin="0,0,0,16">
+        <v:CaptureBar DockPanel.Dock="Right" VerticalAlignment="Top" />
+        <StackPanel>
+          <TextBlock Text="Model benchmark" Style="{StaticResource PageTitle}" />
+          <TextBlock Style="{StaticResource MutedText}" Margin="0,2,0,0" TextWrapping="Wrap"
+                     Text="Every model scores every screen. Only the champion's decisions are enforced; the others are recorded (shadow mode), so all of them are compared on the same screens, on the same timeline." />
+        </StackPanel>
+      </DockPanel>
+
+      <TextBlock Text="{Binding BenchmarkStatus}" Foreground="{StaticResource Amber}" Margin="0,0,0,10" TextWrapping="Wrap" />
+
+      <Border Style="{StaticResource Card}">
+        <DockPanel>
+          <Button DockPanel.Dock="Right" Content="Refresh" Click="OnRefresh" IsEnabled="{Binding BenchmarkIdle}" VerticalAlignment="Top" Margin="12,0,0,0" />
+          <StackPanel>
+            <TextBlock Text="Live results" Style="{StaticResource CardTitle}" />
+            <TextBlock Text="{Binding BenchmarkSummary}" Style="{StaticResource MutedText}" Margin="0,3,0,0" TextWrapping="Wrap" />
+          </StackPanel>
+        </DockPanel>
+      </Border>
+
+      <Border Style="{StaticResource Card}" Padding="4">
+        <DataGrid Style="{StaticResource WarmGrid}" ItemsSource="{Binding BenchmarkRows}" BorderThickness="0" MinHeight="120">
+          <DataGrid.Columns>
+            <DataGridTextColumn Header="Model" Binding="{Binding Display}" Width="250" />
+            <DataGridTextColumn Header="Family" Binding="{Binding Family}" Width="120" />
+            <DataGridTextColumn Header="Role" Binding="{Binding Role}" Width="80" />
+            <DataGridTextColumn Header="Screens, 24 h" Binding="{Binding Scored24h, StringFormat=N0}" Width="95" />
+            <DataGridTextColumn Header="Would keep, 24 h" Binding="{Binding KeepRateText}" Width="110" />
+            <DataGridTextColumn Header="Agrees with champion" Binding="{Binding AgreementText}" Width="140" />
+            <DataGridTextColumn Header="Graded" Binding="{Binding Graded, StringFormat=N0}" Width="80" />
+            <DataGridTextColumn Header="Live AP" Binding="{Binding ApText}" Width="70" />
+            <DataGridTextColumn Header="Important kept at 30%" Binding="{Binding RecallText}" Width="145" />
+            <DataGridTextColumn Header="ms / screen" Binding="{Binding LatencyText}" Width="80" />
+            <DataGridTemplateColumn Header="" Width="140">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate>
+                  <Button Content="Make champion" Click="OnMakeChampion" IsEnabled="{Binding CanBeChampion}" Padding="8,2" Margin="2" />
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTextColumn Header="Newest version" Binding="{Binding LatestVersion}" Width="*" />
+          </DataGrid.Columns>
+        </DataGrid>
+      </Border>
+
+      <Border Style="{StaticResource Card}">
+        <StackPanel>
+          <TextBlock Text="Live AP per day" Style="{StaticResource CardTitle}" />
+          <TextBlock Style="{StaticResource MutedText}" Margin="0,3,0,8" TextWrapping="Wrap"
+                     Text="How well each model ranked that day's screens, graded once their labels arrived (48 h later). Higher is better; days with fewer than 20 graded screens are left out." />
+          <v:LineChart Series="{Binding BenchmarkAp}" Percent="False" Height="280" />
+        </StackPanel>
+      </Border>
+
+      <Border Style="{StaticResource Card}">
+        <StackPanel>
+          <TextBlock Text="Would keep, per day" Style="{StaticResource CardTitle}" />
+          <TextBlock Style="{StaticResource MutedText}" Margin="0,3,0,8" TextWrapping="Wrap"
+                     Text="Share of screens each model would have saved, before the repeat filter. Each keeps the top share of its own recent scores, so these stay near the budget; a model far from it has drifted." />
+          <v:LineChart Series="{Binding BenchmarkKeepRate}" Percent="True" Height="240" />
+        </StackPanel>
+      </Border>
+
+      <Border Style="{StaticResource Card}" Padding="4">
+        <StackPanel>
+          <TextBlock Text="Champion history" Style="{StaticResource CardTitle}" Margin="12,10,12,4" />
+          <DataGrid Style="{StaticResource WarmGrid}" ItemsSource="{Binding ChampionChanges}" BorderThickness="0" MinHeight="60">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="When" Binding="{Binding At, StringFormat=dd MMM yyyy HH:mm}" Width="140" />
+              <DataGridTextColumn Header="From" Binding="{Binding From}" Width="230" />
+              <DataGridTextColumn Header="To" Binding="{Binding To}" Width="230" />
+              <DataGridTextColumn Header="Why" Binding="{Binding Reason}" Width="*" />
+            </DataGrid.Columns>
+          </DataGrid>
+        </StackPanel>
+      </Border>
+
+      <Border Style="{StaticResource Card}">
+        <StackPanel>
+          <TextBlock Text="How to read this" Style="{StaticResource CardTitle}" />
+          <TextBlock Style="{StaticResource MutedText}" Margin="0,3,0,0" TextWrapping="Wrap">
+            <Run Text="Live AP: how well a model put the important screens first, on screens it scored before anyone knew the answer. A model that guesses scores the share of important screens, not 0." />
+            <LineBreak /><Run Text="Important kept at 30%: of the important screens, how many would survive if the model kept only its top 30%." />
+            <LineBreak /><Run Text="Agrees with champion: how often its keep/discard verdict matched the champion's in the last 24 hours." />
+            <LineBreak /><Run Text="Make champion switches which model decides. Capture restarts to load it. Nothing is deleted: the old champion keeps scoring in shadow mode and can be chosen again. The learning loop keeps refreshing the champion's own family, but never replaces it with another kind of model." />
+          </TextBlock>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

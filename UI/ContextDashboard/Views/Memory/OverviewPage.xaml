@@ -36,7 +36,8 @@
           <TextBlock Text="{Binding RecordsText}" Style="{StaticResource CardValue}" /></StackPanel></Border>
         <Border Style="{StaticResource StatCard}"><StackPanel>
           <TextBlock Text="DECISION" Style="{StaticResource CardLabel}" />
-          <TextBlock Text="{Binding SaveRateText}" Style="{StaticResource CardValue}" /></StackPanel></Border>
+          <TextBlock Text="{Binding SaveRateText}" Style="{StaticResource CardValue}" />
+          <TextBlock Text="{Binding SaveRateAllTimeText}" Style="{StaticResource MutedText}" /></StackPanel></Border>
         <Border Style="{StaticResource StatCard}"><StackPanel>
           <TextBlock Text="WITH EMBEDDING" Style="{StaticResource CardLabel}" />
           <TextBlock Text="{Binding EmbeddingText}" Style="{StaticResource CardValue}" /></StackPanel></Border>
