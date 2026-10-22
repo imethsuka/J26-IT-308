@@ -33,6 +33,49 @@ public class MemoryWriterTests : IDisposable
         return s;
     }
 
+    /// <summary>The installed layout: worker\worker.exe and worker\adapt.exe, no repo Python.</summary>
+    private AppSettings Installed(out string adapt)
+    {
+        var s = Settings(tool: false);
+        var worker = Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(s.DbPath)!)!, "worker");
+        Touch(worker, "worker.exe");
+        Touch(worker, "adapt.exe");
+        s.WorkerExe = Path.Combine(worker, "worker.exe");
+        adapt = Path.Combine(worker, "adapt.exe");
+        return s;
+    }
+
+    [Fact]
+    public void Installed_it_runs_adapt_exe_memory_llm()
+    {
+        var s = Installed(out var adapt);
+        var writer = new MemoryWriter(s, _dir, help: (_, _) => "epilog: adapt.exe memory-llm --memory-db ...");
+
+        Assert.Null(writer.Problem());
+        var (file, args, _) = writer.Command(25)!.Value;
+        Assert.Equal(adapt, file);
+        Assert.StartsWith($"memory-llm --memory-db \"{s.MemoryPath}\"", args);
+    }
+
+    [Fact]
+    public void An_older_installed_job_is_not_sent_memory_llm()
+    {
+        var s = Installed(out _);
+        var writer = new MemoryWriter(s, _dir, help: (_, _) => "usage: adapt [--db DB]");
+        Assert.Null(writer.Command(25));
+        Assert.Contains("Rebuild the bundle", writer.Problem());
+    }
+
+    [Fact]
+    public void The_renamed_system_folder_is_found_from_the_builds_folder()
+    {
+        var repo = Path.Combine(_dir, "repo");
+        Directory.CreateDirectory(Path.Combine(repo, "PCCILM", "python-worker"));
+        var build = Path.Combine(repo, "Builds", "ContextImportance");
+        Directory.CreateDirectory(build);
+        Assert.Equal(Path.Combine(repo, "PCCILM"), AppSettings.FindSystemRoot(build));
+    }
+
     [Fact]
     public void Progress_lines_are_read_and_everything_else_is_ignored()
     {
@@ -65,8 +108,8 @@ public class MemoryWriterTests : IDisposable
         Assert.Equal(s.WorkerDir, workDir);
         Assert.Contains("memory_llm.py", args);
         Assert.Contains($"--memory-db \"{s.MemoryPath}\"", args);
-        Assert.Contains("qwen.gguf", args);
-        Assert.EndsWith("--max-entries 25", args);
+        Assert.Contains($"--llm-model \"{s.LlmSearchDir}\"", args);         // the models folder
+        Assert.EndsWith("--max-entries 25 --max-sessions 40", args);
     }
 
     [Fact]

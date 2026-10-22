@@ -105,7 +105,8 @@ public class ScreenTextSettingsTests
         var text = AppSettings.ConsentText;
         Assert.Contains("never reads passwords", text);
         Assert.Contains("encrypted", text);
-        Assert.Contains("3 days", text);
+        Assert.Contains("7 days", text);
+        Assert.Contains("Settings", text);
         Assert.Contains("Nothing leaves this PC", text);
         Assert.Contains("consent form", text);
     }

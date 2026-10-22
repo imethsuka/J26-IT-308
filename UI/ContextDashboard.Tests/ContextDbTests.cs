@@ -97,6 +97,24 @@ public class ContextDbTests
     }
 
     [Fact]
+    public void Summary_save_rate_for_the_last_24_hours_leaves_out_older_records()
+    {
+        using var t = new TempDb();
+        t.AddRecord(Now.AddDays(-3), "Code", "save");
+        t.AddRecord(Now.AddDays(-2), "Code", "save");
+        t.AddRecord(Now.AddHours(-5), "msedge", "discard");
+        t.AddRecord(Now.AddHours(-1), "msedge", "discard");
+        t.AddRecord(Now, "Code", "save");
+
+        var s = new ContextDb(t.Path).Summary();
+
+        Assert.Equal(3, s.RecentRecords);
+        Assert.Equal(1, s.RecentSaved);
+        Assert.Equal(1.0 / 3, s.RecentSaveRate, 3);
+        Assert.Equal(3.0 / 5, s.SaveRate, 3);
+    }
+
+    [Fact]
     public void Recent_is_newest_first_and_filters_by_text_and_decision()
     {
         using var t = new TempDb();

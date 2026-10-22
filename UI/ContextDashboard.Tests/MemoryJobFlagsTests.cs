@@ -125,8 +125,14 @@ public class MemoryJobFlagsTests : IDisposable
         File.WriteAllText(Path.Combine(models, "notes.txt"), "x");
         var s = new AppSettings { LlmSearchDir = models };
 
-        Assert.Equal(Path.Combine(models, "a.gguf"), s.ResolveLlmModel());     // first by name, only .gguf files
+        Assert.Equal(models, s.ResolveLlmModel());                             // the folder: the worker picks GPU or CPU model
+        File.Delete(Path.Combine(models, "a.gguf"));
+        File.Delete(Path.Combine(models, "b.gguf"));
+        Assert.Null(s.ResolveLlmModel());                                      // only .gguf files count
         s.LlmModelPath = Path.Combine(_dir, "missing.gguf");
-        Assert.Null(s.ResolveLlmModel());                                      // an explicit path that is not there wins: no guessing
+        File.WriteAllText(Path.Combine(models, "c.gguf"), "x");
+        Assert.Equal(models, s.ResolveLlmModel());                             // a chosen model that is gone falls back to automatic
+        s.LlmModelPath = Path.Combine(models, "c.gguf");
+        Assert.Equal(s.LlmModelPath, s.ResolveLlmModel());                     // a chosen model that exists wins
     }
 }

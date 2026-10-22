@@ -103,6 +103,30 @@ public class MemoriesTests : IDisposable
     }
 
     [Fact]
+    public void Entries_the_nightly_job_hid_are_not_memories_and_titles_are_cleaned()
+    {
+        var path = Path.Combine(_dir, "hidden.db");
+        using (var c = new SqliteConnection($"Data Source={path};Pooling=False"))
+        {
+            c.Open();
+            using var cmd = c.CreateCommand();
+            cmd.CommandText = @"
+                CREATE TABLE episodes (id INTEGER PRIMARY KEY AUTOINCREMENT, doc_id TEXT, start_ts INTEGER);
+                CREATE TABLE memory_entries (id INTEGER PRIMARY KEY AUTOINCREMENT, episode_id INTEGER, tier TEXT, importance REAL,
+                    entry_json TEXT, summary TEXT, summary_model TEXT, text_persisted INTEGER, hidden TEXT);
+                INSERT INTO episodes(doc_id, start_ts) VALUES ('d', 1), ('e', 2);
+                INSERT INTO memory_entries(episode_id, tier, entry_json, text_persisted, hidden) VALUES
+                    (1, 'high', '{""app"":""msedge"",""title"":""Inbox and 2 more pages - Personal - Microsoft Edge"",""start"":""2026-10-20T09:00:00+00:00""}', 0, NULL),
+                    (2, 'high', '{""app"":""explorer"",""title"":""Task Switching"",""start"":""2026-10-20T09:01:00+00:00""}', 0, 'task switching');";
+            cmd.ExecuteNonQuery();
+        }
+
+        var row = new ScreenTextDb(Path.Combine(_dir, "raw.db"), path).Entries(10).Single();
+
+        Assert.Equal("Inbox", row.Title);
+    }
+
+    [Fact]
     public void An_older_memory_database_without_the_model_column_still_reads()
     {
         var path = Path.Combine(_dir, "old.db");
