@@ -12,8 +12,14 @@ public sealed class ServiceControl
 {
     private const string CollectorProcess = "CsharpCollector";
     private readonly AppSettings _settings;
+    private readonly Func<string, string, string> _help;
 
-    public ServiceControl(AppSettings settings) => _settings = settings;
+    /// <param name="help">Runs a program's <c>--help</c> (see <see cref="HelpProbe"/>). Tests pass a fake.</param>
+    public ServiceControl(AppSettings settings, Func<string, string, string>? help = null)
+    {
+        _settings = settings;
+        _help = help ?? HelpProbe.Run;
+    }
 
     /// <summary>The worker is up exactly when its named pipe exists: it listens from startup onwards.</summary>
     public ServiceState Worker() =>
@@ -54,7 +60,8 @@ public sealed class ServiceControl
             // Without the checkpoint the worker silently stores records without embeddings.
             var env = new Dictionary<string, string>();
             if (File.Exists(_settings.CheckpointPath)) env["MOBILECLIP_S0_CHECKPOINT"] = _settings.CheckpointPath;
-            Launch("worker", _settings.WorkerDir, WorkerCommand(), env);
+            var command = await Task.Run(WorkerCommand, ct); // may run the worker's --help once per build
+            Launch("worker", _settings.WorkerDir, command, env);
 
             for (var i = 0; i < 240 && Worker() == ServiceState.Stopped; i++)
                 await Task.Delay(500, ct);
@@ -111,10 +118,21 @@ public sealed class ServiceControl
     {
         var tail = $"--transport namedpipe --pipe-name {_settings.PipeName} --db \"{_settings.DbPath}\"";
         if (!_settings.ScreenTextActive) tail += " --no-screen-text"; // defence in depth: the worker ignores any text it is sent
+        else tail += $" --raw-ttl-days {_settings.ScreenTextKeepDaysEffective}";
+        if (_settings.ScreenshotsActive && WorkerSupports("--screenshots"))
+        {
+            tail += $" --screenshots --shots-ttl-days {_settings.ScreenshotsKeepDaysEffective} --shots-max-mb {_settings.ScreenshotsMaxMbEffective}";
+            if (WorkerSupports("--shots-quality")) tail += $" --shots-quality {_settings.ScreenshotsQualityEffective}";
+        }
         return _settings.WorkerExe.Length > 0
             ? $"\"{_settings.WorkerExe}\" {tail}"
             : $"\"{_settings.PythonExe}\" main.py {tail}";
     }
+
+    /// <summary>False for an older worker build that would exit on the flag; screenshots then stay off until it is rebuilt.</summary>
+    internal bool WorkerSupports(string flag) => _settings.WorkerExe.Length > 0
+        ? HelpProbe.Supports(_help, _settings.WorkerExe, "", flag)
+        : HelpProbe.Supports(_help, _settings.PythonExe, $"\"{Path.Combine(_settings.WorkerDir, "main.py")}\"", flag);
 
     /// <summary>Stops the collector first (so nothing is sent to a dead pipe), then the worker.</summary>
     public void Stop()

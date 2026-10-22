@@ -10,11 +10,16 @@ public sealed record StorageSummary(
     DateTimeOffset? FirstCapture,
     DateTimeOffset? LastCapture,
     long BytesOnDisk,
-    int SchemaVersion)
+    int SchemaVersion,
+    long RecentRecords = 0,
+    long RecentSaved = 0)
 {
     public static readonly StorageSummary Empty = new(0, 0, 0, 0, 0, 0, null, null, 0, 0);
 
     public double SaveRate => Records == 0 ? 0 : (double)Saved / Records;
+    /// <summary>Save rate over the 24 hours up to the last capture: what the model serving now does. The all-time rate
+    /// mixes the DRC history and every earlier model.</summary>
+    public double RecentSaveRate => RecentRecords == 0 ? 0 : (double)RecentSaved / RecentRecords;
     public double EmbeddingCoverage => Records == 0 ? 0 : (double)WithEmbedding / Records;
 }
 

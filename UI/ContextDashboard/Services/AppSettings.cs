@@ -28,41 +28,55 @@ public sealed class AppSettings
     public bool UseCaprlmFilter { get; set; } = true;
     /// <summary>Let a small local language model write a sentence for each important memory.</summary>
     public bool SummariesEnabled { get; set; } = true;
-    /// <summary>The GGUF model file. Empty = the first <c>.gguf</c> in <c>%LOCALAPPDATA%\context-importance\models\llm</c>.</summary>
+    /// <summary>One GGUF model file. Empty = the <c>%LOCALAPPDATA%\context-importance\models\llm</c> folder, from which the
+    /// worker gives a dedicated GPU the largest model it can take and the CPU the smallest (adaptation/llm_runtime.py).</summary>
     public string LlmModelPath { get; set; } = "";
 
     /// <summary>Tests point this at a temp folder, so the answer does not depend on what is installed on the PC.</summary>
     internal string? LlmSearchDir { get; set; }
 
     public static string LlmDir => Path.Combine(DataDir, "models", "llm");
+    /// <summary>Models kept but not used automatically (older or compared ones). They can still be chosen in Settings.</summary>
+    public static string LlmCandidatesDir => Path.Combine(DataDir, "models", "llm-candidates");
 
-    /// <summary>The model file to use, or null when there is none (then no summaries are written).</summary>
+    /// <summary>Every model the user can choose: the automatic folder's and the kept candidates, smallest first.</summary>
+    public IReadOnlyList<string> AvailableLlmModels() =>
+        new[] { LlmSearchDir ?? LlmDir, LlmCandidatesDir }.Where(Directory.Exists)
+            .SelectMany(d => Directory.EnumerateFiles(d, "*.gguf")).OrderBy(f => new FileInfo(f).Length).ToList();
+
+    /// <summary>What to pass as <c>--llm-model</c>: the chosen file (when it still exists), else the models folder when it holds a <c>.gguf</c>, else null
+    /// (then no summaries are written).</summary>
     public string? ResolveLlmModel()
     {
-        if (LlmModelPath.Length > 0) return File.Exists(LlmModelPath) ? LlmModelPath : null;
+        // A chosen model that has since gone falls back to automatic rather than turning summaries off.
+        if (LlmModelPath.Length > 0 && File.Exists(LlmModelPath)) return LlmModelPath;
         var dir = LlmSearchDir ?? LlmDir;
-        return Directory.Exists(dir)
-            ? Directory.EnumerateFiles(dir, "*.gguf").OrderBy(p => p, StringComparer.OrdinalIgnoreCase).FirstOrDefault()
-            : null;
+        return Directory.Exists(dir) && Directory.EnumerateFiles(dir, "*.gguf").Any() ? dir : null;
     }
     /// <summary>Label rule for the learning job: "v3" (came back within the horizon) or "kw" (Keep-Worthiness).</summary>
     public string LabelRule { get; set; } = "v3";
 
     // ---- Screen text (opt-in, off by default) -----------------------------------------------------
-    /// <summary>Bumped whenever <see cref="ConsentText"/> changes, so everyone is asked again.</summary>
-    public const int CurrentConsentVersion = 1;
+    /// <summary>Bumped whenever <see cref="ConsentText"/> changes, so everyone is asked again. 2: the keep time became a setting (7 days by default).</summary>
+    public const int CurrentConsentVersion = 2;
 
     public const string ConsentText =
         "Screen text capture reads the words visible in the window you are using. It never reads passwords, the box you "
         + "are typing in, or apps and sites on your exclusion list.\n\n"
-        + "The words are kept encrypted on this PC for up to 3 days, and a background job turns them into memory entries "
-        + "while the PC is idle. Until a privacy filter is installed, those entries contain only the app, site, page title "
-        + "and counts, and no text is kept beyond the 3 days. Nothing leaves this PC.\n\n"
+        + "The words are kept encrypted on this PC for 7 days, or for the time you choose in Settings (1 to 90 days), and a "
+        + "background job turns them into memory entries while the PC is idle. Until a privacy filter is installed, those "
+        + "entries contain only the app, site, page title and counts, and no text is kept beyond that time. Nothing leaves "
+        + "this PC.\n\n"
         + "You can switch this off and delete everything it captured at any time on the Screen text tab.\n\n"
         + "If you take part in a study, your consent form must cover extracted text before you turn this on.";
 
     /// <summary>The user's choice. Off unless they opted in on the Screen text tab.</summary>
     public bool ScreenTextEnabled { get; set; }
+
+    /// <summary>Days captured screen text is kept before the worker deletes it (Settings). Clamped to 1 to 90 when used.</summary>
+    public int ScreenTextKeepDays { get; set; } = DefaultScreenTextKeepDays;
+    public const int DefaultScreenTextKeepDays = 7, MaxScreenTextKeepDays = 90;
+    public int ScreenTextKeepDaysEffective => Math.Clamp(ScreenTextKeepDays, 1, MaxScreenTextKeepDays);
     /// <summary>Which consent text the user agreed to (0 = never). A different version means they must agree again.</summary>
     public int ScreenTextConsentVersion { get; set; }
     public string ScreenTextConsentAt { get; set; } = "";
@@ -88,9 +102,59 @@ public sealed class AppSettings
         ScreenTextConsentAt = "";
     }
 
-    /// <summary><c>raw_buffer.db</c> and <c>memory.db</c> sit beside the context database, as the worker and the job expect.</summary>
+    // ---- Screenshots for the history slider (opt-in, off by default, a consent of its own) --------------------------
+    /// <summary>2: the keep time and space became settings (30 days and 5 GB by default).</summary>
+    public const int CurrentScreenshotsConsentVersion = 2;
+
+    /// <summary>Days a screenshot is kept, and the most disk space they may take (Settings). The worker deletes past either
+    /// limit, oldest first. Clamped when used: 1 to 365 days, 0.5 to 200 GB.</summary>
+    public int ScreenshotsKeepDays { get; set; } = DefaultScreenshotsKeepDays;
+    public int ScreenshotsMaxMb { get; set; } = DefaultScreenshotsMaxMb;
+    public const int DefaultScreenshotsKeepDays = 30, MaxScreenshotsKeepDays = 365;
+    public const int DefaultScreenshotsMaxMb = 5000, MinScreenshotsMaxMb = 500, MaxScreenshotsMaxMb = 200_000;
+    public int ScreenshotsKeepDaysEffective => Math.Clamp(ScreenshotsKeepDays, 1, MaxScreenshotsKeepDays);
+    /// <summary>JPEG quality of kept screenshots, percent (Settings). Lower is smaller and blurrier. Clamped to 10 to 95.</summary>
+    public int ScreenshotsQuality { get; set; } = DefaultScreenshotsQuality;
+    public const int DefaultScreenshotsQuality = 50;
+    public int ScreenshotsQualityEffective => Math.Clamp(ScreenshotsQuality, 10, 95);
+    public int ScreenshotsMaxMbEffective => Math.Clamp(ScreenshotsMaxMb, MinScreenshotsMaxMb, MaxScreenshotsMaxMb);
+
+    public const string ScreenshotsConsentText =
+        "Screenshots keep a picture of your screen each time the importance model decides a moment is worth saving, so "
+        + "you can scroll back through your day on the History page.\n\n"
+        + "A screenshot shows the whole main monitor, including windows behind the one you are using. The privacy filter "
+        + "works on text only, so nothing in a screenshot is hidden or blurred. Apps and sites on your exclusion list are "
+        + "never captured while they are in front.\n\n"
+        + "Screenshots are encrypted for your Windows account and stay on this PC. They are deleted after 30 days, or "
+        + "sooner when they pass 5 GB (oldest first), unless you choose other limits in Settings. You can switch this off "
+        + "and delete them all at any time.\n\n"
+        + "If you take part in a study, your consent form must cover screenshots before you turn this on.";
+
+    public bool ScreenshotsEnabled { get; set; }
+    public int ScreenshotsConsentVersion { get; set; }
+    public string ScreenshotsConsentAt { get; set; } = "";
+
+    /// <summary>On only with both the switch and a consent that matches the current text.</summary>
+    public bool ScreenshotsActive => ScreenshotsEnabled && ScreenshotsConsentVersion == CurrentScreenshotsConsentVersion;
+
+    public void OptInScreenshots(DateTimeOffset now)
+    {
+        ScreenshotsEnabled = true;
+        ScreenshotsConsentVersion = CurrentScreenshotsConsentVersion;
+        ScreenshotsConsentAt = now.ToString("O");
+    }
+
+    public void OptOutScreenshots()
+    {
+        ScreenshotsEnabled = false;
+        ScreenshotsConsentVersion = 0;
+        ScreenshotsConsentAt = "";
+    }
+
+    /// <summary><c>raw_buffer.db</c>, <c>memory.db</c> and <c>screenshots.db</c> sit beside the context database, as the worker and the job expect.</summary>
     public string RawBufferPath => Path.Combine(Path.GetDirectoryName(Path.GetFullPath(DbPath)) ?? ".", "raw_buffer.db");
     public string MemoryPath => Path.Combine(Path.GetDirectoryName(Path.GetFullPath(DbPath)) ?? ".", "memory.db");
+    public string ScreenshotsPath => Path.Combine(Path.GetDirectoryName(Path.GetFullPath(DbPath)) ?? ".", "screenshots.db");
 
     public static string DataDir { get; } =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "context-importance");
@@ -123,12 +187,13 @@ public sealed class AppSettings
     }
 
     /// <summary>
-    /// The <c>context-importance-system</c> folder: either the nearest ancestor that directly contains
-    /// <c>python-worker</c> (the dashboard running from inside that tree, e.g. during development before the
-    /// repo-root move), or the nearest ancestor that has a <c>context-importance-system\python-worker</c> child
-    /// (the dashboard running from the repo root, as a sibling of <c>context-importance-system</c>, which is
-    /// where it normally lives now). Checked at every level on the way up so either layout resolves.
+    /// The system folder (<c>PCCILM</c>, called <c>context-importance-system</c> before the rename): either the nearest
+    /// ancestor that directly contains <c>python-worker</c> (the dashboard running from inside that tree), or the nearest
+    /// ancestor that has a <c>PCCILM\python-worker</c> (or old-name) child: the dashboard running from the repo root or
+    /// from <c>Builds\ContextImportance</c>. Checked at every level on the way up so every layout resolves.
     /// </summary>
+    private static readonly string[] SystemFolderNames = ["PCCILM", "context-importance-system"];
+
     public static string? FindSystemRoot(string startDir)
     {
         for (var dir = new DirectoryInfo(startDir); dir != null; dir = dir.Parent)
@@ -136,9 +201,12 @@ public sealed class AppSettings
             if (Directory.Exists(Path.Combine(dir.FullName, "python-worker")))
                 return dir.FullName;
 
-            var sibling = Path.Combine(dir.FullName, "context-importance-system");
-            if (Directory.Exists(Path.Combine(sibling, "python-worker")))
-                return sibling;
+            foreach (var name in SystemFolderNames)
+            {
+                var sibling = Path.Combine(dir.FullName, name);
+                if (Directory.Exists(Path.Combine(sibling, "python-worker")))
+                    return sibling;
+            }
         }
         return null;
     }

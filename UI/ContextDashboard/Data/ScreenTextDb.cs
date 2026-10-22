@@ -161,7 +161,8 @@ public sealed class ScreenTextDb
         {
             using var db = Open(_memoryPath, readOnly: true);
             return Scalar(db,
-                "SELECT COUNT(*) FROM memory_entries e WHERE e.needs_summary = 1 AND e.text_persisted = 1 AND NOT EXISTS " +
+                "SELECT COUNT(*) FROM memory_entries e WHERE e.needs_summary = 1 AND e.text_persisted = 1 " +
+                (HasColumn(db, "memory_entries", "hidden") ? "AND e.hidden IS NULL " : "") + "AND NOT EXISTS " +
                 "(SELECT 1 FROM memory_entries x WHERE x.doc_id = e.doc_id AND COALESCE(x.filter_version, '') LIKE 'passthrough%')");
         }
         catch (SqliteException)
@@ -209,7 +210,11 @@ public sealed class ScreenTextDb
         cmd.CommandText =
             "SELECT e.id, e.tier, e.importance, e.entry_json, e.summary, e.text_persisted, " +
             (HasColumn(db, "memory_entries", "summary_model") ? "e.summary_model " : "NULL ") +
-            "FROM memory_entries e JOIN episodes p ON p.id = e.episode_id ORDER BY p.start_ts DESC, e.id DESC LIMIT $n";
+            "FROM memory_entries e JOIN episodes p ON p.id = e.episode_id " +
+            // Task switching and glances the nightly job hid (adaptation/memory_tidy.py) are not memories. The session notes are
+            // keyed by the entries in a session, so this must leave out exactly what the Python side leaves out.
+            (HasColumn(db, "memory_entries", "hidden") ? "WHERE e.hidden IS NULL " : "") +
+            "ORDER BY p.start_ts DESC, e.id DESC LIMIT $n";
         cmd.Parameters.AddWithValue("$n", limit);
         var rows = new List<MemoryRow>();
         using var reader = cmd.ExecuteReader();
@@ -225,7 +230,7 @@ public sealed class ScreenTextDb
                 ? t2.ToLocalTime() : null;
             var seconds = root.TryGetProperty("active_seconds", out var sec) && sec.TryGetDouble(out var sv) ? sv : 0;
             rows.Add(new MemoryRow(
-                reader.GetInt64(0), start, Str("app"), Str("domain"), Str("title"), reader.GetString(1),
+                reader.GetInt64(0), start, Str("app"), Str("domain"), Titles.Display(Str("title")), reader.GetString(1),
                 reader.IsDBNull(2) ? "–" : reader.GetDouble(2).ToString("0.00", CultureInfo.InvariantCulture),
                 Int("visit_number"),
                 $"{Int("n_captures")} captures, {Int("mouse_scrolls")} scrolls, {Int("key_presses")} key presses",
@@ -254,6 +259,7 @@ public sealed class ScreenTextDb
             using var db = Open(_memoryPath, readOnly: false);
             entries = Scalar(db, "SELECT COUNT(*) FROM memory_entries");
             Exec(db, "DELETE FROM memory_entries; DELETE FROM episodes; DELETE FROM documents");
+            if (HasTable(db, "moments")) Exec(db, "DELETE FROM moments");
             Compact(db);
         }
         return (captures, entries);

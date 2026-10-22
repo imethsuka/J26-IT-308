@@ -9,7 +9,7 @@ namespace ContextDashboard.Data;
 /// holds a connection open: each call opens, reads and closes, so the worker is never blocked and
 /// nothing stays allocated between refreshes.
 /// </summary>
-public sealed class ContextDb
+public sealed partial class ContextDb
 {
     private readonly string _path;
 
@@ -39,6 +39,8 @@ public sealed class ContextDb
         var records = Scalar("SELECT COUNT(*) FROM context_records");
         var range = Query(db, "SELECT MIN(ts), MAX(ts) FROM context_records",
             r => (r.IsDBNull(0) ? (long?)null : r.GetInt64(0), r.IsDBNull(1) ? (long?)null : r.GetInt64(1))).First();
+        var recent = Query(db, "SELECT COUNT(*), COALESCE(SUM(decision = 'save'), 0) FROM context_records WHERE ts > @since",
+            r => (r.GetInt64(0), r.GetInt64(1)), ("@since", (range.Item2 ?? 0) - 24L * 3600 * 1_000_000)).First();
         return new StorageSummary(
             records,
             Scalar("SELECT COUNT(*) FROM context_records WHERE decision = 'save'"),
@@ -49,7 +51,9 @@ public sealed class ContextDb
             range.Item1 is { } first ? FromEpochUs(first) : null,
             range.Item2 is { } last ? FromEpochUs(last) : null,
             SizeOnDisk(),
-            (int)Scalar("SELECT COALESCE(MAX(version), 0) FROM schema_migrations"));
+            (int)Scalar("SELECT COALESCE(MAX(version), 0) FROM schema_migrations"),
+            recent.Item1,
+            recent.Item2);
     }
 
     public IReadOnlyList<RecordRow> Recent(int limit, string? appContains = null, string? decision = null, DataScope scope = DataScope.All)

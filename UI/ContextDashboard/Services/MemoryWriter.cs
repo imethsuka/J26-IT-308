@@ -7,28 +7,42 @@ public sealed record WriterProgress(string Stage, int Done, int Total);
 
 /// <summary>
 /// Runs <c>memory_llm.py</c> (the sentence, session-note and day-recap stages) in the background, at below-normal priority so the PC
-/// stays usable, and reports its progress. It needs the repo's Python and a language model file; the installed bundle does not
-/// carry them yet, and in that case <see cref="Problem"/> says what is missing.
+/// stays usable, and reports its progress. Installed, that is <c>adapt.exe memory-llm</c>; from the repo, the repo's Python. The
+/// model runs on a dedicated GPU when one is usable, else on the CPU (<c>adaptation/llm_runtime.py</c>). It needs a language
+/// model file; <see cref="Problem"/> says what is missing.
 /// </summary>
 public sealed class MemoryWriter
 {
-    public const int DefaultEntries = 40;
+    /// <summary>Per click. About 6 minutes on a dedicated GPU (~1.5 s each); much longer on a CPU, and the run can be cancelled.</summary>
+    public const int DefaultEntries = 250;
+    public const int DefaultSessions = 40;
 
     private readonly AppSettings _settings;
     private readonly string? _startDir;
     private Process? _process;
 
-    public MemoryWriter(AppSettings settings, string? startDir = null)
+    private readonly Func<string, string, string> _help;
+
+    public MemoryWriter(AppSettings settings, string? startDir = null, Func<string, string, string>? help = null)
     {
         _settings = settings;
         _startDir = startDir;
+        _help = help ?? HelpProbe.Run;
     }
 
     public bool Running { get; private set; }
 
-    /// <summary>The worker folder holding <c>memory_llm.py</c> and a Python to run it with, or null.</summary>
-    internal (string Python, string Script, string Dir)? FindTool()
+    /// <summary>
+    /// What runs the tool: the installed <c>adapt.exe memory-llm</c> when that build knows it (an older one would exit on it),
+    /// else the repo's <c>memory_llm.py</c> with a Python. Null when neither is there.
+    /// </summary>
+    internal (string File, string Prefix, string Dir)? FindTool()
     {
+        if (_settings.WorkerExe.Length > 0 && Path.GetDirectoryName(_settings.WorkerExe) is { } workerDir)
+        {
+            var adapt = Path.Combine(workerDir, "adapt.exe");
+            if (File.Exists(adapt) && HelpProbe.Supports(_help, adapt, "", "memory-llm")) return (adapt, "memory-llm", workerDir);
+        }
         var candidates = new List<string>();
         if (_settings.WorkerDir.Length > 0) candidates.Add(_settings.WorkerDir);
         if (AppSettings.FindSystemRoot(_startDir ?? AppContext.BaseDirectory) is { } root) candidates.Add(Path.Combine(root, "python-worker"));
@@ -38,8 +52,8 @@ public sealed class MemoryWriter
             var script = Path.Combine(dir, "memory_llm.py");
             if (!File.Exists(script)) continue;
             var venv = Path.Combine(dir, ".venv", "Scripts", "python.exe");
-            if (File.Exists(venv)) return (venv, script, dir);
-            if (_settings.PythonExe.Length > 0 && File.Exists(_settings.PythonExe)) return (_settings.PythonExe, script, dir);
+            if (File.Exists(venv)) return (venv, $"\"{script}\"", dir);
+            if (_settings.PythonExe.Length > 0 && File.Exists(_settings.PythonExe)) return (_settings.PythonExe, $"\"{script}\"", dir);
         }
         return null;
     }
@@ -51,15 +65,16 @@ public sealed class MemoryWriter
         if (_settings.ResolveLlmModel() is null)
             return $"No language model file found. Put a .gguf chat model in {AppSettings.LlmDir}.";
         if (FindTool() is null)
-            return "Writing summaries needs the repo's Python (python-worker\\.venv). The installed bundle does not include it yet.";
+            return "Writing summaries needs a newer build of the app (adapt.exe memory-llm) or the repo's Python "
+                   + "(python-worker\\.venv). Rebuild the bundle (packaging\\build_bundle.ps1).";
         return null;
     }
 
     internal (string File, string Args, string WorkDir)? Command(int maxEntries)
     {
         if (FindTool() is not { } tool || _settings.ResolveLlmModel() is not { } model) return null;
-        return (tool.Python,
-                $"\"{tool.Script}\" --memory-db \"{_settings.MemoryPath}\" --llm-model \"{model}\" --max-entries {maxEntries}",
+        return (tool.File,
+                $"{tool.Prefix} --memory-db \"{_settings.MemoryPath}\" --llm-model \"{model}\" --max-entries {maxEntries} --max-sessions {DefaultSessions}",
                 tool.Dir);
     }
 

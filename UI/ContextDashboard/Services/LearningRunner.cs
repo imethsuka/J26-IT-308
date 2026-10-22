@@ -49,50 +49,17 @@ public sealed class LearningRunner
         _settings = settings;
         _backupDir = backupDir ?? BackupDir;
         _runLog = runLog ?? RunLog;
-        _help = help ?? RunHelp;
+        _help = help ?? HelpProbe.Run;
     }
 
     // ---- what the installed job understands --------------------------------------------------------------------------
-    // An older adapt.exe rejects flags it does not know and the whole run fails, so new options are only passed when the
-    // job's own --help lists them. The answer is cached per job file (and its timestamp), so --help runs once.
+    // An older adapt.exe rejects flags it does not know and the whole run fails (see HelpProbe).
     private readonly Func<string, string, string> _help;
-    private static readonly Dictionary<string, string> HelpCache = [];
 
     /// <summary>Set by <see cref="Command"/>: what was left out because the job is too old, or null.</summary>
     public string? CapabilityNote { get; private set; }
 
-    private bool Supports(string file, string prefix, string flag)
-    {
-        var key = file + "|" + (File.Exists(file) ? File.GetLastWriteTimeUtc(file).Ticks : 0);
-        string text;
-        lock (HelpCache)
-        {
-            if (!HelpCache.TryGetValue(key, out text!))
-                HelpCache[key] = text = _help(file, prefix);
-        }
-        return text.Contains(flag, StringComparison.Ordinal);
-    }
-
-    private static string RunHelp(string file, string prefix)
-    {
-        try
-        {
-            var info = new ProcessStartInfo(file, (prefix + " --help").Trim())
-            {
-                UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true,
-            };
-            using var process = Process.Start(info);
-            if (process is null) return "";
-            var output = process.StandardOutput.ReadToEndAsync();
-            var errors = process.StandardError.ReadToEndAsync();
-            if (!process.WaitForExit(30_000)) { try { process.Kill(true); } catch (InvalidOperationException) { } return ""; }
-            return output.Result + errors.Result;
-        }
-        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or IOException)
-        {
-            return "";
-        }
-    }
+    private bool Supports(string file, string prefix, string flag) => HelpProbe.Supports(_help, file, prefix, flag);
 
     public static string RunLog => Path.Combine(AppSettings.DataDir, "adaptation_runs.jsonl");
     public static string BackupDir => Path.Combine(AppSettings.DataDir, "backups");
